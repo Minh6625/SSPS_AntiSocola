@@ -1,0 +1,1038 @@
+-- ================================================================
+-- HCMSIU_SSPS - STUDENT SMART PRINTING SERVICE DATABASE
+-- Hệ thống quản lý in ấn thông minh cho sinh viên
+-- Database: SQL Server 2019+
+-- Version: 2.0 (Optimized - Gọn nhẹ, dễ truy vấn)
+-- Date: December 3, 2025
+-- ================================================================
+
+USE master;
+GO
+
+-- Tạo database
+IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'HCMSIU_SSPS')
+BEGIN
+    CREATE DATABASE HCMSIU_SSPS;
+END
+GO
+
+USE HCMSIU_SSPS;
+GO
+
+-- ================================================================
+-- PHÂN QUYỀN (RBAC) - Roles & Permissions (Production)
+-- ================================================================
+CREATE TABLE Roles (
+    RoleID INT IDENTITY(1,1) PRIMARY KEY,
+    RoleName NVARCHAR(50) NOT NULL UNIQUE, -- 'Student', 'SPSO', 'Admin'
+    Description NVARCHAR(200)
+);
+GO
+
+CREATE TABLE Permissions (
+    PermissionID INT IDENTITY(1,1) PRIMARY KEY,
+    PermissionKey NVARCHAR(100) NOT NULL UNIQUE, -- 'printer.manage', 'job.view', 'config.edit'
+    Description NVARCHAR(200)
+);
+GO
+
+CREATE TABLE UserRoles (
+    UserID NVARCHAR(20) NOT NULL,
+    RoleID INT NOT NULL,
+    AssignedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    
+    PRIMARY KEY (UserID, RoleID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
+    INDEX IX_UserRoles_User (UserID)
+);
+GO
+
+CREATE TABLE RolePermissions (
+    RoleID INT NOT NULL,
+    PermissionID INT NOT NULL,
+    GrantedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    
+    PRIMARY KEY (RoleID, PermissionID),
+    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
+    FOREIGN KEY (PermissionID) REFERENCES Permissions(PermissionID) ON DELETE CASCADE,
+    INDEX IX_RolePermissions_Role (RoleID)
+);
+GO
+
+-- Seed basic roles & permissions
+INSERT INTO Roles (RoleName, Description) VALUES
+('Student', N'Sinh viên'),
+('SPSO', N'Nhân viên vận hành in ấn'),
+('Admin', N'Quản trị hệ thống');
+GO
+
+INSERT INTO Permissions (PermissionKey, Description) VALUES
+('printer.view', N'Xem thông tin máy in'),
+('printer.manage', N'Thêm/sửa/xóa, bật/tắt máy in'),
+('job.create', N'Tạo lệnh in'),
+('job.view', N'Xem lệnh in và lịch sử'),
+('config.edit', N'Chỉnh sửa cấu hình hệ thống'),
+('report.view', N'Xem báo cáo'),
+('report.generate', N'Tạo báo cáo');
+GO
+
+-- BẢNG 10: REPORTS - Báo cáo tháng & năm (Production)
+-- ================================================================
+CREATE TABLE ReportsMonthly (
+    ReportID INT IDENTITY(1,1) PRIMARY KEY,
+    ReportYear INT NOT NULL,
+    ReportMonth INT NOT NULL CHECK (ReportMonth BETWEEN 1 AND 12),
+    
+    -- Tổng quan sử dụng
+    TotalStudentsActive INT NOT NULL DEFAULT 0,
+    TotalPrintJobs INT NOT NULL DEFAULT 0,
+    SuccessfulJobs INT NOT NULL DEFAULT 0,
+    FailedJobs INT NOT NULL DEFAULT 0,
+    TotalPagesPrinted INT NOT NULL DEFAULT 0,
+    TotalA4Equivalent INT NOT NULL DEFAULT 0,
+    
+    -- Doanh thu & giao dịch
+    TotalPagesPurchased INT NOT NULL DEFAULT 0,
+    TotalRevenue DECIMAL(12,2) NOT NULL DEFAULT 0,
+    
+    -- Máy in
+    MostUsedPrinterID NVARCHAR(20),
+    MostUsedPrinterJobs INT,
+    
+    -- Top user
+    TopStudentID NVARCHAR(20),
+    TopStudentPages INT,
+    
+    GeneratedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    GeneratedBy NVARCHAR(20),
+    Notes NVARCHAR(500),
+    
+    UNIQUE (ReportYear, ReportMonth),
+    FOREIGN KEY (MostUsedPrinterID) REFERENCES Printers(PrinterID),
+    FOREIGN KEY (TopStudentID) REFERENCES Users(UserID),
+    INDEX IX_ReportsMonthly_YM (ReportYear, ReportMonth)
+);
+GO
+
+CREATE TABLE ReportsYearly (
+    ReportID INT IDENTITY(1,1) PRIMARY KEY,
+    ReportYear INT NOT NULL UNIQUE,
+    
+    TotalStudentsActive INT NOT NULL DEFAULT 0,
+    TotalPrintJobs INT NOT NULL DEFAULT 0,
+    SuccessfulJobs INT NOT NULL DEFAULT 0,
+    FailedJobs INT NOT NULL DEFAULT 0,
+    TotalPagesPrinted INT NOT NULL DEFAULT 0,
+    TotalA4Equivalent INT NOT NULL DEFAULT 0,
+    
+    TotalPagesPurchased INT NOT NULL DEFAULT 0,
+    TotalRevenue DECIMAL(15,2) NOT NULL DEFAULT 0,
+    AverageRevenuePerStudent DECIMAL(10,2),
+    
+    MostActiveMonth INT,
+    PeakUsageDate DATE,
+    PeakUsageJobs INT,
+    
+    GeneratedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    GeneratedBy NVARCHAR(20),
+    Notes NVARCHAR(500),
+    
+    INDEX IX_ReportsYearly_Year (ReportYear)
+);
+GO
+
+-- ================================================================
+-- BẢNG 1: USERS - Quản lý người dùng
+-- ================================================================
+CREATE TABLE Users (
+    UserID NVARCHAR(20) PRIMARY KEY,                    -- MSSV hoặc MSNV
+    Email NVARCHAR(100) NOT NULL UNIQUE,                -- Email đăng nhập
+    FullName NVARCHAR(100) NOT NULL,                    -- Họ tên
+    PhoneNumber NVARCHAR(15),                           -- Số điện thoại
+    UserType NVARCHAR(20) NOT NULL CHECK (UserType IN ('Student', 'SPSO')),
+    Faculty NVARCHAR(100),                              -- Khoa (cho sinh viên)
+    Department NVARCHAR(100),                           -- Phòng ban (cho SPSO)
+    Status NVARCHAR(20) DEFAULT 'Active' CHECK (Status IN ('Active', 'Inactive')),
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    LastLogin DATETIME2,
+    EmailVerifiedAt DATETIME2,                          -- Thời điểm xác thực email
+    IsTwoFactorEnabled BIT NOT NULL DEFAULT 0,          -- Bật/tắt xác thực 2 lớp
+    
+    -- Email format (basic) - contains '@' and '.'
+    CONSTRAINT CK_Users_EmailFormat CHECK (Email LIKE '%@%.%'),
+    
+    INDEX IX_Users_Email (Email),
+    INDEX IX_Users_Type (UserType, Status)
+);
+GO
+
+-- ================================================================
+-- BẢNG 2: PAGE_BALANCE - Số dư trang in
+-- ================================================================
+CREATE TABLE PageBalance (
+    StudentID NVARCHAR(20) PRIMARY KEY,                 -- MSSV
+    A4Balance INT NOT NULL DEFAULT 0,                   -- Số trang A4 còn lại
+    A3Balance INT NOT NULL DEFAULT 0,                   -- Số trang A3 còn lại
+    TotalA4Equivalent AS (A4Balance + A3Balance * 2) PERSISTED, -- Tổng quy đổi A4
+    LastUpdated DATETIME2 DEFAULT GETDATE(),
+    
+    FOREIGN KEY (StudentID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+GO
+
+-- ================================================================
+-- BẢNG 3: PAGE_TRANSACTIONS - Lịch sử cấp/mua trang
+-- ================================================================
+CREATE TABLE PageTransactions (
+    TransactionID INT IDENTITY(1,1) PRIMARY KEY,
+    StudentID NVARCHAR(20) NOT NULL,
+    TransactionType NVARCHAR(20) NOT NULL CHECK (TransactionType IN ('Allocate', 'Purchase', 'Use')),
+    A4Pages INT NOT NULL DEFAULT 0,                     -- Số trang A4 (+/-)
+    A3Pages INT NOT NULL DEFAULT 0,                     -- Số trang A3 (+/-)
+    Amount DECIMAL(10,2),                               -- Số tiền (nếu mua)
+    PaymentMethod NVARCHAR(50),                         -- SIUPay, BankTransfer...
+    TransactionStatus NVARCHAR(20) DEFAULT 'Completed' CHECK (TransactionStatus IN ('Pending', 'Completed', 'Failed')),
+    Semester NVARCHAR(20),                              -- HK1-2024, HK2-2024...
+    Notes NVARCHAR(500),
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    CreatedBy NVARCHAR(20),                             -- SPSO thực hiện (nếu cấp phát)
+    
+    CONSTRAINT CK_PageTrans_NonNegative CHECK (COALESCE(Amount,0) >= 0 AND A4Pages >= -100000 AND A3Pages >= -100000),
+    
+    FOREIGN KEY (StudentID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    INDEX IX_Trans_Student (StudentID, CreatedAt DESC),
+    INDEX IX_Trans_Type (TransactionType, TransactionStatus)
+);
+GO
+
+-- ================================================================
+-- BẢNG 4: PRINTERS - Máy in
+-- ================================================================
+CREATE TABLE Printers (
+    PrinterID NVARCHAR(20) PRIMARY KEY,                 -- PR-CS-01, PR-H6-02...
+    PrinterName NVARCHAR(100) NOT NULL,                 -- Tên máy in
+    Brand NVARCHAR(50) NOT NULL,                        -- HP, Canon, Epson
+    Model NVARCHAR(100) NOT NULL,                       -- LaserJet Pro...
+    Location NVARCHAR(200) NOT NULL,                    -- "Dĩ An - H6 - P101"
+    Campus NVARCHAR(50) NOT NULL,                       -- Dĩ An, Linh Trung
+    Building NVARCHAR(50) NOT NULL,                     -- H6, A...
+    RoomNumber NVARCHAR(20) NOT NULL,                   -- 101, 202...
+    
+    -- Cấu hình máy
+    PaperSizes NVARCHAR(50) DEFAULT 'A4,A3',           -- Khổ giấy hỗ trợ
+    ColorPrinting BIT DEFAULT 0,                        -- 1: Có màu, 0: Đen trắng
+    DuplexPrinting BIT DEFAULT 1,                       -- 1: In 2 mặt, 0: 1 mặt
+    
+    -- Trạng thái
+    Status NVARCHAR(20) DEFAULT 'Active' CHECK (Status IN ('Active', 'Inactive', 'Maintenance', 'Error')),
+    TotalPagesPrinted INT DEFAULT 0,                    -- Tổng số trang đã in
+    LastMaintenanceDate DATE,                           -- Ngày bảo trì gần nhất
+    
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    CreatedBy NVARCHAR(20),
+    
+    INDEX IX_Printer_Location (Campus, Building, Status),
+    INDEX IX_Printer_Status (Status)
+);
+GO
+
+-- ================================================================
+-- BẢNG 5: DOCUMENTS - Tài liệu tải lên
+-- ================================================================
+CREATE TABLE Documents (
+    DocumentID INT IDENTITY(1,1) PRIMARY KEY,
+    StudentID NVARCHAR(20) NOT NULL,
+    OriginalFileName NVARCHAR(255) NOT NULL,            -- Tên file gốc
+    StoredFileName NVARCHAR(255) NOT NULL UNIQUE,       -- Tên file lưu (unique)
+    FilePath NVARCHAR(500) NOT NULL,                    -- Đường dẫn file
+    FileExtension NVARCHAR(10) NOT NULL,                -- pdf, docx, pptx...
+    FileSizeKB DECIMAL(10,2) NOT NULL,                  -- Kích thước (KB)
+    TotalPages INT NOT NULL,                            -- Tổng số trang
+    UploadDate DATETIME2 DEFAULT GETDATE(),
+    IsDeleted BIT DEFAULT 0,
+    
+    CONSTRAINT CK_Documents_FileExt CHECK (LEN(FileExtension) BETWEEN 2 AND 10 AND FileExtension NOT LIKE '%.%' AND FileExtension NOT LIKE '%/%'),
+    
+    FOREIGN KEY (StudentID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    INDEX IX_Doc_Student (StudentID, IsDeleted, UploadDate DESC)
+);
+GO
+
+-- ================================================================
+-- BẢNG 6: PRINT_JOBS - Lệnh in (Print Queue)
+-- ================================================================
+CREATE TABLE PrintJobs (
+    JobID INT IDENTITY(1,1) PRIMARY KEY,
+    StudentID NVARCHAR(20) NOT NULL,
+    DocumentID INT NOT NULL,
+    PrinterID NVARCHAR(20) NOT NULL,
+    
+    -- Cấu hình in
+    PaperSize NVARCHAR(10) NOT NULL DEFAULT 'A4' CHECK (PaperSize IN ('A4', 'A3', 'A5')),
+    PagesToPrint NVARCHAR(255) NOT NULL,                -- "1-10,15,20-25"
+    ColorMode NVARCHAR(20) DEFAULT 'BlackWhite' CHECK (ColorMode IN ('Color', 'Grayscale', 'BlackWhite')),
+    IsSingleSided BIT DEFAULT 0,                        -- 0: 2 mặt, 1: 1 mặt
+    NumCopies INT DEFAULT 1,                            -- Số bản copy
+    
+    -- Tính toán
+    TotalPagesToPrint INT NOT NULL,                     -- Tổng số trang in
+    TotalSheetsUsed INT NOT NULL,                       -- Tổng số tờ giấy
+    A4EquivalentPages INT NOT NULL,                     -- Quy đổi A4
+    
+    -- Trạng thái
+    JobStatus NVARCHAR(20) DEFAULT 'Pending' CHECK (JobStatus IN ('Pending', 'Printing', 'Completed', 'Failed', 'Cancelled')),
+    SubmittedAt DATETIME2 DEFAULT GETDATE(),
+    StartedAt DATETIME2,
+    CompletedAt DATETIME2,
+    ErrorMessage NVARCHAR(500),
+    
+    CONSTRAINT CK_PrintJobs_Totals CHECK (
+        TotalPagesToPrint >= 0 AND TotalSheetsUsed >= 0 AND A4EquivalentPages >= 0
+    ),
+    CONSTRAINT CK_PrintJobs_Times CHECK (
+        (StartedAt IS NULL OR StartedAt >= SubmittedAt) AND (CompletedAt IS NULL OR CompletedAt >= StartedAt)
+    ),
+    
+    FOREIGN KEY (StudentID) REFERENCES Users(UserID),
+    FOREIGN KEY (DocumentID) REFERENCES Documents(DocumentID),
+    FOREIGN KEY (PrinterID) REFERENCES Printers(PrinterID),
+    INDEX IX_Job_Student (StudentID, JobStatus, SubmittedAt DESC),
+    INDEX IX_Job_Printer (PrinterID, JobStatus),
+    INDEX IX_Job_Status (JobStatus, SubmittedAt DESC)
+);
+GO
+
+-- ================================================================
+-- BẢNG 7: PRINT_LOGS - Lịch sử in (Log)
+-- ================================================================
+CREATE TABLE PrintLogs (
+    LogID INT IDENTITY(1,1) PRIMARY KEY,
+    JobID INT NOT NULL,
+    StudentID NVARCHAR(20) NOT NULL,
+    PrinterID NVARCHAR(20) NOT NULL,
+    DocumentName NVARCHAR(255) NOT NULL,
+    PaperSize NVARCHAR(10) NOT NULL,
+    PagesPrinted INT NOT NULL,                          -- Số trang đã in
+    A4EquivalentUsed INT NOT NULL,                      -- Số trang A4 đã dùng
+    PrintTime DATETIME2 DEFAULT GETDATE(),              -- Thời gian in
+    DurationSeconds INT,                                -- Thời lượng (giây)
+    Status NVARCHAR(20) NOT NULL CHECK (Status IN ('Success', 'Failed')),
+    
+    CONSTRAINT CK_PrintLogs_NonNegative CHECK (PagesPrinted >= 0 AND A4EquivalentUsed >= 0),
+    
+    
+    FOREIGN KEY (JobID) REFERENCES PrintJobs(JobID) ON DELETE CASCADE,
+    FOREIGN KEY (StudentID) REFERENCES Users(UserID),
+    FOREIGN KEY (PrinterID) REFERENCES Printers(PrinterID),
+    INDEX IX_Log_Student (StudentID, PrintTime DESC),
+    INDEX IX_Log_Printer (PrinterID, PrintTime DESC),
+    INDEX IX_Log_Time (PrintTime DESC)
+);
+GO
+
+-- ================================================================
+-- BẢNG 8: SYSTEM_CONFIG - Cấu hình hệ thống
+-- ================================================================
+CREATE TABLE SystemConfig (
+    ConfigKey NVARCHAR(100) PRIMARY KEY,
+    ConfigValue NVARCHAR(MAX) NOT NULL,
+    Description NVARCHAR(500),
+    DataType NVARCHAR(20) NOT NULL CHECK (DataType IN ('String', 'Integer', 'Decimal', 'Boolean', 'JSON')),
+    UpdatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedBy NVARCHAR(20)
+);
+GO
+
+-- ================================================================
+-- BẢNG GIÁ VÀ LOẠI FILE (Chuẩn hóa)
+-- ================================================================
+CREATE TABLE PagePricing (
+    PricingID INT IDENTITY(1,1) PRIMARY KEY,
+    PaperSize NVARCHAR(10) NOT NULL CHECK (PaperSize IN ('A4','A3','A5')),
+    PricePerPage DECIMAL(10,2) NOT NULL CHECK (PricePerPage >= 0),
+    Currency NVARCHAR(10) NOT NULL DEFAULT 'VND',
+    EffectiveFrom DATE NOT NULL,
+    EffectiveTo DATE NULL,
+    IsActive BIT NOT NULL DEFAULT 1,
+    Notes NVARCHAR(255),
+    
+    UNIQUE (PaperSize, EffectiveFrom),
+    INDEX IX_PagePricing_Active (IsActive, EffectiveFrom DESC)
+);
+GO
+
+-- ================================================================
+-- AUTH: OTP qua Email & Thiết bị tin cậy (2FA)
+-- ================================================================
+CREATE TABLE EmailOtpCodes (
+    OtpID INT IDENTITY(1,1) PRIMARY KEY,
+    UserID NVARCHAR(20) NOT NULL,
+    Purpose NVARCHAR(30) NOT NULL CHECK (Purpose IN ('PasswordReset','Login2FA','EmailVerification','Register2FA')),
+    Code NVARCHAR(10) NOT NULL,                         -- Mã OTP (6 chữ số)
+    ExpiresAt DATETIME2 NOT NULL,                       -- Thời điểm hết hạn
+    ConsumedAt DATETIME2 NULL,                          -- Đã sử dụng
+    AttemptCount INT NOT NULL DEFAULT 0,
+    MaxAttempts INT NOT NULL DEFAULT 5,
+    RequestedByIp NVARCHAR(45),                         -- IPv4/IPv6
+    DeviceId NVARCHAR(64),                              -- Dấu vết thiết bị (nếu có)
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+GO
+
+-- Chỉ cho phép 1 OTP chưa dùng trên mỗi Purpose
+CREATE UNIQUE INDEX UX_EmailOtp_Active ON EmailOtpCodes(UserID, Purpose) WHERE ConsumedAt IS NULL;
+CREATE INDEX IX_EmailOtp_UserPurpose ON EmailOtpCodes(UserID, Purpose, ExpiresAt);
+GO
+
+CREATE TABLE TrustedDevices (
+    UserID NVARCHAR(20) NOT NULL,
+    DeviceId NVARCHAR(64) NOT NULL,                     -- Hash/fingerprint thiết bị
+    DeviceName NVARCHAR(100),
+    UserAgent NVARCHAR(255),
+    IpAddress NVARCHAR(45),
+    TrustedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    ExpiresAt DATETIME2 NOT NULL,
+    LastUsedAt DATETIME2 NULL,
+    RevokedAt DATETIME2 NULL,
+
+    PRIMARY KEY (UserID, DeviceId),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+GO
+
+CREATE INDEX IX_TrustedDevices_Expiry ON TrustedDevices(UserID, ExpiresAt);
+GO
+
+CREATE TABLE AllowedFileTypes (
+    FileTypeID INT IDENTITY(1,1) PRIMARY KEY,
+    FileExtension NVARCHAR(10) NOT NULL, -- 'pdf', 'docx'
+    MimeType NVARCHAR(100) NOT NULL,
+    MaxFileSizeMB INT NOT NULL DEFAULT 50 CHECK (MaxFileSizeMB > 0),
+    IsAllowed BIT NOT NULL DEFAULT 1,
+    UpdatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    UpdatedBy NVARCHAR(20),
+    
+    CONSTRAINT UQ_AllowedFileTypes_Ext UNIQUE (FileExtension),
+    INDEX IX_FileTypes_Allowed (IsAllowed)
+);
+GO
+
+-- Seed pricing
+INSERT INTO PagePricing (PaperSize, PricePerPage, Currency, EffectiveFrom, IsActive)
+VALUES ('A4', 500.00, 'VND', '2024-01-01', 1),
+       ('A3', 1000.00, 'VND', '2024-01-01', 1),
+       ('A5', 300.00, 'VND', '2024-01-01', 1);
+GO
+
+-- Seed allowed file types
+INSERT INTO AllowedFileTypes (FileExtension, MimeType, MaxFileSizeMB, IsAllowed)
+VALUES ('pdf', 'application/pdf', 50, 1),
+       ('docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 30, 1),
+       ('pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 50, 1),
+       ('xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 20, 1),
+       ('txt', 'text/plain', 5, 1);
+GO
+
+-- ================================================================
+-- BẢNG 9: NOTIFICATIONS - Thông báo
+-- ================================================================
+CREATE TABLE Notifications (
+    NotificationID INT IDENTITY(1,1) PRIMARY KEY,
+    RecipientID NVARCHAR(20) NOT NULL,                  -- UserID người nhận
+    Title NVARCHAR(200) NOT NULL,
+    Message NVARCHAR(1000) NOT NULL,
+    NotificationType NVARCHAR(20) DEFAULT 'Info' CHECK (NotificationType IN ('Info', 'Warning', 'Error', 'Success')),
+    IsRead BIT DEFAULT 0,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    
+    FOREIGN KEY (RecipientID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    INDEX IX_Notif_Recipient (RecipientID, IsRead, CreatedAt DESC)
+);
+GO
+
+-- ================================================================
+-- BẢNG 11: PRINTER_MAINTENANCE - Log bảo trì máy in (Production)
+-- ================================================================
+CREATE TABLE PrinterMaintenance (
+    MaintenanceID INT IDENTITY(1,1) PRIMARY KEY,
+    PrinterID NVARCHAR(20) NOT NULL,
+    MaintenanceDate DATE NOT NULL,
+    MaintenanceType NVARCHAR(20) NOT NULL CHECK (MaintenanceType IN ('Routine','Repair','Emergency','Upgrade')),
+    Description NVARCHAR(500),
+    Technician NVARCHAR(100),
+    Cost DECIMAL(12,2),
+    DurationMinutes INT,
+    PerformedBy NVARCHAR(20),
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    
+    FOREIGN KEY (PrinterID) REFERENCES Printers(PrinterID) ON DELETE CASCADE,
+    INDEX IX_PM_PrinterDate (PrinterID, MaintenanceDate DESC)
+);
+GO
+
+-- ================================================================
+-- VIEWS - Truy vấn thuận tiện
+-- ================================================================
+
+-- View 1: Thông tin sinh viên và số dư trang
+CREATE VIEW vw_StudentPageInfo AS
+SELECT 
+    u.UserID as StudentID,
+    u.FullName,
+    u.Email,
+    u.Faculty,
+    pb.A4Balance,
+    pb.A3Balance,
+    pb.TotalA4Equivalent,
+    pb.LastUpdated as BalanceLastUpdated
+FROM Users u
+INNER JOIN PageBalance pb ON u.UserID = pb.StudentID
+WHERE u.UserType = 'Student' AND u.Status = 'Active';
+GO
+
+-- View 2: Lịch sử in của sinh viên
+CREATE VIEW vw_PrintHistory AS
+SELECT 
+    pl.LogID,
+    pl.StudentID,
+    u.FullName as StudentName,
+    pl.DocumentName,
+    pl.PrinterID,
+    p.PrinterName,
+    p.Location as PrinterLocation,
+    pl.PaperSize,
+    pl.PagesPrinted,
+    pl.A4EquivalentUsed,
+    pl.PrintTime,
+    pl.Status
+FROM PrintLogs pl
+INNER JOIN Users u ON pl.StudentID = u.UserID
+INNER JOIN Printers p ON pl.PrinterID = p.PrinterID;
+GO
+
+-- View 3: Thống kê máy in
+CREATE VIEW vw_PrinterStats AS
+SELECT 
+    p.PrinterID,
+    p.PrinterName,
+    p.Location,
+    p.Status,
+    p.TotalPagesPrinted,
+    COUNT(pj.JobID) as TotalJobs,
+    SUM(CASE WHEN pj.JobStatus = 'Completed' THEN 1 ELSE 0 END) as CompletedJobs,
+    SUM(CASE WHEN pj.JobStatus = 'Failed' THEN 1 ELSE 0 END) as FailedJobs,
+    SUM(CASE WHEN pj.JobStatus IN ('Pending', 'Printing') THEN 1 ELSE 0 END) as PendingJobs
+FROM Printers p
+LEFT JOIN PrintJobs pj ON p.PrinterID = pj.PrinterID
+GROUP BY p.PrinterID, p.PrinterName, p.Location, p.Status, p.TotalPagesPrinted;
+GO
+
+-- ================================================================
+-- STORED PROCEDURES
+-- ================================================================
+
+-- SP1: Kiểm tra số dư trang trước khi in
+CREATE PROCEDURE sp_CheckPageBalance
+    @StudentID NVARCHAR(20),
+    @PaperSize NVARCHAR(10),
+    @RequiredPages INT,
+    @HasEnough BIT OUTPUT,
+    @CurrentBalance INT OUTPUT
+AS
+BEGIN
+    IF @RequiredPages < 0 RETURN;
+    DECLARE @A4Equivalent INT;
+    
+    -- Tính số trang A4 tương đương
+    IF @PaperSize = 'A3'
+        SET @A4Equivalent = @RequiredPages * 2;
+    ELSE
+        SET @A4Equivalent = @RequiredPages;
+    
+    -- Lấy số dư hiện tại
+    SELECT @CurrentBalance = TotalA4Equivalent
+    FROM PageBalance
+    WHERE StudentID = @StudentID;
+    
+    -- Kiểm tra đủ không
+    IF @CurrentBalance >= @A4Equivalent
+        SET @HasEnough = 1;
+    ELSE
+        SET @HasEnough = 0;
+END;
+GO
+
+-- SP5: Tạo báo cáo tháng từ dữ liệu thực
+CREATE PROCEDURE sp_GenerateMonthlyReport
+    @ReportYear INT,
+    @ReportMonth INT,
+    @GeneratedBy NVARCHAR(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Xóa báo cáo trùng (nếu đã tạo trước đó)
+    DELETE FROM ReportsMonthly WHERE ReportYear = @ReportYear AND ReportMonth = @ReportMonth;
+    
+    DECLARE @StartDate DATE = DATEFROMPARTS(@ReportYear, @ReportMonth, 1);
+    DECLARE @EndDate DATE = EOMONTH(@StartDate);
+    
+    INSERT INTO ReportsMonthly (
+        ReportYear, ReportMonth,
+        TotalStudentsActive, TotalPrintJobs,
+        SuccessfulJobs, FailedJobs,
+        TotalPagesPrinted, TotalA4Equivalent,
+        TotalPagesPurchased, TotalRevenue,
+        MostUsedPrinterID, MostUsedPrinterJobs,
+        TopStudentID, TopStudentPages,
+        GeneratedAt, GeneratedBy
+    )
+    SELECT
+        @ReportYear, @ReportMonth,
+        COUNT(DISTINCT pl.StudentID) AS TotalStudentsActive,
+        COUNT(pl.LogID) AS TotalPrintJobs,
+        SUM(CASE WHEN pl.Status = 'Success' THEN 1 ELSE 0 END) AS SuccessfulJobs,
+        SUM(CASE WHEN pl.Status = 'Failed' THEN 1 ELSE 0 END) AS FailedJobs,
+        SUM(pl.PagesPrinted) AS TotalPagesPrinted,
+        SUM(pl.A4EquivalentUsed) AS TotalA4Equivalent,
+        COALESCE((SELECT SUM(pt.A4Pages + pt.A3Pages * 2)
+                  FROM PageTransactions pt
+                  WHERE pt.TransactionType = 'Purchase'
+                    AND pt.TransactionStatus = 'Completed'
+                    AND pt.CreatedAt >= @StartDate AND pt.CreatedAt <= DATEADD(DAY, 1, @EndDate)), 0) AS TotalPagesPurchased,
+        COALESCE((SELECT SUM(pt.Amount)
+                  FROM PageTransactions pt
+                  WHERE pt.TransactionType = 'Purchase'
+                    AND pt.TransactionStatus = 'Completed'
+                    AND pt.CreatedAt >= @StartDate AND pt.CreatedAt <= DATEADD(DAY, 1, @EndDate)), 0) AS TotalRevenue,
+        -- Most used printer
+        (SELECT TOP 1 pl2.PrinterID
+         FROM PrintLogs pl2
+         WHERE pl2.PrintTime >= @StartDate AND pl2.PrintTime <= DATEADD(DAY, 1, @EndDate)
+         GROUP BY pl2.PrinterID
+         ORDER BY COUNT(*) DESC) AS MostUsedPrinterID,
+        (SELECT TOP 1 COUNT(*)
+         FROM PrintLogs pl2
+         WHERE pl2.PrintTime >= @StartDate AND pl2.PrintTime <= DATEADD(DAY, 1, @EndDate)
+         GROUP BY pl2.PrinterID
+         ORDER BY COUNT(*) DESC) AS MostUsedPrinterJobs,
+        -- Top student
+        (SELECT TOP 1 pl3.StudentID
+         FROM PrintLogs pl3
+         WHERE pl3.PrintTime >= @StartDate AND pl3.PrintTime <= DATEADD(DAY, 1, @EndDate)
+         GROUP BY pl3.StudentID
+         ORDER BY SUM(pl3.A4EquivalentUsed) DESC) AS TopStudentID,
+        (SELECT TOP 1 SUM(pl3.A4EquivalentUsed)
+         FROM PrintLogs pl3
+         WHERE pl3.PrintTime >= @StartDate AND pl3.PrintTime <= DATEADD(DAY, 1, @EndDate)
+         GROUP BY pl3.StudentID
+         ORDER BY SUM(pl3.A4EquivalentUsed) DESC) AS TopStudentPages,
+        GETDATE(), @GeneratedBy;
+END;
+GO
+
+-- SP2: Cấp trang cho sinh viên
+CREATE PROCEDURE sp_AllocatePages
+    @StudentID NVARCHAR(20),
+    @A4Pages INT,
+    @Semester NVARCHAR(20),
+    @AllocatedBy NVARCHAR(20)
+AS
+BEGIN
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        IF @A4Pages <= 0 THROW 50001, 'A4Pages must be > 0', 1;
+        -- Thêm giao dịch
+        INSERT INTO PageTransactions (StudentID, TransactionType, A4Pages, Semester, CreatedBy)
+        VALUES (@StudentID, 'Allocate', @A4Pages, @Semester, @AllocatedBy);
+        
+        -- Cập nhật số dư
+        UPDATE PageBalance
+        SET A4Balance = A4Balance + @A4Pages,
+            LastUpdated = GETDATE()
+        WHERE StudentID = @StudentID;
+        
+        -- Nếu chưa có record trong PageBalance, tạo mới
+        IF @@ROWCOUNT = 0
+        BEGIN
+            INSERT INTO PageBalance (StudentID, A4Balance)
+            VALUES (@StudentID, @A4Pages);
+        END
+        
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO
+
+-- SP3: Mua trang
+CREATE PROCEDURE sp_PurchasePages
+    @StudentID NVARCHAR(20),
+    @A4Pages INT,
+    @A3Pages INT,
+    @Amount DECIMAL(10,2),
+    @PaymentMethod NVARCHAR(50),
+    @TransactionID INT OUTPUT
+AS
+BEGIN
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        IF @A4Pages < 0 OR @A3Pages < 0 THROW 50002, 'Pages must be >= 0', 1;
+        IF @Amount < 0 THROW 50003, 'Amount must be >= 0', 1;
+        -- Thêm giao dịch mua
+        INSERT INTO PageTransactions (StudentID, TransactionType, A4Pages, A3Pages, Amount, PaymentMethod, TransactionStatus)
+        VALUES (@StudentID, 'Purchase', @A4Pages, @A3Pages, @Amount, @PaymentMethod, 'Completed');
+        
+        SET @TransactionID = SCOPE_IDENTITY();
+        
+        -- Cập nhật số dư
+        UPDATE PageBalance
+        SET A4Balance = A4Balance + @A4Pages,
+            A3Balance = A3Balance + @A3Pages,
+            LastUpdated = GETDATE()
+        WHERE StudentID = @StudentID;
+        
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        THROW;
+    END CATCH
+END;
+GO
+
+-- SP4: Hoàn thành lệnh in
+CREATE PROCEDURE sp_CompletePrintJob
+    @JobID INT
+AS
+BEGIN
+    BEGIN TRANSACTION;
+    BEGIN TRY
+        DECLARE @StudentID NVARCHAR(20);
+        DECLARE @PrinterID NVARCHAR(20);
+        DECLARE @DocumentID INT;
+        DECLARE @PaperSize NVARCHAR(10);
+        DECLARE @TotalPages INT;
+        DECLARE @A4Equivalent INT;
+        DECLARE @DocName NVARCHAR(255);
+        DECLARE @StartTime DATETIME2;
+        
+        -- Lấy thông tin job
+        SELECT 
+            @StudentID = StudentID,
+            @PrinterID = PrinterID,
+            @DocumentID = DocumentID,
+            @PaperSize = PaperSize,
+            @TotalPages = TotalPagesToPrint,
+            @A4Equivalent = A4EquivalentPages,
+            @StartTime = StartedAt
+        FROM PrintJobs
+        WHERE JobID = @JobID;
+        
+        -- Lấy tên tài liệu
+        SELECT @DocName = OriginalFileName
+        FROM Documents
+        WHERE DocumentID = @DocumentID;
+        
+        -- Cập nhật trạng thái job
+        UPDATE PrintJobs
+        SET JobStatus = 'Completed',
+            CompletedAt = GETDATE()
+        WHERE JobID = @JobID;
+        
+        -- Trừ số trang
+        IF @PaperSize = 'A3'
+            UPDATE PageBalance
+            SET A3Balance = A3Balance - (@A4Equivalent / 2)
+            WHERE StudentID = @StudentID;
+        ELSE
+            UPDATE PageBalance
+            SET A4Balance = A4Balance - @A4Equivalent
+            WHERE StudentID = @StudentID;
+        
+        -- Ghi transaction
+        INSERT INTO PageTransactions (StudentID, TransactionType, A4Pages, Notes)
+        VALUES (@StudentID, 'Use', -@A4Equivalent, 'JobID: ' + CAST(@JobID AS NVARCHAR(20)));
+        
+        -- Tạo log
+        INSERT INTO PrintLogs (JobID, StudentID, PrinterID, DocumentName, PaperSize, PagesPrinted, A4EquivalentUsed, DurationSeconds, Status)
+        VALUES (@JobID, @StudentID, @PrinterID, @DocName, @PaperSize, @TotalPages, @A4Equivalent, 
+                DATEDIFF(SECOND, @StartTime, GETDATE()), 'Success');
+        
+        -- Cập nhật tổng số trang của máy in
+        UPDATE Printers
+        SET TotalPagesPrinted = TotalPagesPrinted + @TotalPages
+        WHERE PrinterID = @PrinterID;
+        
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION;
+        -- Re-throw with context
+        THROW;
+    END CATCH
+END;
+GO
+
+-- SP6: Phát hành OTP qua email cho các mục đích (Reset mật khẩu, 2FA, xác thực email)
+CREATE PROCEDURE sp_IssueEmailOtp
+    @UserID NVARCHAR(20) = NULL,
+    @Email NVARCHAR(100) = NULL,
+    @Purpose NVARCHAR(30),
+    @RequestedByIp NVARCHAR(45) = NULL,
+    @DeviceId NVARCHAR(64) = NULL,
+    @OtpCode NVARCHAR(10) OUTPUT,
+    @ExpiresAt DATETIME2 OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Resolve user by email if needed
+    IF @UserID IS NULL AND @Email IS NOT NULL
+        SELECT @UserID = UserID FROM Users WHERE Email = @Email;
+
+    IF @UserID IS NULL
+        THROW 50010, 'User not found for issuing OTP', 1;
+
+    DECLARE @ExpireMinutes INT = 10;
+    DECLARE @MaxAttempts INT = 5;
+
+    SELECT @ExpireMinutes = TRY_CAST(ConfigValue AS INT)
+    FROM SystemConfig WHERE ConfigKey = 'OTP.EmailExpirationMinutes';
+
+    SELECT @MaxAttempts = TRY_CAST(ConfigValue AS INT)
+    FROM SystemConfig WHERE ConfigKey = 'OTP.MaxAttempts';
+
+    SET @ExpiresAt = DATEADD(MINUTE, ISNULL(@ExpireMinutes, 10), GETDATE());
+
+    -- Invalidate existing unconsumed OTP for the same purpose
+    DELETE FROM EmailOtpCodes
+    WHERE UserID = @UserID AND Purpose = @Purpose AND ConsumedAt IS NULL;
+
+    -- Generate 6-digit numeric OTP
+    SET @OtpCode = RIGHT('000000' + CAST(ABS(CHECKSUM(NEWID())) % 1000000 AS VARCHAR(6)), 6);
+
+    INSERT INTO EmailOtpCodes (UserID, Purpose, Code, ExpiresAt, AttemptCount, MaxAttempts, RequestedByIp, DeviceId)
+    VALUES (@UserID, @Purpose, @OtpCode, @ExpiresAt, 0, ISNULL(@MaxAttempts, 5), @RequestedByIp, @DeviceId);
+END;
+GO
+
+-- SP7: Tiêu thụ/kiểm tra OTP
+CREATE PROCEDURE sp_ConsumeEmailOtp
+    @UserID NVARCHAR(20),
+    @Purpose NVARCHAR(30),
+    @Code NVARCHAR(10),
+    @DeviceId NVARCHAR(64) = NULL,
+    @Success BIT OUTPUT,
+    @Error NVARCHAR(200) OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @Success = 0; SET @Error = NULL;
+
+    DECLARE @OtpID INT;
+    DECLARE @MaxAttempts INT;
+
+    -- Get latest active OTP
+    SELECT TOP 1 @OtpID = OtpID, @MaxAttempts = MaxAttempts
+    FROM EmailOtpCodes
+    WHERE UserID = @UserID AND Purpose = @Purpose AND ConsumedAt IS NULL AND ExpiresAt >= GETDATE()
+    ORDER BY CreatedAt DESC;
+
+    IF @OtpID IS NULL
+    BEGIN
+        SET @Error = N'Không có OTP hợp lệ hoặc đã hết hạn';
+        RETURN;
+    END
+
+    DECLARE @CurrentAttempt INT;
+    SELECT @CurrentAttempt = AttemptCount FROM EmailOtpCodes WHERE OtpID = @OtpID;
+
+    IF @CurrentAttempt >= @MaxAttempts
+    BEGIN
+        UPDATE EmailOtpCodes SET ConsumedAt = GETDATE() WHERE OtpID = @OtpID; -- lock OTP
+        SET @Error = N'Vượt quá số lần thử OTP';
+        RETURN;
+    END
+
+    DECLARE @ActualCode NVARCHAR(10);
+    SELECT @ActualCode = Code FROM EmailOtpCodes WHERE OtpID = @OtpID;
+
+    IF @ActualCode = @Code
+    BEGIN
+        UPDATE EmailOtpCodes SET ConsumedAt = GETDATE() WHERE OtpID = @OtpID;
+        SET @Success = 1;
+
+        -- Side effects: nếu xác thực email
+        IF @Purpose IN ('EmailVerification','Register2FA')
+            UPDATE Users SET EmailVerifiedAt = GETDATE() WHERE UserID = @UserID;
+        RETURN;
+    END
+    ELSE
+    BEGIN
+        UPDATE EmailOtpCodes SET AttemptCount = AttemptCount + 1 WHERE OtpID = @OtpID;
+        SELECT @CurrentAttempt = AttemptCount FROM EmailOtpCodes WHERE OtpID = @OtpID;
+        IF @CurrentAttempt >= @MaxAttempts
+            UPDATE EmailOtpCodes SET ConsumedAt = GETDATE() WHERE OtpID = @OtpID; -- lock after max attempts
+        SET @Error = N'Mã OTP không đúng';
+        RETURN;
+    END
+END;
+GO
+
+-- SP8: Đăng ký thiết bị tin cậy (bỏ qua 2FA trong thời hạn)
+CREATE PROCEDURE sp_RegisterTrustedDevice
+    @UserID NVARCHAR(20),
+    @DeviceId NVARCHAR(64),
+    @DeviceName NVARCHAR(100) = NULL,
+    @UserAgent NVARCHAR(255) = NULL,
+    @IpAddress NVARCHAR(45) = NULL,
+    @TrustDays INT = NULL,
+    @ExpiresAt DATETIME2 OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @DefaultTrustDays INT = 30;
+    SELECT @DefaultTrustDays = TRY_CAST(ConfigValue AS INT)
+    FROM SystemConfig WHERE ConfigKey = 'TwoFactor.TrustDays';
+
+    IF @TrustDays IS NULL SET @TrustDays = ISNULL(@DefaultTrustDays, 30);
+    SET @ExpiresAt = DATEADD(DAY, @TrustDays, GETDATE());
+
+    IF EXISTS (SELECT 1 FROM TrustedDevices WHERE UserID = @UserID AND DeviceId = @DeviceId)
+    BEGIN
+        UPDATE TrustedDevices
+        SET DeviceName = COALESCE(@DeviceName, DeviceName),
+            UserAgent = COALESCE(@UserAgent, UserAgent),
+            IpAddress = COALESCE(@IpAddress, IpAddress),
+            TrustedAt = GETDATE(),
+            ExpiresAt = @ExpiresAt,
+            RevokedAt = NULL
+        WHERE UserID = @UserID AND DeviceId = @DeviceId;
+    END
+    ELSE
+    BEGIN
+        INSERT INTO TrustedDevices (UserID, DeviceId, DeviceName, UserAgent, IpAddress, TrustedAt, ExpiresAt)
+        VALUES (@UserID, @DeviceId, @DeviceName, @UserAgent, @IpAddress, GETDATE(), @ExpiresAt);
+    END
+END;
+GO
+
+-- ================================================================
+-- DỮ LIỆU MẪU
+-- ================================================================
+
+-- Cấu hình hệ thống
+INSERT INTO SystemConfig (ConfigKey, ConfigValue, Description, DataType) VALUES
+('DefaultA4PagesPerSemester', '100', N'Số trang A4 mặc định mỗi học kỳ', 'Integer'),
+('MaxFileSizeMB', '50', N'Kích thước file tối đa (MB)', 'Integer'),
+('MaxPagesPerJob', '100', N'Số trang tối đa mỗi lần in', 'Integer'),
+('AllowedFileTypes', '["pdf","docx","pptx","xlsx","txt"]', N'Loại file được phép', 'JSON'),
+('A4PricePerPage', '500', N'Giá 1 trang A4 (VND)', 'Integer'),
+('A3PricePerPage', '1000', N'Giá 1 trang A3 (VND)', 'Integer'),
+('CurrentSemester', 'HK2-2024', N'Học kỳ hiện tại', 'String'),
+('PageAllocationDate', '2025-01-01', N'Ngày cấp trang học kỳ này', 'String');
+GO
+
+-- Cấu hình OTP/2FA
+INSERT INTO SystemConfig (ConfigKey, ConfigValue, Description, DataType) VALUES
+('TwoFactor.Enabled', 'true', N'Bật xác thực hai lớp (2FA) qua email', 'Boolean'),
+('TwoFactor.TrustDays', '30', N'Số ngày ghi nhớ thiết bị tin cậy', 'Integer'),
+('OTP.EmailExpirationMinutes', '10', N'Thời hạn OTP email (phút)', 'Integer'),
+('OTP.MaxAttempts', '5', N'Số lần thử OTP tối đa', 'Integer');
+GO
+
+-- Thêm SPSO mẫu
+INSERT INTO Users (UserID, Email, FullName, UserType, Department, Status)
+VALUES ('SPSO001', 'spso001@hcmiu.edu.vn', N'Nguyễn Văn A', 'SPSO', N'Phòng In Ấn', 'Active');
+GO
+
+-- Thêm sinh viên mẫu
+INSERT INTO Users (UserID, Email, FullName, PhoneNumber, UserType, Faculty, Status) VALUES
+('ITITIU21001', 'ITITIU21001@student.hcmiu.edu.vn', N'Trần Văn B', '0901234567', 'Student', N'Công nghệ thông tin', 'Active'),
+('ITITIU21002', 'ITITIU21002@student.hcmiu.edu.vn', N'Lê Thị C', '0901234568', 'Student', N'Công nghệ thông tin', 'Active'),
+('IELSIU21001', 'IELSIU21001@student.hcmiu.edu.vn', N'Phạm Văn D', '0901234569', 'Student', N'Ngôn ngữ Anh', 'Active');
+GO
+
+-- Cấp trang cho sinh viên
+INSERT INTO PageBalance (StudentID, A4Balance, A3Balance) VALUES
+('ITITIU21001', 100, 0),
+('ITITIU21002', 80, 5),
+('IELSIU21001', 50, 10);
+GO
+
+-- Thêm máy in
+INSERT INTO Printers (PrinterID, PrinterName, Brand, Model, Location, Campus, Building, RoomNumber, Status, CreatedBy) VALUES
+('PR-H6-101', N'Máy in H6 - 101', 'HP', 'LaserJet Pro M428fdw', N'Dĩ An - H6 - P101', N'Dĩ An', 'H6', '101', 'Active', 'SPSO001'),
+('PR-H6-201', N'Máy in H6 - 201', 'Canon', 'imageRUNNER 2625i', N'Dĩ An - H6 - P201', N'Dĩ An', 'H6', '201', 'Active', 'SPSO001'),
+('PR-A-102', N'Máy in A - 102', 'Epson', 'WorkForce Pro WF-C5790', N'Dĩ An - A - P102', N'Dĩ An', 'A', '102', 'Active', 'SPSO001'),
+('PR-LIB-G01', N'Máy in Thư viện', 'HP', 'LaserJet Enterprise M607', N'Dĩ An - Thư viện - G01', N'Dĩ An', N'Thư viện', 'G01', 'Active', 'SPSO001');
+GO
+
+-- ================================================================
+-- FUNCTIONS HỮU ÍCH
+-- ================================================================
+
+-- Function: Tính số trang A4 tương đương
+CREATE FUNCTION fn_CalculateA4Equivalent
+(
+    @A4Pages INT,
+    @A3Pages INT
+)
+RETURNS INT
+AS
+BEGIN
+    RETURN @A4Pages + (@A3Pages * 2);
+END;
+GO
+
+-- Function: Kiểm tra file có được phép không
+CREATE FUNCTION fn_IsFileTypeAllowed
+(
+    @FileExtension NVARCHAR(10)
+)
+RETURNS BIT
+AS
+BEGIN
+    DECLARE @AllowedTypes NVARCHAR(MAX);
+    DECLARE @IsAllowed BIT = 0;
+    
+    SELECT @AllowedTypes = ConfigValue
+    FROM SystemConfig
+    WHERE ConfigKey = 'AllowedFileTypes';
+    
+    IF @AllowedTypes LIKE '%' + LOWER(@FileExtension) + '%'
+        SET @IsAllowed = 1;
+    
+    RETURN @IsAllowed;
+END;
+GO
+
+-- ================================================================
+-- INDEXES BỔ SUNG ĐỂ TỐI ƯU
+-- ================================================================
+
+CREATE NONCLUSTERED INDEX IX_PrintJobs_DateTime ON PrintJobs(SubmittedAt DESC, CompletedAt DESC);
+CREATE NONCLUSTERED INDEX IX_PageTrans_DateTime ON PageTransactions(CreatedAt DESC);
+CREATE NONCLUSTERED INDEX IX_PrintLogs_StatusTime ON PrintLogs(Status, PrintTime DESC);
+CREATE NONCLUSTERED INDEX IX_Documents_Ext_Student ON Documents(FileExtension, StudentID, UploadDate DESC);
+GO
+
+-- ================================================================
+-- THÔNG TIN DATABASE
+-- ================================================================
+
+SELECT 
+    'Database HCMSIU_SSPS đã được tạo thành công!' as Message,
+    '9 bảng chính (Users, PageBalance, PageTransactions, Printers, Documents, PrintJobs, PrintLogs, SystemConfig, Notifications)' as Tables,
+    '3 Views (vw_StudentPageInfo, vw_PrintHistory, vw_PrinterStats)' as Views,
+    '4 Stored Procedures (sp_CheckPageBalance, sp_AllocatePages, sp_PurchasePages, sp_CompletePrintJob)' as StoredProcedures,
+    '2 Functions (fn_CalculateA4Equivalent, fn_IsFileTypeAllowed)' as Functions;
+GO

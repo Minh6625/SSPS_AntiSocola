@@ -1,0 +1,27 @@
+# Backend .gitignore
+
+# Environment variables
+.env
+
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application
+*.class
+*.jar
+*.war
