@@ -2,23 +2,29 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { authService } from '@/services/authService';
+import { OtpModal } from '@/components/OtpModal';
 
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    rememberMe: false
+    rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpCode, setOtpCode] = useState<string>();
+  const [otpError, setOtpError] = useState('');
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
-    // Validation
+
     if (!formData.email || !formData.password) {
       setError('Vui lòng nhập đầy đủ thông tin');
       return;
@@ -30,18 +36,54 @@ export default function LoginPage() {
     }
 
     setIsLoading(true);
-    
-    // TODO: Call API login khi backend sẵn sàng
+
     try {
-      // Giả lập API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Redirect sau khi login thành công
-      router.push('/');
+      const result = await authService.login({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (result.status === 202) {
+        setOtpEmail(formData.email);
+        setOtpCode(result.data?.otpCode);
+        setShowOtpModal(true);
+        return;
+      }
+
+      if (result.status === 200) {
+        router.push('/student/dashboard');
+      }
     } catch (err) {
-      setError('Đăng nhập thất bại. Vui lòng thử lại.');
+      setError((err as Error).message || 'Đăng nhập thất bại. Vui lòng thử lại.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async (otp: string) => {
+    setOtpError('');
+    setIsVerifyingOtp(true);
+
+    try {
+      const deviceId = typeof window !== 'undefined'
+        ? localStorage.getItem('deviceId') || authService.generateDeviceFingerprint()
+        : '';
+
+      const result = await authService.verifyOtp({
+        email: otpEmail,
+        otpCode: otp,
+        deviceId,
+        rememberDevice: formData.rememberMe,
+      });
+
+      if (result.status === 200) {
+        setShowOtpModal(false);
+        router.push('/student/dashboard');
+      }
+    } catch (err) {
+      setOtpError((err as Error).message || 'Xác thực OTP thất bại. Vui lòng thử lại.');
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -50,6 +92,16 @@ export default function LoginPage() {
       background: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.4) 0%, transparent 50%), radial-gradient(circle at top right, rgba(96, 165, 250, 0.3) 0%, transparent 50%), radial-gradient(circle at bottom left, rgba(147, 197, 253, 0.3) 0%, transparent 50%), radial-gradient(circle at bottom right, rgba(191, 219, 254, 0.2) 0%, transparent 50%), #ffffff'
     }}>
       <div className="w-full max-w-md">
+              {/* OTP Modal */}
+              <OtpModal
+                isOpen={showOtpModal}
+                email={otpEmail}
+                otpCode={otpCode}
+                onSubmit={handleOtpSubmit}
+                onCancel={() => setShowOtpModal(false)}
+                isLoading={isVerifyingOtp}
+                errorMessage={otpError}
+              />
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-lg p-8">
           {/* Logo & Title */}

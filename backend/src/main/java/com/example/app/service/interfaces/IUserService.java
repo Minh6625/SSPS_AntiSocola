@@ -21,7 +21,7 @@ public interface IUserService {
      * Lấy user theo ID
      * @throws ResourceNotFoundException nếu không tìm thấy
      */
-    UserResponseDTO getUserById(Long id);
+    UserResponseDTO getUserById(String userId);
     
     /**
      * Tạo mới user
@@ -34,11 +34,11 @@ public interface IUserService {
      * @throws ResourceNotFoundException nếu không tìm thấy
      * @throws IllegalArgumentException nếu email mới đã tồn tại
      */
-    UserResponseDTO updateUser(Long id, UserCreateDTO dto);
+    UserResponseDTO updateUser(String userId, UserCreateDTO dto);
     
     /**
      * Xóa user
      * @throws ResourceNotFoundException nếu không tìm thấy
      */
-    void deleteUser(Long id);
+    void deleteUser(String userId);
 }

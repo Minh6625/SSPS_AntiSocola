@@ -52,22 +52,22 @@ GO
 -- 2. SEED USERS (TEST ACCOUNTS)
 -- Password: 123456 (BCrypt hash)
 -- BCrypt rounds: 10
--- Hash: $2a$10$N9qo8uLOickgx2ZMRZoMye1YLzF.U5pqxBx5.q5pqN9qo8uLOickgx
+-- Hash: $2a$10$wyRkxrQryYdEdfpXaqQerOC6.q0GDt7rRVTjTdDX5jlHjNC0IWpde
 -- ================================================================
 
 -- Test Accounts với mật khẩu 123456 đã hash bằng BCrypt
 INSERT INTO Users (UserID, Email, PasswordHash, FullName, UserType, Faculty, Department, Status, EmailVerifiedAt)
 VALUES 
 -- Student Test Account
-('STUDENT_TEST', 'student.test@edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMye1YLzF.U5pqxBx5.q5pqN9qo8uLOickgx', 
+('STUDENT_TEST', 'student.test@edu.vn', '$2a$10$wyRkxrQryYdEdfpXaqQerOC6.q0GDt7rRVTjTdDX5jlHjNC0IWpde', 
  N'Student Test Account', 'Student', N'Công nghệ thông tin', NULL, 'Active', GETDATE()),
 
 -- SPSO Test Account
-('SPSO_TEST', 'spso.test@edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMye1YLzF.U5pqxBx5.q5pqN9qo8uLOickgx', 
+('SPSO_TEST', 'spso.test@edu.vn', '$2a$10$wyRkxrQryYdEdfpXaqQerOC6.q0GDt7rRVTjTdDX5jlHjNC0IWpde', 
  N'SPSO Test Account', 'SPSO', NULL, N'Phòng In Ấn', 'Active', GETDATE()),
 
 -- Admin Test Account
-('ADMIN_TEST', 'admin.test@edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMye1YLzF.U5pqxBx5.q5pqN9qo8uLOickgx', 
+('ADMIN_TEST', 'admin.test@edu.vn', '$2a$10$wyRkxrQryYdEdfpXaqQerOC6.q0GDt7rRVTjTdDX5jlHjNC0IWpde', 
  N'Admin Test Account', 'Admin', NULL, N'Phòng IT', 'Active', GETDATE());
 GO
 
@@ -86,16 +86,16 @@ GO
 
 INSERT INTO Users (UserID, Email, PasswordHash, FullName, PhoneNumber, UserType, Faculty, Status, EmailVerifiedAt)
 VALUES 
-('ITITIU21001', 'ITITIU21001@student.hcmiu.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMye1YLzF.U5pqxBx5.q5pqN9qo8uLOickgx',
+('ITITIU21001', 'ITITIU21001@student.hcmiu.edu.vn', '$2a$10$wyRkxrQryYdEdfpXaqQerOC6.q0GDt7rRVTjTdDX5jlHjNC0IWpde',
  N'Trần Văn B', '0901234567', 'Student', N'Công nghệ thông tin', 'Active', GETDATE()),
  
-('ITITIU21002', 'ITITIU21002@student.hcmiu.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMye1YLzF.U5pqxBx5.q5pqN9qo8uLOickgx',
+('ITITIU21002', 'ITITIU21002@student.hcmiu.edu.vn', '$2a$10$wyRkxrQryYdEdfpXaqQerOC6.q0GDt7rRVTjTdDX5jlHjNC0IWpde',
  N'Lê Thị C', '0901234568', 'Student', N'Công nghệ thông tin', 'Active', GETDATE()),
  
-('IELSIU21001', 'IELSIU21001@student.hcmiu.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMye1YLzF.U5pqxBx5.q5pqN9qo8uLOickgx',
+('IELSIU21001', 'IELSIU21001@student.hcmiu.edu.vn', '$2a$10$wyRkxrQryYdEdfpXaqQerOC6.q0GDt7rRVTjTdDX5jlHjNC0IWpde',
  N'Phạm Văn D', '0901234569', 'Student', N'Ngôn ngữ Anh', 'Active', GETDATE()),
 
-('SPSO001', 'spso001@hcmiu.edu.vn', '$2a$10$N9qo8uLOickgx2ZMRZoMye1YLzF.U5pqxBx5.q5pqN9qo8uLOickgx',
+('SPSO001', 'spso001@hcmiu.edu.vn', '$2a$10$wyRkxrQryYdEdfpXaqQerOC6.q0GDt7rRVTjTdDX5jlHjNC0IWpde',
  N'Nguyễn Văn A', NULL, 'SPSO', NULL, 'Active', GETDATE());
 GO
 

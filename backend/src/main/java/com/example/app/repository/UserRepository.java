@@ -7,14 +7,16 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 /**
- * REPOSITORY LAYER - Giao tiếp Database
- * JpaRepository cung cấp sẵn: findAll, findById, save, delete...
+ * REPOSITORY: UserRepository
  */
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository extends JpaRepository<User, String> {
     
-    // Custom query method (Spring Data JPA tự sinh query)
     Optional<User> findByEmail(String email);
     
+    Optional<User> findByUserId(String userId);
+    
     boolean existsByEmail(String email);
+    
+    boolean existsByUserId(String userId);
 }

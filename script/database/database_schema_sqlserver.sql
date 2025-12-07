@@ -344,8 +344,30 @@ CREATE TABLE PagePricing (
 GO
 
 -- ================================================================
--- AUTH: OTP qua Email & Thiết bị tin cậy (2FA)
+-- AUTH: OTP qua Email & Thiết bị tin cậy & Refresh Tokens (2FA)
 -- ================================================================
+
+-- RefreshTokens: Token rotation & revocation (New - Phase 3)
+CREATE TABLE RefreshTokens (
+    TokenID NVARCHAR(100) PRIMARY KEY,                  -- JWT token ID (UUID format)
+    UserID NVARCHAR(20) NOT NULL,                       -- User this token belongs to
+    DeviceID NVARCHAR(500),                             -- Device identifier (Base64 encoded User-Agent)
+    DeviceFingerprint NVARCHAR(200),                    -- SHA-256 hash of device signature
+    Token NVARCHAR(500) NOT NULL,                       -- JWT token value
+    ExpiresAt DATETIME2 NOT NULL,                       -- Token expiration timestamp
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),     -- Token creation time
+    LastUsedAt DATETIME2,                               -- Last time token was used
+    RevokedAt DATETIME2,                                -- Revocation timestamp (NULL if active)
+    RevokeReason NVARCHAR(100),                         -- Reason for revocation
+    IpAddress NVARCHAR(50),                             -- Client IP address
+    
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    INDEX IX_RT_UserId (UserID, ExpiresAt DESC),
+    INDEX IX_RT_Token (Token),
+    INDEX IX_RT_Expiry (ExpiresAt)
+);
+GO
+
 CREATE TABLE EmailOtpCodes (
     OtpID INT IDENTITY(1,1) PRIMARY KEY,
     UserID NVARCHAR(20) NOT NULL,
@@ -370,10 +392,11 @@ GO
 
 CREATE TABLE TrustedDevices (
     UserID NVARCHAR(20) NOT NULL,
-    DeviceId NVARCHAR(64) NOT NULL,                     -- Hash/fingerprint thiết bị
+    DeviceId NVARCHAR(500) NOT NULL,                    -- Base64 User-Agent (same as RefreshTokens)
     DeviceName NVARCHAR(100),
     UserAgent NVARCHAR(255),
     IpAddress NVARCHAR(45),
+    DeviceFingerprint NVARCHAR(200),                    -- SHA-256 hash of device
     TrustedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
     ExpiresAt DATETIME2 NOT NULL,
     LastUsedAt DATETIME2 NULL,
