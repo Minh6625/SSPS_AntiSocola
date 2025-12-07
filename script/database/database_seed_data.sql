@@ -210,6 +210,14 @@ GO
 -- VERIFICATION & SUMMARY
 -- ================================================================
 
+DECLARE @UserCount INT, @PrinterCount INT, @RoleCount INT, @PermCount INT, @ConfigCount INT;
+
+SELECT @UserCount = COUNT(*) FROM Users;
+SELECT @PrinterCount = COUNT(*) FROM Printers;
+SELECT @RoleCount = COUNT(*) FROM Roles;
+SELECT @PermCount = COUNT(*) FROM Permissions;
+SELECT @ConfigCount = COUNT(*) FROM SystemConfig;
+
 PRINT '================================================================';
 PRINT 'SEED DATA COMPLETED SUCCESSFULLY!';
 PRINT '================================================================';
@@ -219,11 +227,11 @@ PRINT '- student.test@edu.vn (Student)';
 PRINT '- spso.test@edu.vn (SPSO)';
 PRINT '- admin.test@edu.vn (Admin)';
 PRINT '';
-PRINT 'Total Users: ' + CAST((SELECT COUNT(*) FROM Users) AS VARCHAR(10));
-PRINT 'Total Printers: ' + CAST((SELECT COUNT(*) FROM Printers) AS VARCHAR(10));
-PRINT 'Total Roles: ' + CAST((SELECT COUNT(*) FROM Roles) AS VARCHAR(10));
-PRINT 'Total Permissions: ' + CAST((SELECT COUNT(*) FROM Permissions) AS VARCHAR(10));
-PRINT 'Total System Configs: ' + CAST((SELECT COUNT(*) FROM SystemConfig) AS VARCHAR(10));
+PRINT 'Total Users: ' + CAST(@UserCount AS VARCHAR(10));
+PRINT 'Total Printers: ' + CAST(@PrinterCount AS VARCHAR(10));
+PRINT 'Total Roles: ' + CAST(@RoleCount AS VARCHAR(10));
+PRINT 'Total Permissions: ' + CAST(@PermCount AS VARCHAR(10));
+PRINT 'Total System Configs: ' + CAST(@ConfigCount AS VARCHAR(10));
 PRINT '';
 PRINT '================================================================';
 GO

@@ -20,130 +20,7 @@ USE HCMSIU_SSPS;
 GO
 
 -- ================================================================
--- PHÂN QUYỀN (RBAC) - Roles & Permissions (Production)
--- ================================================================
-CREATE TABLE Roles (
-    RoleID INT IDENTITY(1,1) PRIMARY KEY,
-    RoleName NVARCHAR(50) NOT NULL UNIQUE, -- 'Student', 'SPSO', 'Admin'
-    Description NVARCHAR(200)
-);
-GO
-
-CREATE TABLE Permissions (
-    PermissionID INT IDENTITY(1,1) PRIMARY KEY,
-    PermissionKey NVARCHAR(100) NOT NULL UNIQUE, -- 'printer.manage', 'job.view', 'config.edit'
-    Description NVARCHAR(200)
-);
-GO
-
-CREATE TABLE UserRoles (
-    UserID NVARCHAR(20) NOT NULL,
-    RoleID INT NOT NULL,
-    AssignedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    
-    PRIMARY KEY (UserID, RoleID),
-    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
-    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
-    INDEX IX_UserRoles_User (UserID)
-);
-GO
-
-CREATE TABLE RolePermissions (
-    RoleID INT NOT NULL,
-    PermissionID INT NOT NULL,
-    GrantedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    
-    PRIMARY KEY (RoleID, PermissionID),
-    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
-    FOREIGN KEY (PermissionID) REFERENCES Permissions(PermissionID) ON DELETE CASCADE,
-    INDEX IX_RolePermissions_Role (RoleID)
-);
-GO
-
--- Seed basic roles & permissions
-INSERT INTO Roles (RoleName, Description) VALUES
-('Student', N'Sinh viên'),
-('SPSO', N'Nhân viên vận hành in ấn'),
-('Admin', N'Quản trị hệ thống');
-GO
-
-INSERT INTO Permissions (PermissionKey, Description) VALUES
-('printer.view', N'Xem thông tin máy in'),
-('printer.manage', N'Thêm/sửa/xóa, bật/tắt máy in'),
-('job.create', N'Tạo lệnh in'),
-('job.view', N'Xem lệnh in và lịch sử'),
-('config.edit', N'Chỉnh sửa cấu hình hệ thống'),
-('report.view', N'Xem báo cáo'),
-('report.generate', N'Tạo báo cáo');
-GO
-
--- BẢNG 10: REPORTS - Báo cáo tháng & năm (Production)
--- ================================================================
-CREATE TABLE ReportsMonthly (
-    ReportID INT IDENTITY(1,1) PRIMARY KEY,
-    ReportYear INT NOT NULL,
-    ReportMonth INT NOT NULL CHECK (ReportMonth BETWEEN 1 AND 12),
-    
-    -- Tổng quan sử dụng
-    TotalStudentsActive INT NOT NULL DEFAULT 0,
-    TotalPrintJobs INT NOT NULL DEFAULT 0,
-    SuccessfulJobs INT NOT NULL DEFAULT 0,
-    FailedJobs INT NOT NULL DEFAULT 0,
-    TotalPagesPrinted INT NOT NULL DEFAULT 0,
-    TotalA4Equivalent INT NOT NULL DEFAULT 0,
-    
-    -- Doanh thu & giao dịch
-    TotalPagesPurchased INT NOT NULL DEFAULT 0,
-    TotalRevenue DECIMAL(12,2) NOT NULL DEFAULT 0,
-    
-    -- Máy in
-    MostUsedPrinterID NVARCHAR(20),
-    MostUsedPrinterJobs INT,
-    
-    -- Top user
-    TopStudentID NVARCHAR(20),
-    TopStudentPages INT,
-    
-    GeneratedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    GeneratedBy NVARCHAR(20),
-    Notes NVARCHAR(500),
-    
-    UNIQUE (ReportYear, ReportMonth),
-    FOREIGN KEY (MostUsedPrinterID) REFERENCES Printers(PrinterID),
-    FOREIGN KEY (TopStudentID) REFERENCES Users(UserID),
-    INDEX IX_ReportsMonthly_YM (ReportYear, ReportMonth)
-);
-GO
-
-CREATE TABLE ReportsYearly (
-    ReportID INT IDENTITY(1,1) PRIMARY KEY,
-    ReportYear INT NOT NULL UNIQUE,
-    
-    TotalStudentsActive INT NOT NULL DEFAULT 0,
-    TotalPrintJobs INT NOT NULL DEFAULT 0,
-    SuccessfulJobs INT NOT NULL DEFAULT 0,
-    FailedJobs INT NOT NULL DEFAULT 0,
-    TotalPagesPrinted INT NOT NULL DEFAULT 0,
-    TotalA4Equivalent INT NOT NULL DEFAULT 0,
-    
-    TotalPagesPurchased INT NOT NULL DEFAULT 0,
-    TotalRevenue DECIMAL(15,2) NOT NULL DEFAULT 0,
-    AverageRevenuePerStudent DECIMAL(10,2),
-    
-    MostActiveMonth INT,
-    PeakUsageDate DATE,
-    PeakUsageJobs INT,
-    
-    GeneratedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    GeneratedBy NVARCHAR(20),
-    Notes NVARCHAR(500),
-    
-    INDEX IX_ReportsYearly_Year (ReportYear)
-);
-GO
-
--- ================================================================
--- BẢNG 1: USERS - Quản lý người dùng
+-- BẢNG 1: USERS - Quản lý người dùng (TẠO TRƯỚC)
 -- ================================================================
 CREATE TABLE Users (
     UserID NVARCHAR(20) PRIMARY KEY,                    -- MSSV hoặc MSNV
@@ -235,6 +112,109 @@ CREATE TABLE Printers (
     
     INDEX IX_Printer_Location (Campus, Building, Status),
     INDEX IX_Printer_Status (Status)
+);
+GO
+
+-- ================================================================
+-- PHÂN QUYỀN (RBAC) - Roles & Permissions
+-- ================================================================
+CREATE TABLE Roles (
+    RoleID INT IDENTITY(1,1) PRIMARY KEY,
+    RoleName NVARCHAR(50) NOT NULL UNIQUE,
+    Description NVARCHAR(200)
+);
+GO
+
+CREATE TABLE Permissions (
+    PermissionID INT IDENTITY(1,1) PRIMARY KEY,
+    PermissionKey NVARCHAR(100) NOT NULL UNIQUE,
+    Description NVARCHAR(200)
+);
+GO
+
+CREATE TABLE UserRoles (
+    UserID NVARCHAR(20) NOT NULL,
+    RoleID INT NOT NULL,
+    AssignedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    
+    PRIMARY KEY (UserID, RoleID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
+    INDEX IX_UserRoles_User (UserID)
+);
+GO
+
+CREATE TABLE RolePermissions (
+    RoleID INT NOT NULL,
+    PermissionID INT NOT NULL,
+    GrantedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    
+    PRIMARY KEY (RoleID, PermissionID),
+    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
+    FOREIGN KEY (PermissionID) REFERENCES Permissions(PermissionID) ON DELETE CASCADE,
+    INDEX IX_RolePermissions_Role (RoleID)
+);
+GO
+
+-- ================================================================
+-- BẢNG 10: REPORTS - Báo cáo tháng & năm
+-- ================================================================
+CREATE TABLE ReportsMonthly (
+    ReportID INT IDENTITY(1,1) PRIMARY KEY,
+    ReportYear INT NOT NULL,
+    ReportMonth INT NOT NULL CHECK (ReportMonth BETWEEN 1 AND 12),
+    
+    TotalStudentsActive INT NOT NULL DEFAULT 0,
+    TotalPrintJobs INT NOT NULL DEFAULT 0,
+    SuccessfulJobs INT NOT NULL DEFAULT 0,
+    FailedJobs INT NOT NULL DEFAULT 0,
+    TotalPagesPrinted INT NOT NULL DEFAULT 0,
+    TotalA4Equivalent INT NOT NULL DEFAULT 0,
+    
+    TotalPagesPurchased INT NOT NULL DEFAULT 0,
+    TotalRevenue DECIMAL(12,2) NOT NULL DEFAULT 0,
+    
+    MostUsedPrinterID NVARCHAR(20),
+    MostUsedPrinterJobs INT,
+    
+    TopStudentID NVARCHAR(20),
+    TopStudentPages INT,
+    
+    GeneratedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    GeneratedBy NVARCHAR(20),
+    Notes NVARCHAR(500),
+    
+    UNIQUE (ReportYear, ReportMonth),
+    FOREIGN KEY (MostUsedPrinterID) REFERENCES Printers(PrinterID),
+    FOREIGN KEY (TopStudentID) REFERENCES Users(UserID),
+    INDEX IX_ReportsMonthly_YM (ReportYear, ReportMonth)
+);
+GO
+
+CREATE TABLE ReportsYearly (
+    ReportID INT IDENTITY(1,1) PRIMARY KEY,
+    ReportYear INT NOT NULL UNIQUE,
+    
+    TotalStudentsActive INT NOT NULL DEFAULT 0,
+    TotalPrintJobs INT NOT NULL DEFAULT 0,
+    SuccessfulJobs INT NOT NULL DEFAULT 0,
+    FailedJobs INT NOT NULL DEFAULT 0,
+    TotalPagesPrinted INT NOT NULL DEFAULT 0,
+    TotalA4Equivalent INT NOT NULL DEFAULT 0,
+    
+    TotalPagesPurchased INT NOT NULL DEFAULT 0,
+    TotalRevenue DECIMAL(15,2) NOT NULL DEFAULT 0,
+    AverageRevenuePerStudent DECIMAL(10,2),
+    
+    MostActiveMonth INT,
+    PeakUsageDate DATE,
+    PeakUsageJobs INT,
+    
+    GeneratedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    GeneratedBy NVARCHAR(20),
+    Notes NVARCHAR(500),
+    
+    INDEX IX_ReportsYearly_Year (ReportYear)
 );
 GO
 
@@ -580,12 +560,12 @@ BEGIN
     )
     SELECT
         @ReportYear, @ReportMonth,
-        COUNT(DISTINCT pl.StudentID) AS TotalStudentsActive,
-        COUNT(pl.LogID) AS TotalPrintJobs,
-        SUM(CASE WHEN pl.Status = 'Success' THEN 1 ELSE 0 END) AS SuccessfulJobs,
-        SUM(CASE WHEN pl.Status = 'Failed' THEN 1 ELSE 0 END) AS FailedJobs,
-        SUM(pl.PagesPrinted) AS TotalPagesPrinted,
-        SUM(pl.A4EquivalentUsed) AS TotalA4Equivalent,
+        COALESCE(COUNT(DISTINCT pl.StudentID), 0) AS TotalStudentsActive,
+        COALESCE(COUNT(pl.LogID), 0) AS TotalPrintJobs,
+        COALESCE(SUM(CASE WHEN pl.Status = 'Success' THEN 1 ELSE 0 END), 0) AS SuccessfulJobs,
+        COALESCE(SUM(CASE WHEN pl.Status = 'Failed' THEN 1 ELSE 0 END), 0) AS FailedJobs,
+        COALESCE(SUM(pl.PagesPrinted), 0) AS TotalPagesPrinted,
+        COALESCE(SUM(pl.A4EquivalentUsed), 0) AS TotalA4Equivalent,
         COALESCE((SELECT SUM(pt.A4Pages + pt.A3Pages * 2)
                   FROM PageTransactions pt
                   WHERE pt.TransactionType = 'Purchase'
@@ -618,7 +598,9 @@ BEGIN
          WHERE pl3.PrintTime >= @StartDate AND pl3.PrintTime <= DATEADD(DAY, 1, @EndDate)
          GROUP BY pl3.StudentID
          ORDER BY SUM(pl3.A4EquivalentUsed) DESC) AS TopStudentPages,
-        GETDATE(), @GeneratedBy;
+        GETDATE(), @GeneratedBy
+    FROM PrintLogs pl
+    WHERE pl.PrintTime >= @StartDate AND pl.PrintTime <= DATEADD(DAY, 1, @EndDate);
 END;
 GO
 
