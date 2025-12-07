@@ -1,62 +1,68 @@
 package com.example.app.entity;
 
 import jakarta.persistence.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * ENTITY LAYER - Đại diện cho bảng trong Database
- * Example: User Entity
+ * ENTITY: Users - Quản lý người dùng
  */
 @Entity
-@Table(name = "users")
+@Table(name = "Users")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class User {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "UserID", length = 20)
+    private String userId;  // MSSV hoặc MSNV
     
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(name = "Email", nullable = false, unique = true, length = 100)
     private String email;
     
-    @Column(nullable = false, length = 100)
+    @Column(name = "PasswordHash", nullable = false, length = 100)
+    private String passwordHash;
+    
+    @Column(name = "FullName", nullable = false, length = 100)
     private String fullName;
     
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "PhoneNumber", length = 15)
+    private String phoneNumber;
+    
+    @Column(name = "UserType", nullable = false, length = 20)
+    private String userType;  // Student, SPSO, Admin
+    
+    @Column(name = "Faculty", length = 100)
+    private String faculty;
+    
+    @Column(name = "Department", length = 100)
+    private String department;
+    
+    @Column(name = "Status", length = 20)
+    private String status = "Active";  // Active, Inactive
+    
+    @Column(name = "CreatedAt", updatable = false)
     private LocalDateTime createdAt;
     
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(name = "LastLogin")
+    private LocalDateTime lastLogin;
     
-    // Constructors
-    public User() {}
+    @Column(name = "EmailVerifiedAt")
+    private LocalDateTime emailVerifiedAt;
     
-    public User(String email, String fullName) {
-        this.email = email;
-        this.fullName = fullName;
-    }
+    @Column(name = "IsTwoFactorEnabled", nullable = false)
+    private Boolean isTwoFactorEnabled = false;
     
-    // Lifecycle Callbacks
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (status == null) {
+            status = "Active";
+        }
     }
-    
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-    
-    // Getters & Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    
-    public String getFullName() { return fullName; }
-    public void setFullName(String fullName) { this.fullName = fullName; }
-    
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
 }

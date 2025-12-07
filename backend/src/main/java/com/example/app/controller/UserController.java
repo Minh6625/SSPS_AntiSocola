@@ -38,7 +38,7 @@ public class UserController {
      * GET /api/users/{id} - Lấy user theo ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserResponseDTO> getUserById(@PathVariable String id) {
         UserResponseDTO user = userService.getUserById(id);
         return ResponseEntity.ok(user);
     }
@@ -58,7 +58,7 @@ public class UserController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<UserResponseDTO> updateUser(
-            @PathVariable Long id,
+            @PathVariable String id,
             @Valid @RequestBody UserCreateDTO dto) {
         UserResponseDTO user = userService.updateUser(id, dto);
         return ResponseEntity.ok(user);
@@ -68,7 +68,7 @@ public class UserController {
      * DELETE /api/users/{id} - Xóa user
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
