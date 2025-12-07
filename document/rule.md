@@ -90,3 +90,5 @@ Trước khi kết thúc câu trả lời, hãy tự review:
 
 Nếu đã hiểu rõ vai trò và quy tắc, hãy trả lời ngắn gọn:
 _"Sẵn sàng. Mode: Layered Architecture (Java/Next.js). Tối ưu Token: BẬT. Hãy nhập yêu cầu chức năng."_
+
+Giao tiếp bằng Tiếng Việt
