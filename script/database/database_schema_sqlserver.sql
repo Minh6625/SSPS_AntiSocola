@@ -148,11 +148,12 @@ GO
 CREATE TABLE Users (
     UserID NVARCHAR(20) PRIMARY KEY,                    -- MSSV hoặc MSNV
     Email NVARCHAR(100) NOT NULL UNIQUE,                -- Email đăng nhập
+    PasswordHash NVARCHAR(100) NOT NULL,                -- Mật khẩu đã hash (BCrypt)
     FullName NVARCHAR(100) NOT NULL,                    -- Họ tên
     PhoneNumber NVARCHAR(15),                           -- Số điện thoại
-    UserType NVARCHAR(20) NOT NULL CHECK (UserType IN ('Student', 'SPSO')),
+    UserType NVARCHAR(20) NOT NULL CHECK (UserType IN ('Student', 'SPSO', 'Admin')),
     Faculty NVARCHAR(100),                              -- Khoa (cho sinh viên)
-    Department NVARCHAR(100),                           -- Phòng ban (cho SPSO)
+    Department NVARCHAR(100),                           -- Phòng ban (cho SPSO/Admin)
     Status NVARCHAR(20) DEFAULT 'Active' CHECK (Status IN ('Active', 'Inactive')),
     CreatedAt DATETIME2 DEFAULT GETDATE(),
     LastLogin DATETIME2,
@@ -420,20 +421,7 @@ CREATE TABLE AllowedFileTypes (
 );
 GO
 
--- Seed pricing
-INSERT INTO PagePricing (PaperSize, PricePerPage, Currency, EffectiveFrom, IsActive)
-VALUES ('A4', 500.00, 'VND', '2024-01-01', 1),
-       ('A3', 1000.00, 'VND', '2024-01-01', 1),
-       ('A5', 300.00, 'VND', '2024-01-01', 1);
-GO
-
--- Seed allowed file types
-INSERT INTO AllowedFileTypes (FileExtension, MimeType, MaxFileSizeMB, IsAllowed)
-VALUES ('pdf', 'application/pdf', 50, 1),
-       ('docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 30, 1),
-       ('pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 50, 1),
-       ('xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 20, 1),
-       ('txt', 'text/plain', 5, 1);
+-- Note: Seed data moved to database_seed_data.sql
 GO
 
 -- ================================================================
@@ -926,55 +914,8 @@ END;
 GO
 
 -- ================================================================
--- DỮ LIỆU MẪU
+-- Note: Sample data moved to database_seed_data.sql
 -- ================================================================
-
--- Cấu hình hệ thống
-INSERT INTO SystemConfig (ConfigKey, ConfigValue, Description, DataType) VALUES
-('DefaultA4PagesPerSemester', '100', N'Số trang A4 mặc định mỗi học kỳ', 'Integer'),
-('MaxFileSizeMB', '50', N'Kích thước file tối đa (MB)', 'Integer'),
-('MaxPagesPerJob', '100', N'Số trang tối đa mỗi lần in', 'Integer'),
-('AllowedFileTypes', '["pdf","docx","pptx","xlsx","txt"]', N'Loại file được phép', 'JSON'),
-('A4PricePerPage', '500', N'Giá 1 trang A4 (VND)', 'Integer'),
-('A3PricePerPage', '1000', N'Giá 1 trang A3 (VND)', 'Integer'),
-('CurrentSemester', 'HK2-2024', N'Học kỳ hiện tại', 'String'),
-('PageAllocationDate', '2025-01-01', N'Ngày cấp trang học kỳ này', 'String');
-GO
-
--- Cấu hình OTP/2FA
-INSERT INTO SystemConfig (ConfigKey, ConfigValue, Description, DataType) VALUES
-('TwoFactor.Enabled', 'true', N'Bật xác thực hai lớp (2FA) qua email', 'Boolean'),
-('TwoFactor.TrustDays', '30', N'Số ngày ghi nhớ thiết bị tin cậy', 'Integer'),
-('OTP.EmailExpirationMinutes', '10', N'Thời hạn OTP email (phút)', 'Integer'),
-('OTP.MaxAttempts', '5', N'Số lần thử OTP tối đa', 'Integer');
-GO
-
--- Thêm SPSO mẫu
-INSERT INTO Users (UserID, Email, FullName, UserType, Department, Status)
-VALUES ('SPSO001', 'spso001@hcmiu.edu.vn', N'Nguyễn Văn A', 'SPSO', N'Phòng In Ấn', 'Active');
-GO
-
--- Thêm sinh viên mẫu
-INSERT INTO Users (UserID, Email, FullName, PhoneNumber, UserType, Faculty, Status) VALUES
-('ITITIU21001', 'ITITIU21001@student.hcmiu.edu.vn', N'Trần Văn B', '0901234567', 'Student', N'Công nghệ thông tin', 'Active'),
-('ITITIU21002', 'ITITIU21002@student.hcmiu.edu.vn', N'Lê Thị C', '0901234568', 'Student', N'Công nghệ thông tin', 'Active'),
-('IELSIU21001', 'IELSIU21001@student.hcmiu.edu.vn', N'Phạm Văn D', '0901234569', 'Student', N'Ngôn ngữ Anh', 'Active');
-GO
-
--- Cấp trang cho sinh viên
-INSERT INTO PageBalance (StudentID, A4Balance, A3Balance) VALUES
-('ITITIU21001', 100, 0),
-('ITITIU21002', 80, 5),
-('IELSIU21001', 50, 10);
-GO
-
--- Thêm máy in
-INSERT INTO Printers (PrinterID, PrinterName, Brand, Model, Location, Campus, Building, RoomNumber, Status, CreatedBy) VALUES
-('PR-H6-101', N'Máy in H6 - 101', 'HP', 'LaserJet Pro M428fdw', N'Dĩ An - H6 - P101', N'Dĩ An', 'H6', '101', 'Active', 'SPSO001'),
-('PR-H6-201', N'Máy in H6 - 201', 'Canon', 'imageRUNNER 2625i', N'Dĩ An - H6 - P201', N'Dĩ An', 'H6', '201', 'Active', 'SPSO001'),
-('PR-A-102', N'Máy in A - 102', 'Epson', 'WorkForce Pro WF-C5790', N'Dĩ An - A - P102', N'Dĩ An', 'A', '102', 'Active', 'SPSO001'),
-('PR-LIB-G01', N'Máy in Thư viện', 'HP', 'LaserJet Enterprise M607', N'Dĩ An - Thư viện - G01', N'Dĩ An', N'Thư viện', 'G01', 'Active', 'SPSO001');
-GO
 
 -- ================================================================
 -- FUNCTIONS HỮU ÍCH
