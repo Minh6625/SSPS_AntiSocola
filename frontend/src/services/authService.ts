@@ -215,4 +215,31 @@ export const authService = {
       role: localStorage.getItem('userRole'),
     };
   },
+
+  /**
+   * POST /auth/register
+   * Đăng ký tài khoản sinh viên mới
+   */
+  async register(data: {
+    email: string;
+    studentId: string;
+    fullName: string;
+    password: string;
+    confirmPassword: string;
+    phoneNumber?: string;
+    faculty?: string;
+  }) {
+    try {
+      const response = await authClient.post('/register', data);
+      return {
+        status: 201,
+        data: response.data,
+      };
+    } catch (error) {
+      const axiosError = error as AxiosError<AuthError>;
+      throw new Error(
+        axiosError.response?.data?.error || 'Đăng ký thất bại'
+      );
+    }
+  },
 };
