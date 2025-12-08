@@ -53,8 +53,6 @@ export default function FormField({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          required={required}
-          pattern={pattern}
           minLength={minLength}
           className={`w-full ${icon ? 'pl-10' : 'pl-4'} ${showToggle ? 'pr-12' : 'pr-4'} py-3 border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-200 ${
             error
