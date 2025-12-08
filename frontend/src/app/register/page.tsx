@@ -143,6 +143,28 @@ export default function RegisterPage() {
           <p className="text-gray-500 text-sm mt-2">Tạo tài khoản của bạn để bắt đầu</p>
         </div>
 
+        {/* General Error Message */}
+        {Object.keys(fieldErrors).length > 0 && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <h3 className="font-semibold text-red-800 mb-1">Vui lòng kiểm tra lại thông tin:</h3>
+                <ul className="text-sm text-red-700 space-y-1">
+                  {fieldErrors.email && <li>• {fieldErrors.email}</li>}
+                  {fieldErrors.studentId && <li>• {fieldErrors.studentId}</li>}
+                  {fieldErrors.fullName && <li>• {fieldErrors.fullName}</li>}
+                  {fieldErrors.password && <li>• {fieldErrors.password}</li>}
+                  {fieldErrors.confirmPassword && <li>• {fieldErrors.confirmPassword}</li>}
+                  {fieldErrors.terms && <li>• {fieldErrors.terms}</li>}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Email */}
@@ -154,7 +176,6 @@ export default function RegisterPage() {
             onChange={handleChange}
             placeholder="your.email@siu.edu.vn"
             required
-            error={fieldErrors.email}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -171,8 +192,6 @@ export default function RegisterPage() {
             onChange={handleChange}
             placeholder="e.g., 19123456789"
             required
-            pattern="[0-9]{11}"
-            error={fieldErrors.studentId}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
@@ -189,7 +208,6 @@ export default function RegisterPage() {
             onChange={handleChange}
             placeholder="e.g., Nguyen Van A"
             required
-            error={fieldErrors.fullName}
             icon={
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -207,7 +225,6 @@ export default function RegisterPage() {
             placeholder="Ít nhất 8 ký tự"
             required
             minLength={8}
-            error={fieldErrors.password}
             showToggle
             showPassword={showPassword}
             onTogglePassword={() => setShowPassword(!showPassword)}
@@ -227,7 +244,6 @@ export default function RegisterPage() {
             onChange={handleChange}
             placeholder="Nhập lại mật khẩu của bạn"
             required
-            error={fieldErrors.confirmPassword}
             showToggle
             showPassword={showConfirmPassword}
             onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -239,9 +255,7 @@ export default function RegisterPage() {
           />
 
           {/* Terms Checkbox */}
-          <div className={`flex items-start p-3 rounded-lg transition-colors ${
-            fieldErrors.terms ? 'bg-red-50 border border-red-200' : 'bg-blue-50 border border-blue-200'
-          }`}>
+          <div className="flex items-start p-3 rounded-lg bg-blue-50 border border-blue-200">
             <input
               type="checkbox"
               id="terms"
@@ -252,15 +266,9 @@ export default function RegisterPage() {
                   setFieldErrors({ ...fieldErrors, terms: undefined });
                 }
               }}
-              className={`mt-1 w-4 h-4 rounded focus:ring-2 focus:ring-offset-0 ${
-                fieldErrors.terms
-                  ? 'text-red-600 border-red-300 focus:ring-red-500'
-                  : 'text-blue-600 border-blue-300 focus:ring-blue-500'
-              }`}
+              className="mt-1 w-4 h-4 text-blue-600 border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:ring-offset-0"
             />
-            <label htmlFor="terms" className={`ml-2 text-sm ${
-              fieldErrors.terms ? 'text-red-600' : 'text-gray-600'
-            }`}>
+            <label htmlFor="terms" className="ml-2 text-sm text-gray-600">
               Tôi đồng ý với{' '}
               <a href="#" className="font-semibold hover:underline">
                 Điều khoản dịch vụ
@@ -271,14 +279,6 @@ export default function RegisterPage() {
               </a>
             </label>
           </div>
-          {fieldErrors.terms && (
-            <div className="flex items-start gap-2 -mt-2">
-              <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              <p className="text-sm text-red-600">{fieldErrors.terms}</p>
-            </div>
-          )}
 
           {/* Submit Button */}
           <button
