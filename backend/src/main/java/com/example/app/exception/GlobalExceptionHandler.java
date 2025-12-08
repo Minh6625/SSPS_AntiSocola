@@ -13,6 +13,7 @@ import java.util.Map;
 
 /**
  * Global Exception Handler - Xử lý tất cả exception từ Service/Controller
+ * Tuân thủ Layered Architecture - Controller KHÔNG xử lý exception
  */
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -52,6 +53,21 @@ public class GlobalExceptionHandler {
         );
         
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+    }
+    
+    // Xử lý Business Logic Exception
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessException(
+            BusinessException ex) {
+        
+        ErrorResponse response = new ErrorResponse(
+            LocalDateTime.now(),
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
     
     // Xử lý Generic Exception

@@ -20,139 +20,17 @@ USE HCMSIU_SSPS;
 GO
 
 -- ================================================================
--- PHÂN QUYỀN (RBAC) - Roles & Permissions (Production)
--- ================================================================
-CREATE TABLE Roles (
-    RoleID INT IDENTITY(1,1) PRIMARY KEY,
-    RoleName NVARCHAR(50) NOT NULL UNIQUE, -- 'Student', 'SPSO', 'Admin'
-    Description NVARCHAR(200)
-);
-GO
-
-CREATE TABLE Permissions (
-    PermissionID INT IDENTITY(1,1) PRIMARY KEY,
-    PermissionKey NVARCHAR(100) NOT NULL UNIQUE, -- 'printer.manage', 'job.view', 'config.edit'
-    Description NVARCHAR(200)
-);
-GO
-
-CREATE TABLE UserRoles (
-    UserID NVARCHAR(20) NOT NULL,
-    RoleID INT NOT NULL,
-    AssignedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    
-    PRIMARY KEY (UserID, RoleID),
-    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
-    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
-    INDEX IX_UserRoles_User (UserID)
-);
-GO
-
-CREATE TABLE RolePermissions (
-    RoleID INT NOT NULL,
-    PermissionID INT NOT NULL,
-    GrantedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    
-    PRIMARY KEY (RoleID, PermissionID),
-    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
-    FOREIGN KEY (PermissionID) REFERENCES Permissions(PermissionID) ON DELETE CASCADE,
-    INDEX IX_RolePermissions_Role (RoleID)
-);
-GO
-
--- Seed basic roles & permissions
-INSERT INTO Roles (RoleName, Description) VALUES
-('Student', N'Sinh viên'),
-('SPSO', N'Nhân viên vận hành in ấn'),
-('Admin', N'Quản trị hệ thống');
-GO
-
-INSERT INTO Permissions (PermissionKey, Description) VALUES
-('printer.view', N'Xem thông tin máy in'),
-('printer.manage', N'Thêm/sửa/xóa, bật/tắt máy in'),
-('job.create', N'Tạo lệnh in'),
-('job.view', N'Xem lệnh in và lịch sử'),
-('config.edit', N'Chỉnh sửa cấu hình hệ thống'),
-('report.view', N'Xem báo cáo'),
-('report.generate', N'Tạo báo cáo');
-GO
-
--- BẢNG 10: REPORTS - Báo cáo tháng & năm (Production)
--- ================================================================
-CREATE TABLE ReportsMonthly (
-    ReportID INT IDENTITY(1,1) PRIMARY KEY,
-    ReportYear INT NOT NULL,
-    ReportMonth INT NOT NULL CHECK (ReportMonth BETWEEN 1 AND 12),
-    
-    -- Tổng quan sử dụng
-    TotalStudentsActive INT NOT NULL DEFAULT 0,
-    TotalPrintJobs INT NOT NULL DEFAULT 0,
-    SuccessfulJobs INT NOT NULL DEFAULT 0,
-    FailedJobs INT NOT NULL DEFAULT 0,
-    TotalPagesPrinted INT NOT NULL DEFAULT 0,
-    TotalA4Equivalent INT NOT NULL DEFAULT 0,
-    
-    -- Doanh thu & giao dịch
-    TotalPagesPurchased INT NOT NULL DEFAULT 0,
-    TotalRevenue DECIMAL(12,2) NOT NULL DEFAULT 0,
-    
-    -- Máy in
-    MostUsedPrinterID NVARCHAR(20),
-    MostUsedPrinterJobs INT,
-    
-    -- Top user
-    TopStudentID NVARCHAR(20),
-    TopStudentPages INT,
-    
-    GeneratedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    GeneratedBy NVARCHAR(20),
-    Notes NVARCHAR(500),
-    
-    UNIQUE (ReportYear, ReportMonth),
-    FOREIGN KEY (MostUsedPrinterID) REFERENCES Printers(PrinterID),
-    FOREIGN KEY (TopStudentID) REFERENCES Users(UserID),
-    INDEX IX_ReportsMonthly_YM (ReportYear, ReportMonth)
-);
-GO
-
-CREATE TABLE ReportsYearly (
-    ReportID INT IDENTITY(1,1) PRIMARY KEY,
-    ReportYear INT NOT NULL UNIQUE,
-    
-    TotalStudentsActive INT NOT NULL DEFAULT 0,
-    TotalPrintJobs INT NOT NULL DEFAULT 0,
-    SuccessfulJobs INT NOT NULL DEFAULT 0,
-    FailedJobs INT NOT NULL DEFAULT 0,
-    TotalPagesPrinted INT NOT NULL DEFAULT 0,
-    TotalA4Equivalent INT NOT NULL DEFAULT 0,
-    
-    TotalPagesPurchased INT NOT NULL DEFAULT 0,
-    TotalRevenue DECIMAL(15,2) NOT NULL DEFAULT 0,
-    AverageRevenuePerStudent DECIMAL(10,2),
-    
-    MostActiveMonth INT,
-    PeakUsageDate DATE,
-    PeakUsageJobs INT,
-    
-    GeneratedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    GeneratedBy NVARCHAR(20),
-    Notes NVARCHAR(500),
-    
-    INDEX IX_ReportsYearly_Year (ReportYear)
-);
-GO
-
--- ================================================================
--- BẢNG 1: USERS - Quản lý người dùng
+-- BẢNG 1: USERS - Quản lý người dùng (TẠO TRƯỚC)
 -- ================================================================
 CREATE TABLE Users (
     UserID NVARCHAR(20) PRIMARY KEY,                    -- MSSV hoặc MSNV
     Email NVARCHAR(100) NOT NULL UNIQUE,                -- Email đăng nhập
+    PasswordHash NVARCHAR(100) NOT NULL,                -- Mật khẩu đã hash (BCrypt)
     FullName NVARCHAR(100) NOT NULL,                    -- Họ tên
     PhoneNumber NVARCHAR(15),                           -- Số điện thoại
-    UserType NVARCHAR(20) NOT NULL CHECK (UserType IN ('Student', 'SPSO')),
+    UserType NVARCHAR(20) NOT NULL CHECK (UserType IN ('Student', 'SPSO', 'Admin')),
     Faculty NVARCHAR(100),                              -- Khoa (cho sinh viên)
-    Department NVARCHAR(100),                           -- Phòng ban (cho SPSO)
+    Department NVARCHAR(100),                           -- Phòng ban (cho SPSO/Admin)
     Status NVARCHAR(20) DEFAULT 'Active' CHECK (Status IN ('Active', 'Inactive')),
     CreatedAt DATETIME2 DEFAULT GETDATE(),
     LastLogin DATETIME2,
@@ -234,6 +112,109 @@ CREATE TABLE Printers (
     
     INDEX IX_Printer_Location (Campus, Building, Status),
     INDEX IX_Printer_Status (Status)
+);
+GO
+
+-- ================================================================
+-- PHÂN QUYỀN (RBAC) - Roles & Permissions
+-- ================================================================
+CREATE TABLE Roles (
+    RoleID INT IDENTITY(1,1) PRIMARY KEY,
+    RoleName NVARCHAR(50) NOT NULL UNIQUE,
+    Description NVARCHAR(200)
+);
+GO
+
+CREATE TABLE Permissions (
+    PermissionID INT IDENTITY(1,1) PRIMARY KEY,
+    PermissionKey NVARCHAR(100) NOT NULL UNIQUE,
+    Description NVARCHAR(200)
+);
+GO
+
+CREATE TABLE UserRoles (
+    UserID NVARCHAR(20) NOT NULL,
+    RoleID INT NOT NULL,
+    AssignedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    
+    PRIMARY KEY (UserID, RoleID),
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
+    INDEX IX_UserRoles_User (UserID)
+);
+GO
+
+CREATE TABLE RolePermissions (
+    RoleID INT NOT NULL,
+    PermissionID INT NOT NULL,
+    GrantedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    
+    PRIMARY KEY (RoleID, PermissionID),
+    FOREIGN KEY (RoleID) REFERENCES Roles(RoleID) ON DELETE CASCADE,
+    FOREIGN KEY (PermissionID) REFERENCES Permissions(PermissionID) ON DELETE CASCADE,
+    INDEX IX_RolePermissions_Role (RoleID)
+);
+GO
+
+-- ================================================================
+-- BẢNG 10: REPORTS - Báo cáo tháng & năm
+-- ================================================================
+CREATE TABLE ReportsMonthly (
+    ReportID INT IDENTITY(1,1) PRIMARY KEY,
+    ReportYear INT NOT NULL,
+    ReportMonth INT NOT NULL CHECK (ReportMonth BETWEEN 1 AND 12),
+    
+    TotalStudentsActive INT NOT NULL DEFAULT 0,
+    TotalPrintJobs INT NOT NULL DEFAULT 0,
+    SuccessfulJobs INT NOT NULL DEFAULT 0,
+    FailedJobs INT NOT NULL DEFAULT 0,
+    TotalPagesPrinted INT NOT NULL DEFAULT 0,
+    TotalA4Equivalent INT NOT NULL DEFAULT 0,
+    
+    TotalPagesPurchased INT NOT NULL DEFAULT 0,
+    TotalRevenue DECIMAL(12,2) NOT NULL DEFAULT 0,
+    
+    MostUsedPrinterID NVARCHAR(20),
+    MostUsedPrinterJobs INT,
+    
+    TopStudentID NVARCHAR(20),
+    TopStudentPages INT,
+    
+    GeneratedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    GeneratedBy NVARCHAR(20),
+    Notes NVARCHAR(500),
+    
+    UNIQUE (ReportYear, ReportMonth),
+    FOREIGN KEY (MostUsedPrinterID) REFERENCES Printers(PrinterID),
+    FOREIGN KEY (TopStudentID) REFERENCES Users(UserID),
+    INDEX IX_ReportsMonthly_YM (ReportYear, ReportMonth)
+);
+GO
+
+CREATE TABLE ReportsYearly (
+    ReportID INT IDENTITY(1,1) PRIMARY KEY,
+    ReportYear INT NOT NULL UNIQUE,
+    
+    TotalStudentsActive INT NOT NULL DEFAULT 0,
+    TotalPrintJobs INT NOT NULL DEFAULT 0,
+    SuccessfulJobs INT NOT NULL DEFAULT 0,
+    FailedJobs INT NOT NULL DEFAULT 0,
+    TotalPagesPrinted INT NOT NULL DEFAULT 0,
+    TotalA4Equivalent INT NOT NULL DEFAULT 0,
+    
+    TotalPagesPurchased INT NOT NULL DEFAULT 0,
+    TotalRevenue DECIMAL(15,2) NOT NULL DEFAULT 0,
+    AverageRevenuePerStudent DECIMAL(10,2),
+    
+    MostActiveMonth INT,
+    PeakUsageDate DATE,
+    PeakUsageJobs INT,
+    
+    GeneratedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    GeneratedBy NVARCHAR(20),
+    Notes NVARCHAR(500),
+    
+    INDEX IX_ReportsYearly_Year (ReportYear)
 );
 GO
 
@@ -363,8 +344,30 @@ CREATE TABLE PagePricing (
 GO
 
 -- ================================================================
--- AUTH: OTP qua Email & Thiết bị tin cậy (2FA)
+-- AUTH: OTP qua Email & Thiết bị tin cậy & Refresh Tokens (2FA)
 -- ================================================================
+
+-- RefreshTokens: Token rotation & revocation (New - Phase 3)
+CREATE TABLE RefreshTokens (
+    TokenID NVARCHAR(100) PRIMARY KEY,                  -- JWT token ID (UUID format)
+    UserID NVARCHAR(20) NOT NULL,                       -- User this token belongs to
+    DeviceID NVARCHAR(500),                             -- Device identifier (Base64 encoded User-Agent)
+    DeviceFingerprint NVARCHAR(200),                    -- SHA-256 hash of device signature
+    Token NVARCHAR(500) NOT NULL,                       -- JWT token value
+    ExpiresAt DATETIME2 NOT NULL,                       -- Token expiration timestamp
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),     -- Token creation time
+    LastUsedAt DATETIME2,                               -- Last time token was used
+    RevokedAt DATETIME2,                                -- Revocation timestamp (NULL if active)
+    RevokeReason NVARCHAR(100),                         -- Reason for revocation
+    IpAddress NVARCHAR(50),                             -- Client IP address
+    
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE,
+    INDEX IX_RT_UserId (UserID, ExpiresAt DESC),
+    INDEX IX_RT_Token (Token),
+    INDEX IX_RT_Expiry (ExpiresAt)
+);
+GO
+
 CREATE TABLE EmailOtpCodes (
     OtpID INT IDENTITY(1,1) PRIMARY KEY,
     UserID NVARCHAR(20) NOT NULL,
@@ -389,10 +392,11 @@ GO
 
 CREATE TABLE TrustedDevices (
     UserID NVARCHAR(20) NOT NULL,
-    DeviceId NVARCHAR(64) NOT NULL,                     -- Hash/fingerprint thiết bị
+    DeviceId NVARCHAR(500) NOT NULL,                    -- Base64 User-Agent (same as RefreshTokens)
     DeviceName NVARCHAR(100),
     UserAgent NVARCHAR(255),
     IpAddress NVARCHAR(45),
+    DeviceFingerprint NVARCHAR(200),                    -- SHA-256 hash of device
     TrustedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
     ExpiresAt DATETIME2 NOT NULL,
     LastUsedAt DATETIME2 NULL,
@@ -420,20 +424,7 @@ CREATE TABLE AllowedFileTypes (
 );
 GO
 
--- Seed pricing
-INSERT INTO PagePricing (PaperSize, PricePerPage, Currency, EffectiveFrom, IsActive)
-VALUES ('A4', 500.00, 'VND', '2024-01-01', 1),
-       ('A3', 1000.00, 'VND', '2024-01-01', 1),
-       ('A5', 300.00, 'VND', '2024-01-01', 1);
-GO
-
--- Seed allowed file types
-INSERT INTO AllowedFileTypes (FileExtension, MimeType, MaxFileSizeMB, IsAllowed)
-VALUES ('pdf', 'application/pdf', 50, 1),
-       ('docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 30, 1),
-       ('pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 50, 1),
-       ('xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 20, 1),
-       ('txt', 'text/plain', 5, 1);
+-- Note: Seed data moved to database_seed_data.sql
 GO
 
 -- ================================================================
@@ -592,12 +583,12 @@ BEGIN
     )
     SELECT
         @ReportYear, @ReportMonth,
-        COUNT(DISTINCT pl.StudentID) AS TotalStudentsActive,
-        COUNT(pl.LogID) AS TotalPrintJobs,
-        SUM(CASE WHEN pl.Status = 'Success' THEN 1 ELSE 0 END) AS SuccessfulJobs,
-        SUM(CASE WHEN pl.Status = 'Failed' THEN 1 ELSE 0 END) AS FailedJobs,
-        SUM(pl.PagesPrinted) AS TotalPagesPrinted,
-        SUM(pl.A4EquivalentUsed) AS TotalA4Equivalent,
+        COALESCE(COUNT(DISTINCT pl.StudentID), 0) AS TotalStudentsActive,
+        COALESCE(COUNT(pl.LogID), 0) AS TotalPrintJobs,
+        COALESCE(SUM(CASE WHEN pl.Status = 'Success' THEN 1 ELSE 0 END), 0) AS SuccessfulJobs,
+        COALESCE(SUM(CASE WHEN pl.Status = 'Failed' THEN 1 ELSE 0 END), 0) AS FailedJobs,
+        COALESCE(SUM(pl.PagesPrinted), 0) AS TotalPagesPrinted,
+        COALESCE(SUM(pl.A4EquivalentUsed), 0) AS TotalA4Equivalent,
         COALESCE((SELECT SUM(pt.A4Pages + pt.A3Pages * 2)
                   FROM PageTransactions pt
                   WHERE pt.TransactionType = 'Purchase'
@@ -630,7 +621,9 @@ BEGIN
          WHERE pl3.PrintTime >= @StartDate AND pl3.PrintTime <= DATEADD(DAY, 1, @EndDate)
          GROUP BY pl3.StudentID
          ORDER BY SUM(pl3.A4EquivalentUsed) DESC) AS TopStudentPages,
-        GETDATE(), @GeneratedBy;
+        GETDATE(), @GeneratedBy
+    FROM PrintLogs pl
+    WHERE pl.PrintTime >= @StartDate AND pl.PrintTime <= DATEADD(DAY, 1, @EndDate);
 END;
 GO
 
@@ -926,55 +919,8 @@ END;
 GO
 
 -- ================================================================
--- DỮ LIỆU MẪU
+-- Note: Sample data moved to database_seed_data.sql
 -- ================================================================
-
--- Cấu hình hệ thống
-INSERT INTO SystemConfig (ConfigKey, ConfigValue, Description, DataType) VALUES
-('DefaultA4PagesPerSemester', '100', N'Số trang A4 mặc định mỗi học kỳ', 'Integer'),
-('MaxFileSizeMB', '50', N'Kích thước file tối đa (MB)', 'Integer'),
-('MaxPagesPerJob', '100', N'Số trang tối đa mỗi lần in', 'Integer'),
-('AllowedFileTypes', '["pdf","docx","pptx","xlsx","txt"]', N'Loại file được phép', 'JSON'),
-('A4PricePerPage', '500', N'Giá 1 trang A4 (VND)', 'Integer'),
-('A3PricePerPage', '1000', N'Giá 1 trang A3 (VND)', 'Integer'),
-('CurrentSemester', 'HK2-2024', N'Học kỳ hiện tại', 'String'),
-('PageAllocationDate', '2025-01-01', N'Ngày cấp trang học kỳ này', 'String');
-GO
-
--- Cấu hình OTP/2FA
-INSERT INTO SystemConfig (ConfigKey, ConfigValue, Description, DataType) VALUES
-('TwoFactor.Enabled', 'true', N'Bật xác thực hai lớp (2FA) qua email', 'Boolean'),
-('TwoFactor.TrustDays', '30', N'Số ngày ghi nhớ thiết bị tin cậy', 'Integer'),
-('OTP.EmailExpirationMinutes', '10', N'Thời hạn OTP email (phút)', 'Integer'),
-('OTP.MaxAttempts', '5', N'Số lần thử OTP tối đa', 'Integer');
-GO
-
--- Thêm SPSO mẫu
-INSERT INTO Users (UserID, Email, FullName, UserType, Department, Status)
-VALUES ('SPSO001', 'spso001@hcmiu.edu.vn', N'Nguyễn Văn A', 'SPSO', N'Phòng In Ấn', 'Active');
-GO
-
--- Thêm sinh viên mẫu
-INSERT INTO Users (UserID, Email, FullName, PhoneNumber, UserType, Faculty, Status) VALUES
-('ITITIU21001', 'ITITIU21001@student.hcmiu.edu.vn', N'Trần Văn B', '0901234567', 'Student', N'Công nghệ thông tin', 'Active'),
-('ITITIU21002', 'ITITIU21002@student.hcmiu.edu.vn', N'Lê Thị C', '0901234568', 'Student', N'Công nghệ thông tin', 'Active'),
-('IELSIU21001', 'IELSIU21001@student.hcmiu.edu.vn', N'Phạm Văn D', '0901234569', 'Student', N'Ngôn ngữ Anh', 'Active');
-GO
-
--- Cấp trang cho sinh viên
-INSERT INTO PageBalance (StudentID, A4Balance, A3Balance) VALUES
-('ITITIU21001', 100, 0),
-('ITITIU21002', 80, 5),
-('IELSIU21001', 50, 10);
-GO
-
--- Thêm máy in
-INSERT INTO Printers (PrinterID, PrinterName, Brand, Model, Location, Campus, Building, RoomNumber, Status, CreatedBy) VALUES
-('PR-H6-101', N'Máy in H6 - 101', 'HP', 'LaserJet Pro M428fdw', N'Dĩ An - H6 - P101', N'Dĩ An', 'H6', '101', 'Active', 'SPSO001'),
-('PR-H6-201', N'Máy in H6 - 201', 'Canon', 'imageRUNNER 2625i', N'Dĩ An - H6 - P201', N'Dĩ An', 'H6', '201', 'Active', 'SPSO001'),
-('PR-A-102', N'Máy in A - 102', 'Epson', 'WorkForce Pro WF-C5790', N'Dĩ An - A - P102', N'Dĩ An', 'A', '102', 'Active', 'SPSO001'),
-('PR-LIB-G01', N'Máy in Thư viện', 'HP', 'LaserJet Enterprise M607', N'Dĩ An - Thư viện - G01', N'Dĩ An', N'Thư viện', 'G01', 'Active', 'SPSO001');
-GO
 
 -- ================================================================
 -- FUNCTIONS HỮU ÍCH

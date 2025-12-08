@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
  */
 public class UserResponseDTO {
     
-    private Long id;
+    private String userId;
     private String email;
     private String fullName;
     private LocalDateTime createdAt;
@@ -15,16 +15,16 @@ public class UserResponseDTO {
     // Constructors
     public UserResponseDTO() {}
     
-    public UserResponseDTO(Long id, String email, String fullName, LocalDateTime createdAt) {
-        this.id = id;
+    public UserResponseDTO(String userId, String email, String fullName, LocalDateTime createdAt) {
+        this.userId = userId;
         this.email = email;
         this.fullName = fullName;
         this.createdAt = createdAt;
     }
     
     // Getters & Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
     
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
