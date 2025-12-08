@@ -12,8 +12,6 @@ export default function RegisterPage() {
     fullName: '',
     password: '',
     confirmPassword: '',
-    phoneNumber: '',
-    faculty: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -100,7 +98,7 @@ export default function RegisterPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="your.email@hcmiu.edu.vn"
+                placeholder="your.email@siu.edu.vn"
                 required
                 className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
@@ -123,9 +121,9 @@ export default function RegisterPage() {
                 name="studentId"
                 value={formData.studentId}
                 onChange={handleChange}
-                placeholder="e.g., 19123456"
+                placeholder="e.g., 19123456789"
                 required
-                pattern="[0-9]{7,10}"
+                pattern="[0-9]{11}"
                 className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

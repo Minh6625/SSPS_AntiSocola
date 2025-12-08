@@ -161,35 +161,46 @@ public class AuthController {
         }
     }
 
+    /**
+     * POST /api/auth/register
+     * Đăng ký tài khoản sinh viên mới
+     * 
+     * Tuân thủ Layered Architecture:
+     * - Nhận DTO, validate với @Valid
+     * - Gọi Service (nhận Entity)
+     * - Mapping Entity → DTO
+     * - KHÔNG xử lý exception (để GlobalExceptionHandler)
+     */
     @PostMapping("/register")
     @Operation(
-        summary = "Đăng ký tài khoản", 
-        description = "Đăng ký tài khoản sinh viên mới với email @hcmiu.edu.vn"
+        summary = "Đăng ký tài khoản sinh viên", 
+        description = "Đăng ký tài khoản sinh viên mới với email @hcmiu.edu.vn. " +
+                     "Password sẽ được hash bằng BCrypt."
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "201", description = "Đăng ký thành công"),
-        @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ hoặc email/MSSV đã tồn tại")
+        @ApiResponse(responseCode = "400", description = "Validation error hoặc email/MSSV đã tồn tại")
     })
-    public ResponseEntity<Map<String, String>> register(@Valid @RequestBody RegisterRequestDTO registerRequest) {
-        try {
-            log.info("Registration attempt for email: {}", registerRequest.getEmail());
-            
-            String message = authService.register(registerRequest);
-            
-            Map<String, String> response = new HashMap<>();
-            response.put("message", message);
-            response.put("timestamp", String.valueOf(System.currentTimeMillis()));
-            
-            log.info("User registered successfully: {}", registerRequest.getEmail());
-            return new ResponseEntity<>(response, HttpStatus.CREATED);
-            
-        } catch (Exception e) {
-            log.error("Registration failed: {}", e.getMessage());
-            Map<String, String> error = new HashMap<>();
-            error.put("error", e.getMessage());
-            error.put("timestamp", String.valueOf(System.currentTimeMillis()));
-            return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
-        }
+    public ResponseEntity<com.example.app.dto.RegisterResponseDTO> register(
+            @Valid @RequestBody RegisterRequestDTO registerRequest) {
+        
+        log.info("Registration attempt for email: {} - MSSV: {}", 
+            registerRequest.getEmail(), registerRequest.getStudentId());
+        
+        // Gọi Service - nhận Entity
+        com.example.app.entity.User user = authService.register(registerRequest);
+        
+        // Mapping Entity → DTO (Controller responsibility)
+        com.example.app.dto.RegisterResponseDTO response = new com.example.app.dto.RegisterResponseDTO(
+            "Đăng ký thành công! Vui lòng đăng nhập.",
+            user.getUserId(),
+            user.getEmail(),
+            user.getFullName()
+        );
+        
+        log.info("User registered successfully: {} - {}", user.getUserId(), user.getEmail());
+        
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**

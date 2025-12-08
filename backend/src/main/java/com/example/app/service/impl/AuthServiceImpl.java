@@ -6,6 +6,7 @@ import com.example.app.dto.RegisterRequestDTO;
 import com.example.app.dto.VerifyOtpRequestDTO;
 import com.example.app.entity.TrustedDevice;
 import com.example.app.entity.User;
+import com.example.app.exception.BusinessException;
 import com.example.app.exception.ResourceNotFoundException;
 import com.example.app.repository.SystemConfigRepository;
 import com.example.app.repository.TrustedDeviceRepository;
@@ -214,30 +215,46 @@ public class AuthServiceImpl implements IAuthService {
         return httpServletRequest.getRemoteAddr();
     }
 
+    /**
+     * Đăng ký tài khoản sinh viên mới
+     * Tuân thủ Layered Architecture:
+     * - Chứa TOÀN BỘ business logic
+     * - Throw BusinessException khi lỗi
+     * - Trả về Entity (không phải DTO)
+     */
     @Override
-    public String register(RegisterRequestDTO registerRequest) {
-        // Kiểm tra email đã tồn tại
+    @Transactional
+    public User register(RegisterRequestDTO registerRequest) {
+        // Business Rule 1: Validate password khớp
+        if (!registerRequest.getPassword().equals(registerRequest.getConfirmPassword())) {
+            throw new BusinessException("Mật khẩu xác nhận không khớp");
+        }
+        
+        // Business Rule 2: Email không được trùng
         if (userRepository.existsByEmail(registerRequest.getEmail())) {
-            throw new RuntimeException("Email đã được sử dụng");
+            throw new BusinessException("Email đã được sử dụng");
         }
 
-        // Kiểm tra MSSV đã tồn tại
+        // Business Rule 3: MSSV không được trùng
         if (userRepository.existsByUserId(registerRequest.getStudentId())) {
-            throw new RuntimeException("MSSV đã được sử dụng");
+            throw new BusinessException("MSSV đã được sử dụng");
         }
 
-        // Tạo user mới
+        // Tạo User entity với đầy đủ thông tin
         User user = new User();
         user.setUserId(registerRequest.getStudentId());  // MSSV làm UserID
         user.setEmail(registerRequest.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword())); // Hash password
+        user.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword())); // BCrypt hash
         user.setFullName(registerRequest.getFullName());
         user.setUserType("Student"); // Mặc định là Student
         user.setStatus("Active");
         user.setIsTwoFactorEnabled(false);
+        user.setCreatedAt(LocalDateTime.now());
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        
+        log.info("New student registered: {} - {}", savedUser.getUserId(), savedUser.getEmail());
 
-        return "Đăng ký thành công! Vui lòng đăng nhập.";
+        return savedUser; // Trả về Entity
     }
 }
