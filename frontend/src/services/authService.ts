@@ -219,6 +219,9 @@ export const authService = {
   /**
    * POST /auth/register
    * Đăng ký tài khoản sinh viên mới
+   * 
+   * Request: { email, studentId, fullName, password, confirmPassword }
+   * Response: { message, userId, email, fullName }
    */
   async register(data: {
     email: string;
@@ -226,8 +229,6 @@ export const authService = {
     fullName: string;
     password: string;
     confirmPassword: string;
-    phoneNumber?: string;
-    faculty?: string;
   }) {
     try {
       const response = await authClient.post('/register', data);
@@ -236,10 +237,25 @@ export const authService = {
         data: response.data,
       };
     } catch (error) {
-      const axiosError = error as AxiosError<AuthError>;
-      throw new Error(
-        axiosError.response?.data?.error || 'Đăng ký thất bại'
-      );
+      const axiosError = error as AxiosError<any>;
+      
+      // Xử lý error từ backend
+      if (axiosError.response?.data?.message) {
+        throw new Error(axiosError.response.data.message);
+      }
+      
+      if (axiosError.response?.data?.error) {
+        throw new Error(axiosError.response.data.error);
+      }
+      
+      // Xử lý validation errors
+      if (axiosError.response?.data?.errors) {
+        const errors = axiosError.response.data.errors;
+        const errorMessages = Object.values(errors).join(', ');
+        throw new Error(errorMessages);
+      }
+      
+      throw new Error('Đăng ký thất bại. Vui lòng thử lại.');
     }
   },
 };
