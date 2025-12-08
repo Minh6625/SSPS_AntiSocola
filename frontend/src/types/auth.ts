@@ -6,8 +6,6 @@ export interface RegisterRequest {
   fullName: string;
   password: string;
   confirmPassword: string;
-  phoneNumber?: string;
-  faculty?: string;
 }
 
 export interface RegisterResponse {
