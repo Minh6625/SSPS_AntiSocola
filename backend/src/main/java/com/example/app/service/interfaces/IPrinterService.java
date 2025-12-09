@@ -16,4 +16,6 @@ public interface IPrinterService {
             String sortBy,
             String sortDir
     );
+
+    PrinterResponseDTO getPrinterById(String printerId);
 }

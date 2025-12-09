@@ -13,6 +13,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.NoSuchElementException;
+
 @Service
 public class PrinterServiceImpl implements IPrinterService {
 
@@ -66,6 +68,13 @@ public class PrinterServiceImpl implements IPrinterService {
 
         Page<Printer> result = printerRepository.findAll(spec, pageable);
         return result.map(this::toDto);
+    }
+
+    @Override
+    public PrinterResponseDTO getPrinterById(String printerId) {
+        Printer printer = printerRepository.findById(printerId)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy máy in"));
+        return toDto(printer);
     }
 
     private PrinterResponseDTO toDto(Printer entity) {

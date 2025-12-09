@@ -48,6 +48,21 @@ export const printerService = {
   },
 
   /**
+   * GET /api/printers/{id}
+   * Lấy chi tiết một máy in
+   */
+  async getPrinterById(id: string) {
+    try {
+      const response = await apiClient.get(`/printers/${id}`);
+      return response.data.data as any; // shape matches Printer
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 'Không thể tải thông tin máy in';
+      throw new Error(errorMessage);
+    }
+  },
+
+  /**
    * Get available campuses for filter dropdown
    */
   getAvailableCampuses(): string[] {

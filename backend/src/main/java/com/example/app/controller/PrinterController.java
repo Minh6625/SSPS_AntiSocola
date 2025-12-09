@@ -4,6 +4,7 @@ import com.example.app.dto.PrinterResponseDTO;
 import com.example.app.service.interfaces.IPrinterService;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -65,6 +66,22 @@ public class PrinterController {
         data.put("currentPage", printersPage.getNumber());
         data.put("pageSize", printersPage.getSize());
         response.put("data", data);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET /api/printers/{id}
+     * Lấy thông tin máy in chi tiết
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> getPrinterById(@PathVariable String id) {
+        PrinterResponseDTO printer = printerService.getPrinterById(id);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Lấy thông tin máy in thành công");
+        response.put("data", printer);
 
         return ResponseEntity.ok(response);
     }

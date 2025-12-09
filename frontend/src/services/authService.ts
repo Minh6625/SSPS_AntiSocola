@@ -2,8 +2,10 @@
  * AUTH SERVICE - Login, OTP Verification, Token Management
  */
 
-import { AxiosError } from 'axios';
+import axios, { AxiosError } from 'axios';
 import apiClient from '@/config/axios';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api';
 
 // Types
 export interface LoginRequest {
@@ -36,7 +38,6 @@ export interface AuthError {
   timestamp: string;
 }
 
-<<<<<<< HEAD
 export interface InitiateRegistrationRequest {
   email: string;
   studentId: string;
@@ -77,7 +78,7 @@ const authClient = axios.create({
 });
 
 // Add Authorization header từ localStorage
-authClient.interceptors.request.use((config) => {
+authClient.interceptors.request.use((config: any) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -85,8 +86,6 @@ authClient.interceptors.request.use((config) => {
   return config;
 });
 
-=======
->>>>>>> 7dc1357 (feat: Xây dựng API lấy danh sách tài liệu và tích hợp vào giao diện)
 export const authService = {
   /**
    * Generate device fingerprint (SHA-256 hash)
@@ -207,7 +206,7 @@ export const authService = {
       }
 
       return response.data;
-    } catch (error) {
+    } catch {
       this.logout();
       throw new Error('Phiên làm việc hết hạn. Vui lòng đăng nhập lại.');
     }
@@ -250,7 +249,7 @@ export const authService = {
       userId: localStorage.getItem('userId'),
       email: localStorage.getItem('userEmail'),
       role: localStorage.getItem('userRole'),
-      fullName: localStorage.getItem('userFullName'),
+      fullName: localStorage.getItem('userFullName') || undefined,
     };
   },
 
@@ -275,7 +274,7 @@ export const authService = {
         data: response.data,
       };
     } catch (error) {
-      const axiosError = error as AxiosError<any>;
+      const axiosError = error as AxiosError<AuthError>;
       
       // Xử lý error từ backend
       if (axiosError.response?.data?.message) {
@@ -315,7 +314,7 @@ export const authService = {
         data: response.data,
       };
     } catch (error) {
-      const axiosError = error as AxiosError<any>;
+      const axiosError = error as AxiosError<AuthError>;
       
       if (axiosError.response?.data?.message) {
         throw new Error(axiosError.response.data.message);
@@ -347,7 +346,7 @@ export const authService = {
         data: response.data,
       };
     } catch (error) {
-      const axiosError = error as AxiosError<any>;
+      const axiosError = error as AxiosError<AuthError>;
       
       if (axiosError.response?.data?.message) {
         throw new Error(axiosError.response.data.message);

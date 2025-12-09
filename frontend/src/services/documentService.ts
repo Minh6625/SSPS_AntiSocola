@@ -16,10 +16,13 @@ export interface DocumentUploadRequest {
 export interface DocumentResponse {
   id: number;
   fileName: string;
+  originalFileName?: string;
   fileExtension: string;
   fileSizeKB: number;
   uploadDate: string;
   isDeleted: boolean;
+  totalPages?: number;
+  description?: string;
 }
 
 export interface DocumentListResponse {

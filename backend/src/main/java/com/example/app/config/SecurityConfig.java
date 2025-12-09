@@ -34,6 +34,8 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**").permitAll()
                 // Document API (Print Flow) - chỉ cho Student
                 .requestMatchers("/api/documents/**").hasAuthority("Student")
+                   // User API (current user info & balance) - Student + SPSO
+                   .requestMatchers("/api/users/me/**").hasAnyAuthority("Student", "SPSO")
                 // Printer API - cho SPSO và Student (chọn máy in)
                 .requestMatchers("/api/printers/**").hasAnyAuthority("SPSO", "Student")
                 // PrintJob API - Student + SPSO
