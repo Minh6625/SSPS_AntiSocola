@@ -22,6 +22,9 @@ public class JwtUtil {
     
     @Value("${jwt.refresh.expiration:604800000}") // 7 days
     private Long refreshTokenExpiration;
+    
+    @Value("${jwt.registration.expiration:900000}") // 15 minutes
+    private Long registrationTokenExpiration;
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
@@ -88,5 +91,58 @@ public class JwtUtil {
 
     public boolean validateToken(String token, String email) {
         return (extractEmail(token).equals(email) && !isTokenExpired(token));
+    }
+    
+    /**
+     * Generate Registration Token (15 minutes)
+     * Chứa thông tin đăng ký tạm thời để verify OTP
+     */
+    public String generateRegistrationToken(String email, String studentId, String fullName, String password) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("email", email);
+        claims.put("studentId", studentId);
+        claims.put("fullName", fullName);
+        claims.put("password", password);
+        claims.put("tokenType", "REGISTRATION");
+
+        return Jwts.builder()
+                .claims(claims)
+                .subject(email)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + registrationTokenExpiration))
+                .signWith(getSigningKey())
+                .compact();
+    }
+    
+    /**
+     * Extract StudentId từ token
+     */
+    public String extractStudentId(String token) {
+        return extractClaims(token).get("studentId", String.class);
+    }
+    
+    /**
+     * Extract FullName từ token
+     */
+    public String extractFullName(String token) {
+        return extractClaims(token).get("fullName", String.class);
+    }
+    
+    /**
+     * Extract Password từ token
+     */
+    public String extractPassword(String token) {
+        return extractClaims(token).get("password", String.class);
+    }
+    
+    /**
+     * Check token is valid (not expired)
+     */
+    public boolean isTokenValid(String token) {
+        try {
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

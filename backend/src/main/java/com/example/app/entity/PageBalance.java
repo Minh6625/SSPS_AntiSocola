@@ -1,13 +1,17 @@
 package com.example.app.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+
 import java.time.LocalDateTime;
 
 /**
- * ENTITY: PageBalance - Số dư trang in
+ * ENTITY: PageBalance
+ * Quản lý số dư trang in của sinh viên
+ * 
+ * Mapping: PageBalance (StudentID) → Users (UserID)
  */
 @Entity
 @Table(name = "PageBalance")
@@ -26,20 +30,11 @@ public class PageBalance {
     @Column(name = "A3Balance", nullable = false)
     private Integer a3Balance = 0;
     
-    @Column(name = "TotalA4Equivalent", insertable = false, updatable = false)
-    private Integer totalA4Equivalent;  // Computed column
+    @Column(name = "LastUpdated", nullable = false)
+    private LocalDateTime lastUpdated = LocalDateTime.now();
     
-    @Column(name = "LastUpdated")
-    private LocalDateTime lastUpdated;
-    
-    @OneToOne
-    @MapsId
-    @JoinColumn(name = "StudentID")
+    // Foreign Key
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "StudentID", insertable = false, updatable = false)
     private User student;
-    
-    @PrePersist
-    @PreUpdate
-    protected void onUpdate() {
-        lastUpdated = LocalDateTime.now();
-    }
 }

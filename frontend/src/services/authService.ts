@@ -37,6 +37,36 @@ export interface AuthError {
   timestamp: string;
 }
 
+export interface InitiateRegistrationRequest {
+  email: string;
+  studentId: string;
+  fullName: string;
+  password: string;
+  confirmPassword: string;
+}
+
+export interface InitiateRegistrationResponse {
+  message: string;
+  registrationToken: string;
+  email: string;
+  otpSent: boolean;
+}
+
+export interface VerifyRegistrationOtpRequest {
+  email: string;
+  otpCode: string;
+  registrationToken: string;
+}
+
+export interface VerifyRegistrationOtpResponse {
+  message: string;
+  userId: string;
+  email: string;
+  fullName: string;
+  userType: string;
+  accountCreated: boolean;
+}
+
 // Axios instance
 const authClient = axios.create({
   baseURL: `${API_BASE_URL}/auth`,
@@ -256,6 +286,70 @@ export const authService = {
       }
       
       throw new Error('Đăng ký thất bại. Vui lòng thử lại.');
+    }
+  },
+
+  /**
+   * POST /auth/initiate-registration
+   * BƯỚC 1: Khởi tạo đăng ký - Validate + Gửi OTP
+   * 
+   * Request: { email, studentId, fullName, password, confirmPassword }
+   * Response: { message, registrationToken, email, otpSent }
+   */
+  async initiateRegistration(data: InitiateRegistrationRequest) {
+    try {
+      const response = await authClient.post<InitiateRegistrationResponse>(
+        '/initiate-registration',
+        data
+      );
+      return {
+        status: 200,
+        data: response.data,
+      };
+    } catch (error) {
+      const axiosError = error as AxiosError<any>;
+      
+      if (axiosError.response?.data?.message) {
+        throw new Error(axiosError.response.data.message);
+      }
+      
+      if (axiosError.response?.data?.error) {
+        throw new Error(axiosError.response.data.error);
+      }
+      
+      throw new Error('Khởi tạo đăng ký thất bại. Vui lòng thử lại.');
+    }
+  },
+
+  /**
+   * POST /auth/verify-registration-otp
+   * BƯỚC 2: Xác thực OTP + Tạo tài khoản
+   * 
+   * Request: { email, otpCode, registrationToken }
+   * Response: { message, userId, email, fullName, userType, accountCreated }
+   */
+  async verifyRegistrationOtp(data: VerifyRegistrationOtpRequest) {
+    try {
+      const response = await authClient.post<VerifyRegistrationOtpResponse>(
+        '/verify-registration-otp',
+        data
+      );
+      return {
+        status: 201,
+        data: response.data,
+      };
+    } catch (error) {
+      const axiosError = error as AxiosError<any>;
+      
+      if (axiosError.response?.data?.message) {
+        throw new Error(axiosError.response.data.message);
+      }
+      
+      if (axiosError.response?.data?.error) {
+        throw new Error(axiosError.response.data.error);
+      }
+      
+      throw new Error('Xác thực OTP thất bại. Vui lòng thử lại.');
     }
   },
 };

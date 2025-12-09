@@ -4,7 +4,12 @@ import com.example.app.dto.LoginRequestDTO;
 import com.example.app.dto.LoginResponseDTO;
 import com.example.app.dto.RegisterRequestDTO;
 import com.example.app.dto.VerifyOtpRequestDTO;
+import com.example.app.dto.InitiateRegistrationRequestDTO;
+import com.example.app.dto.InitiateRegistrationResponseDTO;
+import com.example.app.dto.VerifyRegistrationOtpRequestDTO;
+import com.example.app.dto.VerifyRegistrationOtpResponseDTO;
 import com.example.app.service.interfaces.IAuthService;
+import com.example.app.service.RegistrationService;
 import com.example.app.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,6 +37,9 @@ public class AuthController {
 
     @Autowired
     private IAuthService authService;
+    
+    @Autowired
+    private RegistrationService registrationService;
     
     @Autowired
     private JwtUtil jwtUtil;
@@ -162,43 +170,68 @@ public class AuthController {
     }
 
     /**
-     * POST /api/auth/register
-     * Đăng ký tài khoản sinh viên mới
+     * POST /api/auth/initiate-registration
+     * BƯỚC 1: Khởi tạo đăng ký - Validate + Gửi OTP
+     * 
+     * Request: { email, studentId, fullName, password, confirmPassword }
+     * Response: { message, registrationToken, email, otpSent }
      * 
      * Tuân thủ Layered Architecture:
      * - Nhận DTO, validate với @Valid
-     * - Gọi Service (nhận Entity)
-     * - Mapping Entity → DTO
-     * - KHÔNG xử lý exception (để GlobalExceptionHandler)
+     * - Gọi Service (nhận DTO response)
+     * - Trả về DTO
      */
-    @PostMapping("/register")
+    @PostMapping("/initiate-registration")
     @Operation(
-        summary = "Đăng ký tài khoản sinh viên", 
-        description = "Đăng ký tài khoản sinh viên mới với email @hcmiu.edu.vn. " +
-                     "Password sẽ được hash bằng BCrypt."
+        summary = "Bước 1: Khởi tạo đăng ký - Gửi OTP",
+        description = "Validate thông tin đăng ký và gửi OTP về email"
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Đăng ký thành công"),
+        @ApiResponse(responseCode = "200", description = "OTP đã được gửi"),
         @ApiResponse(responseCode = "400", description = "Validation error hoặc email/MSSV đã tồn tại")
     })
-    public ResponseEntity<com.example.app.dto.RegisterResponseDTO> register(
-            @Valid @RequestBody RegisterRequestDTO registerRequest) {
+    public ResponseEntity<InitiateRegistrationResponseDTO> initiateRegistration(
+            @Valid @RequestBody InitiateRegistrationRequestDTO request) {
         
-        log.info("Registration attempt for email: {} - MSSV: {}", 
-            registerRequest.getEmail(), registerRequest.getStudentId());
+        log.info("Initiate registration for email: {} - MSSV: {}", 
+            request.getEmail(), request.getStudentId());
         
-        // Gọi Service - nhận Entity
-        com.example.app.entity.User user = authService.register(registerRequest);
+        InitiateRegistrationResponseDTO response = registrationService.initiateRegistration(request);
         
-        // Mapping Entity → DTO (Controller responsibility)
-        com.example.app.dto.RegisterResponseDTO response = new com.example.app.dto.RegisterResponseDTO(
-            "Đăng ký thành công! Vui lòng đăng nhập.",
-            user.getUserId(),
-            user.getEmail(),
-            user.getFullName()
-        );
+        log.info("Registration initiated successfully: {}", request.getEmail());
         
-        log.info("User registered successfully: {} - {}", user.getUserId(), user.getEmail());
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * POST /api/auth/verify-registration-otp
+     * BƯỚC 2: Xác thực OTP + Tạo tài khoản
+     * 
+     * Request: { email, otpCode, registrationToken }
+     * Response: { message, userId, email, fullName, userType, accountCreated }
+     * 
+     * Tuân thủ Layered Architecture:
+     * - Nhận DTO, validate với @Valid
+     * - Gọi Service (nhận DTO response)
+     * - Trả về DTO
+     */
+    @PostMapping("/verify-registration-otp")
+    @Operation(
+        summary = "Bước 2: Xác thực OTP - Tạo tài khoản",
+        description = "Verify OTP và tạo tài khoản sinh viên"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Tài khoản đã được tạo"),
+        @ApiResponse(responseCode = "400", description = "OTP không hợp lệ hoặc đã hết hạn")
+    })
+    public ResponseEntity<VerifyRegistrationOtpResponseDTO> verifyRegistrationOtp(
+            @Valid @RequestBody VerifyRegistrationOtpRequestDTO request) {
+        
+        log.info("Verify registration OTP for email: {}", request.getEmail());
+        
+        VerifyRegistrationOtpResponseDTO response = registrationService.verifyRegistrationOtp(request);
+        
+        log.info("Registration completed successfully: {}", request.getEmail());
         
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }

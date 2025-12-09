@@ -30,7 +30,7 @@ export default function HomePage() {
                 Đăng Nhập
               </Link>
               <Link
-                href="/register"
+                href="/register/step1"
                 className="bg-blue-500 hover:bg-blue-600 text-white font-medium px-4 py-2 rounded-lg transition shadow-sm"
               >
                 Tạo Tài Khoản

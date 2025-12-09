@@ -370,7 +370,8 @@ GO
 
 CREATE TABLE EmailOtpCodes (
     OtpID INT IDENTITY(1,1) PRIMARY KEY,
-    UserID NVARCHAR(20) NOT NULL,
+    UserID NVARCHAR(20) NULL,                           -- Nullable (dùng cho registration)
+    Email NVARCHAR(100) NULL,                           -- Dùng cho registration (user chưa tồn tại)
     Purpose NVARCHAR(30) NOT NULL CHECK (Purpose IN ('PasswordReset','Login2FA','EmailVerification','Register2FA')),
     Code NVARCHAR(10) NOT NULL,                         -- Mã OTP (6 chữ số)
     ExpiresAt DATETIME2 NOT NULL,                       -- Thời điểm hết hạn
@@ -386,8 +387,9 @@ CREATE TABLE EmailOtpCodes (
 GO
 
 -- Chỉ cho phép 1 OTP chưa dùng trên mỗi Purpose
-CREATE UNIQUE INDEX UX_EmailOtp_Active ON EmailOtpCodes(UserID, Purpose) WHERE ConsumedAt IS NULL;
+CREATE UNIQUE INDEX UX_EmailOtp_Active ON EmailOtpCodes(UserID, Purpose) WHERE ConsumedAt IS NULL AND UserID IS NOT NULL;
 CREATE INDEX IX_EmailOtp_UserPurpose ON EmailOtpCodes(UserID, Purpose, ExpiresAt);
+CREATE INDEX IX_EmailOtp_EmailPurpose ON EmailOtpCodes(Email, Purpose, ExpiresAt);
 GO
 
 CREATE TABLE TrustedDevices (
