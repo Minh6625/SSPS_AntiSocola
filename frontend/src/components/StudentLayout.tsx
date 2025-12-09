@@ -10,9 +10,18 @@ interface LayoutProps {
 }
 
 type UserInfo = {
-  email?: string;
-  fullName?: string;
+  userId?: string | null;
+  email?: string | null;
+  role?: string | null;
+  fullName?: string | null;
 };
+
+interface MenuItem {
+  name: string;
+  icon: React.ReactElement;
+  href: string;
+  submenu?: Array<{ name: string; href: string }>;
+}
 
 export default function StudentLayout({ children }: LayoutProps) {
   const router = useRouter();
@@ -90,7 +99,7 @@ export default function StudentLayout({ children }: LayoutProps) {
     ),
   };
 
-  const studentMenuItems = [
+  const studentMenuItems: MenuItem[] = [
     { name: 'Dashboard', icon: Icons.home, href: '/student/dashboard' },
     { name: 'In tài liệu', icon: Icons.upload, href: '/student/print-document' },
     { name: 'Lịch sử in', icon: Icons.history, href: '/student/print-history' },
@@ -164,7 +173,7 @@ export default function StudentLayout({ children }: LayoutProps) {
               {/* Submenu */}
               {sidebarOpen && item.submenu && isActive(item.href) && (
                 <div className="ml-8 space-y-1">
-                  {item.submenu.map((subitem) => (
+                  {item.submenu.map((subitem: { name: string; href: string }) => (
                     <Link
                       key={subitem.href}
                       href={subitem.href}

@@ -250,7 +250,7 @@ export const authService = {
       userId: localStorage.getItem('userId'),
       email: localStorage.getItem('userEmail'),
       role: localStorage.getItem('userRole'),
-      fullName: localStorage.getItem('userFullName') || undefined,
+      fullName: localStorage.getItem('userFullName'),
     };
   },
 
