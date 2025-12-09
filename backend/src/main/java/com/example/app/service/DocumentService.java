@@ -84,6 +84,13 @@ public class DocumentService {
             throw new ApplicationException("Tệp phải có extension hợp lệ", 400);
         }
         
+        // STEP 2.5: Validate tên file (ký tự đặc biệt) - xử lý IOException từ FileStorageService
+        try {
+            // Validation sẽ được gọi bên trong saveFile()
+        } catch (Exception e) {
+            // Exception sẽ được throw từ saveFile() ở bước 6
+        }
+        
         // STEP 3: Check file extension có được phép không
         if (!allowedFileTypeRepository.existsByFileExtensionIgnoreCaseAndIsAllowedTrue(fileExtension)) {
             throw new ApplicationException(
@@ -123,6 +130,14 @@ public class DocumentService {
         try {
             storedFileName = fileStorageService.saveFile(file);
         } catch (IOException e) {
+            // Kiểm tra nếu là lỗi validation tên file (ký tự đặc biệt, độ dài)
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && 
+                (errorMessage.contains("ký tự") || errorMessage.contains("dài"))) {
+                logger.warn("Lỗi validation tên file: {}", errorMessage);
+                throw new ApplicationException(errorMessage, 400); // 400 Bad Request
+            }
+            // Lỗi khác (IO error)
             logger.error("Lỗi khi lưu file: {}", file.getOriginalFilename(), e);
             throw new ApplicationException("Lỗi khi lưu file. Vui lòng thử lại", 500);
         }
@@ -154,12 +169,124 @@ public class DocumentService {
     }
     
     /**
-     * Lấy danh sách document của student (phân trang)
+     * Lấy danh sách document của student (phân trang + filter + search)
+     * 
+     * Business Logic:
+     * - Validate page ≥ 0, size > 0 và ≤ 100
+     * - Validate sortBy chỉ cho phép: uploadDate, fileName
+     * - Validate sortDirection: ASC hoặc DESC
+     * - Nếu fileType có → filter theo extension
+     * - Nếu search có → tìm trong originalFileName (LIKE search%)
+     * - Kết hợp filter + search (nếu cả hai có)
+     * - Return Page<DocumentResponseDTO>
      * 
      * @param studentId ID sinh viên
-     * @param page Số trang (0-indexed)
+     * @param page Số trang (0-indexed, default: 0)
+     * @param size Số lượng items per page (default: 10, max: 100)
+     * @param sortBy Field để sort (uploadDate, fileName; default: uploadDate)
+     * @param sortDirection Hướng sort (ASC, DESC; default: DESC)
+     * @param fileType Filter theo loại file (optional, VD: pdf, docx)
+     * @param search Tìm kiếm trong tên file (optional)
+     * @return Page<DocumentResponseDTO> chứa documents + pagination metadata
+     * @throws ApplicationException Nếu validation fail
+     */
+    @Transactional(readOnly = true)
+    public Page<DocumentResponseDTO> getDocumentsByStudentId(
+            String studentId,
+            int page,
+            int size,
+            String sortBy,
+            String sortDirection,
+            String fileType,
+            String search) {
+        
+        // STEP 1: Validate page & size
+        if (page < 0) {
+            throw new ApplicationException("page phải ≥ 0", 400);
+        }
+        if (size <= 0 || size > 100) {
+            throw new ApplicationException("size phải > 0 và ≤ 100", 400);
+        }
+        
+        // STEP 2: Validate sortBy
+        String validSortBy = "uploadDate"; // Default
+        if (sortBy != null && !sortBy.isEmpty()) {
+            if (sortBy.equalsIgnoreCase("uploadDate") || sortBy.equalsIgnoreCase("fileName")) {
+                validSortBy = sortBy.equalsIgnoreCase("uploadDate") ? "uploadDate" : "originalFileName";
+            } else {
+                throw new ApplicationException(
+                    "sortBy chỉ được phép: uploadDate, fileName", 400);
+            }
+        }
+        
+        // STEP 3: Validate sortDirection
+        Sort.Direction direction = Sort.Direction.DESC; // Default
+        if (sortDirection != null && !sortDirection.isEmpty()) {
+            try {
+                direction = Sort.Direction.fromString(sortDirection.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new ApplicationException(
+                    "sortDirection chỉ được phép: ASC, DESC", 400);
+            }
+        }
+        
+        // STEP 4: Tạo Pageable
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, validSortBy));
+        
+        // STEP 5: Xử lý filter + search
+        Page<Document> documents;
+        
+        // Normalize search (trim, limit length)
+        String normalizedSearch = null;
+        if (search != null && !search.trim().isEmpty()) {
+            normalizedSearch = search.trim();
+            if (normalizedSearch.length() > 100) {
+                normalizedSearch = normalizedSearch.substring(0, 100);
+            }
+        }
+        
+        // Normalize fileType (lowercase)
+        String normalizedFileType = null;
+        if (fileType != null && !fileType.trim().isEmpty()) {
+            normalizedFileType = fileType.trim().toLowerCase();
+        }
+        
+        logger.debug("getDocuments: studentId={}, fileType={}, search={}, page={}, size={}",
+                     studentId, normalizedFileType, normalizedSearch, page, size);
+        
+        // STEP 6: Query based on filter/search combination
+        if (normalizedFileType != null && normalizedSearch != null) {
+            // Cả filter và search
+            documents = documentRepository.searchDocumentsByStudentIdAndFileType(
+                studentId, normalizedSearch, normalizedFileType, pageable);
+        } else if (normalizedFileType != null) {
+            // Chỉ filter
+            documents = documentRepository.findByStudentIdAndFileType(
+                studentId, normalizedFileType, pageable);
+        } else if (normalizedSearch != null) {
+            // Chỉ search
+            documents = documentRepository.searchDocumentsByStudentId(
+                studentId, normalizedSearch, pageable);
+        } else {
+            // Không filter, không search → lấy tất cả
+            documents = documentRepository.findByStudentIdAndIsDeletedFalse(studentId, pageable);
+        }
+        
+        logger.info("Get documents: studentId={}, totalElements={}, currentPage={}",
+                    studentId, documents.getTotalElements(), page);
+        
+        // STEP 7: Map to DTO
+        return documents.map(doc -> modelMapper.map(doc, DocumentResponseDTO.class));
+    }
+    
+    /**
+     * Lấy danh sách document của student (phân trang, overload cũ)
+     * Giữ lại cho backward compatibility
+     * 
+     * @param studentId ID sinh viên
+     * @param page Số trang
      * @param size Số lượng items per page
-     * @param sortBy Field để sort (VD: "uploadDate")
+     * @param sortBy Field để sort
      * @return Page<DocumentResponseDTO>
      */
     @Transactional(readOnly = true)
@@ -169,16 +296,9 @@ public class DocumentService {
             int size, 
             String sortBy) {
         
-        Pageable pageable = PageRequest.of(
-            page, 
-            size, 
-            Sort.by(Sort.Direction.DESC, sortBy != null ? sortBy : "uploadDate")
-        );
-        
-        Page<Document> documents = documentRepository.findByStudentIdAndIsDeletedFalse(studentId, pageable);
-        
-        return documents.map(doc -> modelMapper.map(doc, DocumentResponseDTO.class));
+        return getDocumentsByStudentId(studentId, page, size, sortBy, "DESC", null, null);
     }
+
     
     /**
      * Lấy document theo ID
@@ -215,6 +335,41 @@ public class DocumentService {
         document.setIsDeleted(true);
         documentRepository.save(document);
         logger.info("Document đã bị soft-delete: documentId={}", documentId);
+    }
+    
+    /**
+     * Download file tài liệu
+     * 
+     * @param documentId ID tài liệu
+     * @param studentId ID sinh viên (để xác thực quyền)
+     * @return Byte array của file
+     * @throws ApplicationException Nếu document không tồn tại hoặc không phải của student
+     */
+    @Transactional(readOnly = true)
+    public byte[] downloadDocument(Integer documentId, String studentId) {
+        Document document = documentRepository.findByDocumentIdAndIsDeletedFalse(documentId)
+            .orElseThrow(() -> new ApplicationException("Tài liệu không tồn tại", 404));
+        
+        // Kiểm tra quyền: chỉ student sở hữu document mới được download
+        if (!document.getStudentId().equals(studentId)) {
+            throw new ApplicationException("Bạn không có quyền download tài liệu này", 403);
+        }
+        
+        try {
+            // Đọc file từ disk
+            byte[] fileBytes = java.nio.file.Files.readAllBytes(
+                java.nio.file.Paths.get(document.getFilePath())
+            );
+            
+            logger.info("Document download thành công: documentId={}, studentId={}", 
+                        documentId, studentId);
+            
+            return fileBytes;
+            
+        } catch (java.io.IOException e) {
+            logger.error("Lỗi khi đọc file: {}", document.getFilePath(), e);
+            throw new ApplicationException("Lỗi khi download file. Vui lòng thử lại", 500);
+        }
     }
     
     /**

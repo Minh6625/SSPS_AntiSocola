@@ -4,16 +4,7 @@
 
 import axios, { AxiosError } from 'axios';
 import { User, UserCreateDTO, ErrorResponse } from '@/types/user';
-
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8080/api';
-
-// Axios instance với cấu hình chung
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+import apiClient from '@/config/axios';
 
 // Error Handler
 const handleApiError = (error: unknown): string => {

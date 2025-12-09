@@ -4,6 +4,8 @@ import com.example.app.entity.Document;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
@@ -49,4 +51,58 @@ public interface DocumentRepository extends JpaRepository<Document, Integer> {
      * @return Document nếu tồn tại và chưa bị xóa
      */
     Optional<Document> findByDocumentIdAndIsDeletedFalse(Integer documentId);
+    
+    /**
+     * Tìm kiếm tài liệu của sinh viên theo tên file (hỗ trợ pagination)
+     * @param studentId ID của sinh viên
+     * @param search Từ khóa tìm kiếm (tìm trong originalFileName)
+     * @param pageable Thông tin phân trang
+     * @return Page của Document
+     */
+    @Query("SELECT d FROM Document d " +
+           "WHERE d.studentId = :studentId " +
+           "AND d.isDeleted = false " +
+           "AND LOWER(d.originalFileName) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<Document> searchDocumentsByStudentId(
+        @Param("studentId") String studentId,
+        @Param("search") String search,
+        Pageable pageable
+    );
+    
+    /**
+     * Tìm kiếm tài liệu của sinh viên theo tên file và loại file
+     * @param studentId ID của sinh viên
+     * @param search Từ khóa tìm kiếm
+     * @param fileExtension Loại file (pdf, docx, ...)
+     * @param pageable Thông tin phân trang
+     * @return Page của Document
+     */
+    @Query("SELECT d FROM Document d " +
+           "WHERE d.studentId = :studentId " +
+           "AND d.isDeleted = false " +
+           "AND LOWER(d.originalFileName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "AND LOWER(d.fileExtension) = LOWER(:fileExtension)")
+    Page<Document> searchDocumentsByStudentIdAndFileType(
+        @Param("studentId") String studentId,
+        @Param("search") String search,
+        @Param("fileExtension") String fileExtension,
+        Pageable pageable
+    );
+    
+    /**
+     * Lấy tài liệu của sinh viên theo loại file (hỗ trợ pagination)
+     * @param studentId ID của sinh viên
+     * @param fileExtension Loại file
+     * @param pageable Thông tin phân trang
+     * @return Page của Document
+     */
+    @Query("SELECT d FROM Document d " +
+           "WHERE d.studentId = :studentId " +
+           "AND d.isDeleted = false " +
+           "AND LOWER(d.fileExtension) = LOWER(:fileExtension)")
+    Page<Document> findByStudentIdAndFileType(
+        @Param("studentId") String studentId,
+        @Param("fileExtension") String fileExtension,
+        Pageable pageable
+    );
 }

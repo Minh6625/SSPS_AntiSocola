@@ -22,8 +22,26 @@ public class FileStorageService {
     
     private static final Logger logger = LoggerFactory.getLogger(FileStorageService.class);
     
-    @Value("${file.upload-dir:uploads}")
-    private String uploadDir;
+    // Sử dụng thư mục uploads ở project root
+    private final Path uploadPath;
+    
+    public FileStorageService() {
+        // Lấy project root directory
+        String projectRoot = System.getProperty("user.dir");
+        this.uploadPath = Paths.get(projectRoot, "uploads");
+        
+        // Tạo thư mục nếu chưa tồn tại
+        try {
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+                logger.info("✅ Tạo thư mục uploads: {}", uploadPath.toAbsolutePath());
+            } else {
+                logger.info("📁 Thư mục uploads tồn tại: {}", uploadPath.toAbsolutePath());
+            }
+        } catch (IOException e) {
+            logger.error("❌ Lỗi tạo thư mục uploads", e);
+        }
+    }
     
     /**
      * Lưu file vật lý lên server
@@ -33,18 +51,14 @@ public class FileStorageService {
      */
     public String saveFile(MultipartFile file) throws IOException {
         
-        // Tạo thư mục nếu chưa tồn tại
-        Path uploadPath = Paths.get(uploadDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-            logger.info("Đã tạo thư mục upload: {}", uploadDir);
-        }
-        
         // Lấy original filename và extension
         String originalFileName = file.getOriginalFilename();
         if (originalFileName == null || originalFileName.isEmpty()) {
             throw new IOException("Tên file không hợp lệ");
         }
+        
+        // Validate tên file (kiểm tra ký tự đặc biệt)
+        validateFileName(originalFileName);
         
         // Tách extension
         String fileExtension = getFileExtension(originalFileName);
@@ -57,7 +71,7 @@ public class FileStorageService {
         
         // Lưu file
         file.transferTo(filePath.toFile());
-        logger.info("Tệp đã lưu thành công: {}", uniqueFileName);
+        logger.info("✅ Tệp đã lưu thành công: {} → {}", uniqueFileName, filePath.toAbsolutePath());
         
         return uniqueFileName;
     }
@@ -94,11 +108,46 @@ public class FileStorageService {
      */
     public boolean deleteFile(String fileName) {
         try {
-            Path filePath = Paths.get(uploadDir).resolve(fileName);
-            return Files.deleteIfExists(filePath);
+            Path filePath = uploadPath.resolve(fileName);
+            boolean deleted = Files.deleteIfExists(filePath);
+            if (deleted) {
+                logger.info("✅ Xóa file thành công: {}", fileName);
+            }
+            return deleted;
         } catch (IOException e) {
-            logger.error("Lỗi khi xóa file: {}", fileName, e);
+            logger.error("❌ Lỗi khi xóa file: {}", fileName, e);
             return false;
         }
+    }
+    
+    /**
+     * Lấy đường dẫn tuyệt đối của file
+     * @param fileName Tên file
+     * @return Đường dẫn tuyệt đối
+     */
+    public String getFilePath(String fileName) {
+        return uploadPath.resolve(fileName).toAbsolutePath().toString();
+    }
+    
+    /**
+     * Validate tên file (kiểm tra ký tự đặc biệt)
+     * Những ký tự không được phép: / \ : * ? " < > |
+     * @param fileName Tên file cần kiểm tra
+     * @throws IOException Nếu tên file chứa ký tự không hợp lệ
+     */
+    private void validateFileName(String fileName) throws IOException {
+        // Kiểm tra ký tự đặc biệt không được phép trong tên file (Windows/Unix)
+        if (fileName.matches(".*[/\\\\:*?\"<>|].*")) {
+            throw new IOException(
+                "Tên file chứa ký tự không được phép: / \\ : * ? \" < > |"
+            );
+        }
+        
+        // Kiểm tra độ dài tên file (max 255 characters)
+        if (fileName.length() > 255) {
+            throw new IOException("Tên file quá dài (tối đa 255 ký tự)");
+        }
+        
+        logger.debug("Tên file hợp lệ: {}", fileName);
     }
 }

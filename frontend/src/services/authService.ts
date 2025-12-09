@@ -2,9 +2,8 @@
  * AUTH SERVICE - Login, OTP Verification, Token Management
  */
 
-import axios, { AxiosError } from 'axios';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api';
+import { AxiosError } from 'axios';
+import apiClient from '@/config/axios';
 
 // Types
 export interface LoginRequest {
@@ -37,6 +36,7 @@ export interface AuthError {
   timestamp: string;
 }
 
+<<<<<<< HEAD
 export interface InitiateRegistrationRequest {
   email: string;
   studentId: string;
@@ -85,6 +85,8 @@ authClient.interceptors.request.use((config) => {
   return config;
 });
 
+=======
+>>>>>>> 7dc1357 (feat: Xây dựng API lấy danh sách tài liệu và tích hợp vào giao diện)
 export const authService = {
   /**
    * Generate device fingerprint (SHA-256 hash)
@@ -113,7 +115,7 @@ export const authService = {
     try {
       const deviceId = credentials.deviceId || this.generateDeviceFingerprint();
       
-      const response = await authClient.post<LoginResponse>('/login', {
+      const response = await apiClient.post<LoginResponse>('/auth/login', {
         email: credentials.email,
         password: credentials.password,
         deviceId,
@@ -134,9 +136,11 @@ export const authService = {
       // Thành công (200) - Lưu token
       if (response.data.accessToken) {
         localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
         localStorage.setItem('userId', response.data.userId);
         localStorage.setItem('userEmail', response.data.email);
         localStorage.setItem('userRole', response.data.role);
+        localStorage.setItem('userFullName', response.data.fullName || '');
         localStorage.setItem('deviceId', deviceId);
       }
 
@@ -159,7 +163,7 @@ export const authService = {
    */
   async verifyOtp(request: VerifyOtpRequest) {
     try {
-      const response = await authClient.post<LoginResponse>('/verify-otp', {
+      const response = await apiClient.post<LoginResponse>('/auth/verify-otp', {
         email: request.email,
         otpCode: request.otpCode,
         deviceId: request.deviceId,
@@ -169,9 +173,11 @@ export const authService = {
       // Lưu token
       if (response.data.accessToken) {
         localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
         localStorage.setItem('userId', response.data.userId);
         localStorage.setItem('userEmail', response.data.email);
         localStorage.setItem('userRole', response.data.role);
+        localStorage.setItem('userFullName', response.data.fullName || '');
       }
 
       return {
@@ -192,7 +198,7 @@ export const authService = {
    */
   async refreshToken(refreshToken: string) {
     try {
-      const response = await authClient.post<{ accessToken: string }>('/refresh-token', {
+      const response = await apiClient.post<{ accessToken: string }>('/auth/refresh-token', {
         refreshToken,
       });
 
@@ -215,6 +221,7 @@ export const authService = {
     localStorage.removeItem('userId');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('userFullName');
     localStorage.removeItem('deviceId');
   },
 
@@ -243,6 +250,7 @@ export const authService = {
       userId: localStorage.getItem('userId'),
       email: localStorage.getItem('userEmail'),
       role: localStorage.getItem('userRole'),
+      fullName: localStorage.getItem('userFullName') || undefined,
     };
   },
 
@@ -261,7 +269,7 @@ export const authService = {
     confirmPassword: string;
   }) {
     try {
-      const response = await authClient.post('/register', data);
+      const response = await apiClient.post('/auth/register', data);
       return {
         status: 201,
         data: response.data,
