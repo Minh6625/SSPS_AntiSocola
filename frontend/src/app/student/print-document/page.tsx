@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import StudentLayout from '@/components/StudentLayout';
 import DocumentUpload from '@/components/DocumentUpload';
 import { documentService, DocumentResponse } from '@/services/documentService';
 
 export default function PrintDocumentPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'upload' | 'list'>('upload');
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [allDocuments, setAllDocuments] = useState<DocumentResponse[]>([]);
@@ -321,11 +323,9 @@ export default function PrintDocumentPage() {
                                   </svg>
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    alert('Chức năng "Gửi yêu cầu in" sẽ được phát triển!');
-                                  }}
+                                  onClick={() => router.push(`/student/printers?documentId=${doc.id}`)}
                                   className="text-green-600 hover:text-green-800 font-medium text-sm"
-                                  title="Gửi yêu cầu in"
+                                  title="In tài liệu"
                                 >
                                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M6 9V4h12v5" />
