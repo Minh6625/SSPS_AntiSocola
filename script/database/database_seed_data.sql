@@ -2,50 +2,169 @@
 -- HCMSIU_SSPS - SEED DATA (Sample Data)
 -- Dữ liệu mẫu cho hệ thống in ấn
 -- Database: SQL Server 2019+
--- Version: 2.0
--- Date: December 7, 2025
+-- Version: 3.0 (RBAC with 31 Functions)
+-- Date: December 8, 2025
 -- ================================================================
 
 USE HCMSIU_SSPS;
 GO
 
 -- ================================================================
--- 1. SEED ROLES & PERMISSIONS
+-- 1. SEED ROLES
 -- ================================================================
 
--- Insert default roles
 INSERT INTO Roles (RoleName, Description) VALUES
-('Student', N'Sinh viên'),
-('SPSO', N'Nhân viên vận hành in ấn'),
-('Admin', N'Quản trị hệ thống');
+('Student', N'Sinh viên - có 13 chức năng'),
+('SPSO', N'Nhân viên vận hành - có 10 chức năng'),
+('Admin', N'Quản trị hệ thống - có quyền tất cả');
 GO
 
--- Insert permissions
-INSERT INTO Permissions (PermissionKey, Description) VALUES
-('printer.view', N'Xem thông tin máy in'),
-('printer.manage', N'Thêm/sửa/xóa, bật/tắt máy in'),
-('job.create', N'Tạo lệnh in'),
-('job.view', N'Xem lệnh in và lịch sử'),
-('config.edit', N'Chỉnh sửa cấu hình hệ thống'),
-('report.view', N'Xem báo cáo'),
-('report.generate', N'Tạo báo cáo');
+-- ================================================================
+-- 2. SEED PERMISSIONS (31 chức năng + cross-role)
+-- ================================================================
+-- AUTHENTICATION MODULE (F01-F03, Common)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('AUTH.LOGIN', N'[F01] Đăng nhập', 'AUTH'),
+('AUTH.REGISTER', N'[F02] Đăng ký tài khoản', 'AUTH'),
+('AUTH.FORGOT_PASSWORD', N'[F03] Quên mật khẩu', 'AUTH'),
+('AUTH.LOGOUT', N'Đăng xuất', 'AUTH');
 GO
 
--- Assign permissions to roles
-INSERT INTO RolePermissions (RoleID, PermissionID)
-SELECT r.RoleID, p.PermissionID
-FROM Roles r, Permissions p
-WHERE r.RoleName = 'Student' AND p.PermissionKey IN ('printer.view', 'job.create', 'job.view');
+-- DOCUMENT PRINTING MODULE (F04-F06, Student)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('PRINT.VIEW_PRINTERS', N'[F04] Xem danh sách máy in', 'PRINT_JOB'),
+('PRINT.UPLOAD_DOCUMENT', N'[F05] Tải lên tài liệu', 'PRINT_JOB'),
+('PRINT.SUBMIT_JOB', N'[F06] Gửi lệnh in', 'PRINT_JOB');
+GO
 
-INSERT INTO RolePermissions (RoleID, PermissionID)
-SELECT r.RoleID, p.PermissionID
-FROM Roles r, Permissions p
-WHERE r.RoleName = 'SPSO' AND p.PermissionKey IN ('printer.view', 'printer.manage', 'job.view', 'report.view', 'report.generate');
+-- PAGE BALANCE & TRANSACTION (F07-F10, Student)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('PAGE.VIEW_BALANCE', N'[F07] Xem số dư trang', 'PAGE_BALANCE'),
+('PAGE.BUY_PAGES', N'[F08] Mua trang in', 'PAGE_BALANCE'),
+('PAGE.VIEW_HISTORY', N'[F09] Xem lịch sử giao dịch', 'PAGE_TRANSACTION'),
+('PAGE.VIEW_PRICING', N'[F10] Xem bảng giá', 'PAGE_BALANCE');
+GO
 
+-- PRINT JOB HISTORY (F11-F13, Student)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('JOB.VIEW_MY_JOBS', N'[F11] Xem lịch sử in của tôi', 'PRINT_LOG'),
+('JOB.CANCEL_JOB', N'[F12] Hủy lệnh in', 'PRINT_LOG'),
+('JOB.REPRINT_JOB', N'[F13] In lại', 'PRINT_LOG');
+GO
+
+-- DASHBOARD (F14-F15, Student + SPSO)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('DASHBOARD.VIEW_STUDENT', N'[F14] Dashboard sinh viên', 'DASHBOARD'),
+('DASHBOARD.VIEW_SPSO', N'[F15] Dashboard SPSO', 'DASHBOARD');
+GO
+
+-- PRINTER MANAGEMENT (F16-F18, SPSO)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('PRINTER.VIEW_ALL', N'[F16] Xem danh sách máy in', 'PRINTER'),
+('PRINTER.ADD', N'[F17] Thêm máy in', 'PRINTER'),
+('PRINTER.EDIT', N'[F18] Chỉnh sửa máy in', 'PRINTER'),
+('PRINTER.TOGGLE_STATUS', N'Bật/tắt máy in', 'PRINTER'),
+('PRINTER.DELETE', N'Xóa máy in', 'PRINTER');
+GO
+
+-- PRINTER MAINTENANCE (F19-F20, SPSO)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('MAINTENANCE.VIEW', N'[F19] Xem danh sách bảo trì', 'PRINTER_MAINTENANCE'),
+('MAINTENANCE.CREATE', N'[F20] Tạo công việc bảo trì', 'PRINTER_MAINTENANCE'),
+('MAINTENANCE.EDIT', N'Chỉnh sửa công việc bảo trì', 'PRINTER_MAINTENANCE'),
+('MAINTENANCE.CLOSE', N'Đóng công việc bảo trì', 'PRINTER_MAINTENANCE');
+GO
+
+-- PRINT JOB QUEUE (F21-F23, SPSO)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('QUEUE.VIEW_ALL_JOBS', N'[F21] Xem hàng đợi in', 'PRINT_LOG'),
+('QUEUE.MONITOR_PRINTERS', N'[F22] Giám sát máy in', 'PRINT_LOG'),
+('QUEUE.CANCEL_STUDENT_JOB', N'[F23] Hủy lệnh in (SPSO)', 'PRINT_LOG');
+GO
+
+-- REPORTS (F24-F26, SPSO)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('REPORT.VIEW', N'[F24] Xem báo cáo', 'REPORT'),
+('REPORT.GENERATE', N'[F25] Tạo báo cáo tùy chỉnh', 'REPORT'),
+('REPORT.EXPORT', N'[F26] Xuất báo cáo', 'REPORT');
+GO
+
+-- NOTIFICATIONS (F27-F28, Student + SPSO)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('NOTIFICATION.VIEW', N'[F27] Xem thông báo', 'NOTIFICATION'),
+('NOTIFICATION.MARK_READ', N'[F28] Đánh dấu đã xem', 'NOTIFICATION');
+GO
+
+-- PROFILE & SETTINGS (F29-F31, Student + SPSO)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('PROFILE.VIEW', N'[F29] Xem hồ sơ', 'PROFILE'),
+('PROFILE.EDIT', N'[F30] Chỉnh sửa hồ sơ', 'PROFILE'),
+('PROFILE.CHANGE_PASSWORD', N'[F31] Đổi mật khẩu', 'PROFILE');
+GO
+
+-- SYSTEM ADMIN (F32+, Admin only)
+INSERT INTO Permissions (PermissionKey, Description, Module) VALUES
+('ADMIN.VIEW_ALL_USERS', N'Xem tất cả người dùng', 'ADMIN'),
+('ADMIN.MANAGE_USERS', N'Quản lý người dùng', 'ADMIN'),
+('ADMIN.VIEW_SYSTEM_CONFIG', N'Xem cấu hình hệ thống', 'ADMIN'),
+('ADMIN.EDIT_SYSTEM_CONFIG', N'Chỉnh sửa cấu hình hệ thống', 'ADMIN'),
+('ADMIN.VIEW_AUDIT_LOG', N'Xem audit log', 'ADMIN');
+GO
+
+-- ================================================================
+-- 3. ASSIGN PERMISSIONS TO ROLES
+-- ================================================================
+
+-- STUDENT Role: 13 chức năng (F01-F03, F04-F13, F27-F31 của student)
 INSERT INTO RolePermissions (RoleID, PermissionID)
-SELECT r.RoleID, p.PermissionID
-FROM Roles r, Permissions p
-WHERE r.RoleName = 'Admin';
+SELECT (SELECT RoleID FROM Roles WHERE RoleName = 'Student'), PermissionID 
+FROM Permissions 
+WHERE PermissionKey IN (
+    -- Auth: F01-F03
+    'AUTH.LOGIN', 'AUTH.REGISTER', 'AUTH.FORGOT_PASSWORD', 'AUTH.LOGOUT',
+    -- Print & Document: F04-F06
+    'PRINT.VIEW_PRINTERS', 'PRINT.UPLOAD_DOCUMENT', 'PRINT.SUBMIT_JOB',
+    -- Page Balance: F07-F10
+    'PAGE.VIEW_BALANCE', 'PAGE.BUY_PAGES', 'PAGE.VIEW_HISTORY', 'PAGE.VIEW_PRICING',
+    -- Print Job History: F11-F13
+    'JOB.VIEW_MY_JOBS', 'JOB.CANCEL_JOB', 'JOB.REPRINT_JOB',
+    -- Dashboard: F14
+    'DASHBOARD.VIEW_STUDENT',
+    -- Notifications: F27-F28
+    'NOTIFICATION.VIEW', 'NOTIFICATION.MARK_READ',
+    -- Profile: F29-F31
+    'PROFILE.VIEW', 'PROFILE.EDIT', 'PROFILE.CHANGE_PASSWORD'
+);
+GO
+
+-- SPSO Role: 10 chức năng (F01-F03, F16-F26)
+INSERT INTO RolePermissions (RoleID, PermissionID)
+SELECT (SELECT RoleID FROM Roles WHERE RoleName = 'SPSO'), PermissionID 
+FROM Permissions 
+WHERE PermissionKey IN (
+    -- Auth: F01-F03
+    'AUTH.LOGIN', 'AUTH.FORGOT_PASSWORD', 'AUTH.LOGOUT',
+    -- Dashboard: F15
+    'DASHBOARD.VIEW_SPSO',
+    -- Printer Management: F16-F18
+    'PRINTER.VIEW_ALL', 'PRINTER.ADD', 'PRINTER.EDIT', 'PRINTER.TOGGLE_STATUS', 'PRINTER.DELETE',
+    -- Printer Maintenance: F19-F20
+    'MAINTENANCE.VIEW', 'MAINTENANCE.CREATE', 'MAINTENANCE.EDIT', 'MAINTENANCE.CLOSE',
+    -- Print Job Queue: F21-F23
+    'QUEUE.VIEW_ALL_JOBS', 'QUEUE.MONITOR_PRINTERS', 'QUEUE.CANCEL_STUDENT_JOB',
+    -- Reports: F24-F26
+    'REPORT.VIEW', 'REPORT.GENERATE', 'REPORT.EXPORT',
+    -- Notifications: F27-F28
+    'NOTIFICATION.VIEW', 'NOTIFICATION.MARK_READ',
+    -- Profile: F29-F31
+    'PROFILE.VIEW', 'PROFILE.EDIT', 'PROFILE.CHANGE_PASSWORD'
+);
+GO
+
+-- ADMIN Role: Tất cả permissions
+INSERT INTO RolePermissions (RoleID, PermissionID)
+SELECT (SELECT RoleID FROM Roles WHERE RoleName = 'Admin'), PermissionID 
+FROM Permissions;
 GO
 
 -- ================================================================
@@ -55,7 +174,6 @@ GO
 -- Hash: $2a$10$wyRkxrQryYdEdfpXaqQerOC6.q0GDt7rRVTjTdDX5jlHjNC0IWpde
 -- ================================================================
 
--- Test Accounts với mật khẩu 123456 đã hash bằng BCrypt
 INSERT INTO Users (UserID, Email, PasswordHash, FullName, UserType, Faculty, Department, Status, EmailVerifiedAt)
 VALUES 
 -- Student Test Account
