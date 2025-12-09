@@ -1,9 +1,9 @@
-'use client';
+  'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
-import { OtpModal } from '@/components/OtpModal';
+import OtpVerification from './otp-verification';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,6 +47,7 @@ export default function LoginPage() {
         setOtpEmail(formData.email);
         setOtpCode(result.data?.otpCode);
         setShowOtpModal(true);
+        setError('');
         return;
       }
 
@@ -91,17 +92,24 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4" style={{
       background: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.4) 0%, transparent 50%), radial-gradient(circle at top right, rgba(96, 165, 250, 0.3) 0%, transparent 50%), radial-gradient(circle at bottom left, rgba(147, 197, 253, 0.3) 0%, transparent 50%), radial-gradient(circle at bottom right, rgba(191, 219, 254, 0.2) 0%, transparent 50%), #ffffff'
     }}>
+      {showOtpModal && (
+        <OtpVerification
+          email={otpEmail}
+          otpCode={otpCode}
+          rememberDevice={formData.rememberMe}
+          onSuccess={() => {
+            setShowOtpModal(false);
+            router.push('/student/dashboard');
+          }}
+          onCancel={() => {
+            setShowOtpModal(false);
+            setOtpEmail('');
+            setOtpCode(undefined);
+          }}
+        />
+      )}
+
       <div className="w-full max-w-md">
-              {/* OTP Modal */}
-              <OtpModal
-                isOpen={showOtpModal}
-                email={otpEmail}
-                otpCode={otpCode}
-                onSubmit={handleOtpSubmit}
-                onCancel={() => setShowOtpModal(false)}
-                isLoading={isVerifyingOtp}
-                errorMessage={otpError}
-              />
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-lg p-8">
           {/* Logo & Title */}
@@ -244,7 +252,7 @@ export default function LoginPage() {
           {/* Register Link */}
           <div className="text-center">
             <a
-              href="/register"
+              href="/register/step1"
               className="text-blue-500 hover:text-blue-600 font-medium text-sm hover:underline"
             >
               Tạo tài khoản

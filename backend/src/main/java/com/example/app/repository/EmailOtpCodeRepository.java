@@ -18,10 +18,21 @@ public interface EmailOtpCodeRepository extends JpaRepository<EmailOtpCode, Inte
         LocalDateTime now
     );
     
+    // Dùng cho registration (userId = null, dùng email)
+    Optional<EmailOtpCode> findByEmailAndCodeAndPurposeAndExpiresAtAfter(
+        String email,
+        String code,
+        String purpose,
+        LocalDateTime now
+    );
+    
     java.util.List<EmailOtpCode> findByUserIdAndPurpose(String userId, String purpose);
     
     @Modifying
     void deleteByUserIdAndPurpose(String userId, String purpose);
+    
+    @Modifying
+    void deleteByEmailAndPurpose(String email, String purpose);
     
     @Modifying
     void deleteByExpiresAtBefore(LocalDateTime now);

@@ -21,8 +21,11 @@ public class EmailOtpCode {
     @Column(name = "OtpID")
     private Integer otpId;
     
-    @Column(name = "UserID", nullable = false, length = 20)
+    @Column(name = "UserID", nullable = true, length = 20)
     private String userId;
+    
+    @Column(name = "Email", nullable = true, length = 100)
+    private String email;  // Dùng cho registration (user chưa tồn tại)
     
     @Column(name = "Purpose", nullable = false, length = 30)
     private String purpose;  // PasswordReset, Login2FA, EmailVerification, Register2FA
@@ -52,7 +55,7 @@ public class EmailOtpCode {
     private LocalDateTime createdAt;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "UserID", insertable = false, updatable = false)
+    @JoinColumn(name = "UserID", insertable = false, updatable = false, nullable = true)
     private User user;
     
     @PrePersist

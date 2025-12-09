@@ -50,18 +50,24 @@ public class OtpService {
     
     /**
      * Tạo OTP 6 chữ số và gửi qua email
+     * 
+     * Dùng cho cả login (userId có) và registration (userId null, dùng email)
+     * 
+     * Note: Không dùng @Transactional vì async email sending có thể fail
+     * Nếu dùng @Transactional, exception từ async task sẽ rollback transaction
      */
-    @Transactional
     public String generateAndSendOtp(String userId, String email, String purpose) {
         try {
             // Invalidate OTP cũ (đánh dấu đã dùng) thay vì xóa để giữ audit trail
-            otpRepository.findByUserIdAndPurpose(userId, purpose)
-                .stream()
-                .filter(otp -> otp.getConsumedAt() == null)
-                .forEach(otp -> {
-                    otp.setConsumedAt(LocalDateTime.now());
-                    otpRepository.save(otp);
-                });
+            if (userId != null) {
+                otpRepository.findByUserIdAndPurpose(userId, purpose)
+                    .stream()
+                    .filter(otp -> otp.getConsumedAt() == null)
+                    .forEach(otp -> {
+                        otp.setConsumedAt(LocalDateTime.now());
+                        otpRepository.save(otp);
+                    });
+            }
             otpRepository.flush();
             
             // Tạo OTP 6 chữ số
@@ -69,11 +75,13 @@ public class OtpService {
             
             // Lưu vào DB
             EmailOtpCode otpCode = new EmailOtpCode();
-            otpCode.setUserId(userId);
+            otpCode.setUserId(userId);  // Có thể null cho registration
+            otpCode.setEmail(email);    // Luôn có
             otpCode.setCode(code);
             otpCode.setPurpose(purpose);
             otpCode.setExpiresAt(LocalDateTime.now().plusMinutes(otpExpirationMinutes));
             otpCode.setAttemptCount(0);
+            otpCode.setMaxAttempts(maxAttempts);
             
             otpRepository.save(otpCode);
             
@@ -85,8 +93,15 @@ public class OtpService {
                 log.info("OTP generated for TEST account {}: {} (available in response, not sent via email)", email, code);
             } else {
                 // Tài khoản thật: GỬI email async, KHÔNG trả code trong response
-                emailService.sendOtpEmailAsync(email, code, otpExpirationMinutes);
-                log.info("OTP generated and sent via email to production account: {}", email);
+                try {
+                    emailService.sendOtpEmailAsync(email, code, otpExpirationMinutes);
+                    log.info("OTP generated and sent via email to production account: {}", email);
+                } catch (Exception emailException) {
+                    // Email sending failed, but OTP is already saved in DB
+                    // Log error but don't throw - user can still verify OTP
+                    log.warn("Failed to send OTP email to {}, but OTP is saved in DB: {}", 
+                        email, emailException.getMessage());
+                }
             }
             
             // Trả code chỉ cho test account (production trả null)
@@ -94,7 +109,7 @@ public class OtpService {
             
         } catch (Exception e) {
             log.error("Error in generateAndSendOtp: {}", e.getMessage(), e);
-            return null;
+            throw new RuntimeException("Failed to generate OTP: " + e.getMessage(), e);
         }
     }
 
@@ -131,6 +146,8 @@ public class OtpService {
     
     /**
      * Validate OTP
+     * 
+     * Dùng cho cả login (userId có) và registration (userId null, dùng email)
      */
     @Transactional
     public boolean validateOtp(String userId, String code, String purpose) {
@@ -166,6 +183,42 @@ public class OtpService {
     }
     
     /**
+     * Validate OTP bằng email (dùng cho registration)
+     */
+    @Transactional
+    public boolean validateOtpByEmail(String email, String code, String purpose) {
+        try {
+            var otp = otpRepository
+                .findByEmailAndCodeAndPurposeAndExpiresAtAfter(
+                    email, code, purpose, LocalDateTime.now()
+                )
+                .orElse(null);
+            
+            if (otp == null) {
+                log.warn("OTP validation failed for email: {}", email);
+                return false;
+            }
+            
+            // Check attempt count
+            if (otp.getAttemptCount() >= maxAttempts) {
+                otpRepository.delete(otp);
+                log.warn("OTP max attempts exceeded for email: {}", email);
+                return false;
+            }
+            
+            // Increment attempt
+            otp.setAttemptCount(otp.getAttemptCount() + 1);
+            otpRepository.save(otp);
+            
+            log.info("OTP validated successfully for email: {}", email);
+            return true;
+        } catch (Exception e) {
+            log.error("Error in validateOtpByEmail: {}", e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
      * Delete OTP sau khi dùng xong
      */
     @Transactional
@@ -175,6 +228,19 @@ public class OtpService {
             log.info("OTP deleted for user: {}", userId);
         } catch (Exception e) {
             log.error("Error in deleteOtp: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Delete OTP bằng email (dùng cho registration)
+     */
+    @Transactional
+    public void deleteOtpByEmail(String email, String purpose) {
+        try {
+            otpRepository.deleteByEmailAndPurpose(email, purpose);
+            log.info("OTP deleted for email: {}", email);
+        } catch (Exception e) {
+            log.error("Error in deleteOtpByEmail: {}", e.getMessage(), e);
         }
     }
     

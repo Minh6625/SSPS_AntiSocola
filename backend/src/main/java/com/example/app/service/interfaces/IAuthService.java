@@ -13,5 +13,4 @@ import com.example.app.entity.User;
 public interface IAuthService {
     LoginResponseDTO login(LoginRequestDTO loginRequest);
     LoginResponseDTO verifyOtp(VerifyOtpRequestDTO verifyRequest);
-    User register(RegisterRequestDTO registerRequest); // Trả về Entity
 }
