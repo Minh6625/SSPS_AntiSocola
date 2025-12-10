@@ -36,11 +36,6 @@ public interface IPageBalanceService {
      * @return PurchasePagesResponseDTO
      */
     PurchasePagesResponseDTO purchasePages(String studentId, Integer pages);
-     * Lấy số dư trang của sinh viên
-     * @param studentId ID của sinh viên
-     * @return PageBalanceResponseDTO
-     */
-    PageBalanceResponseDTO getBalanceForStudent(String studentId);
     
     /**
      * Trừ số dư trang (khi in)

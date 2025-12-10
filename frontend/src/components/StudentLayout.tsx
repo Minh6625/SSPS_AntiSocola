@@ -23,6 +23,61 @@ interface MenuItem {
   submenu?: Array<{ name: string; href: string }>;
 }
 
+// Icon components
+const HomeIcon = () => (
+  <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 11 12 4l9 7" />
+    <path d="M5 10v10h14V10" />
+    <path d="M9 21V13h6v8" />
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+    <polyline points="14 3 14 9 20 9" />
+    <path d="M12 17v-6m-3 3h6" />
+  </svg>
+);
+
+const HistoryIcon = () => (
+  <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 12a9 9 0 1 1 3 6.7" />
+    <path d="M3 12h3" />
+    <path d="M12 7v6l3 3" />
+  </svg>
+);
+
+const BalanceIcon = () => (
+  <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="5" width="16" height="14" rx="2" />
+    <path d="M4 10h16" />
+    <path d="M8 15h.01" />
+    <path d="M12 15h4" />
+  </svg>
+);
+
+const BellIcon = () => (
+  <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+);
+
+const HelpIcon = () => (
+  <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 17v.01" />
+    <path d="M12 13a2 2 0 1 0-2-2" />
+  </svg>
+);
+
+const ChevronDownIcon = () => (
+  <svg className="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m6 9 6 6 6-6" />
+  </svg>
+);
+
 export default function StudentLayout({ children }: LayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -47,71 +102,19 @@ export default function StudentLayout({ children }: LayoutProps) {
     router.push('/login');
   };
 
-  // Student sidebar navigation
-  const Icons = {
-    home: (
-      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 11 12 4l9 7" />
-        <path d="M5 10v10h14V10" />
-        <path d="M9 21V13h6v8" />
-      </svg>
-    ),
-    upload: (
-      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-        <polyline points="14 3 14 9 20 9" />
-        <path d="M12 17v-6m-3 3h6" />
-      </svg>
-    ),
-    history: (
-      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 12a9 9 0 1 1 3 6.7" />
-        <path d="M3 12h3" />
-        <path d="M12 7v6l3 3" />
-      </svg>
-    ),
-    balance: (
-      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="5" width="16" height="14" rx="2" />
-        <path d="M4 10h16" />
-        <path d="M8 15h.01" />
-        <path d="M12 15h4" />
-      </svg>
-    ),
-    bell: (
-      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-      </svg>
-    ),
-    help: (
-      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 17v.01" />
-        <path d="M12 13a2 2 0 1 0-2-2" />
-      </svg>
-    ),
-    chevronDown: (
-      <svg className="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m6 9 6 6 6-6" />
-      </svg>
-    ),
-  };
-
   const studentMenuItems: MenuItem[] = [
-    { name: 'Dashboard', icon: Icons.home, href: '/student/dashboard' },
-    { name: 'In tài liệu', icon: Icons.upload, href: '/student/print-document' },
-    { name: 'Lịch sử in', icon: Icons.history, href: '/student/print-history' },
-    { name: 'Số dư trang', icon: Icons.balance, href: '/student/page-balance' },
-    { name: 'Thông báo', icon: Icons.bell, href: '/student/notifications' },
-    { name: 'Hỗ trợ', icon: Icons.help, href: '/student/support' },
+    { name: 'Dashboard', icon: <HomeIcon />, href: '/student/dashboard' },
+    { name: 'In tài liệu', icon: <UploadIcon />, href: '/student/print-document' },
+    { name: 'Lịch sử in', icon: <HistoryIcon />, href: '/student/print-history' },
+    { name: 'Số dư trang', icon: <BalanceIcon />, href: '/student/page-balance' },
+    { name: 'Thông báo', icon: <BellIcon />, href: '/student/notifications' },
+    { name: 'Hỗ trợ', icon: <HelpIcon />, href: '/student/support' },
   ];
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <div className="flex h-screen" style={{ background: '#f8fafc' }}
-    >
+    <div className="flex h-screen" style={{ background: '#f8fafc' }}>
       {/* Sidebar */}
       <aside
         className={`${
@@ -167,16 +170,10 @@ export default function StudentLayout({ children }: LayoutProps) {
         </div>
 
         {/* Navigation */}
-<<<<<<< HEAD
-        <nav className="flex-1 overflow-y-auto py-4 px-2">
-          {studentMenuItems.map((item: any) => (
-            <div key={item.href}>
-=======
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-4">
           <div className="space-y-2 pb-4 border-b border-gray-200">
             {sidebarOpen && <p className="text-xs font-semibold text-gray-500 tracking-wide">TỔNG QUAN</p>}
             {[studentMenuItems[0], studentMenuItems[4]].map((item) => (
->>>>>>> 4d6b6a2 (feat: Triển khai trang cấu hình in + chỉnh sửa giao diện cho các trang trước)
               <Link
                 key={item.href}
                 href={item.href}
@@ -245,7 +242,7 @@ export default function StudentLayout({ children }: LayoutProps) {
                 {userInfo?.fullName || userInfo?.email?.split('@')[0] || 'User'}
               </span>
               <span className={`transition ${dropdownOpen ? 'rotate-180' : ''}`}>
-                {Icons.chevronDown}
+                <ChevronDownIcon />
               </span>
             </button>
 

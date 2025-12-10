@@ -28,13 +28,13 @@ export const printJobService = {
   },
 
   /**
-   * GET /api/users/me/page-balance
+   * GET /api/page-balance
    * Get current page balance
    */
   async getPageBalance(): Promise<PageBalance> {
     try {
-      const response = await apiClient.get('/users/me/page-balance');
-      return response.data.data as PageBalance;
+      const response = await apiClient.get('/page-balance');
+      return response.data as PageBalance;
     } catch (error) {
       const axiosError = error as AxiosError<ErrorResponse>;
       const errorMessage = axiosError.response?.data?.error || 'Lấy số dư trang thất bại';

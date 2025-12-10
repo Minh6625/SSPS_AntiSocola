@@ -8,6 +8,8 @@ import com.example.app.dto.InitiateRegistrationRequestDTO;
 import com.example.app.dto.InitiateRegistrationResponseDTO;
 import com.example.app.dto.VerifyRegistrationOtpRequestDTO;
 import com.example.app.dto.VerifyRegistrationOtpResponseDTO;
+import com.example.app.entity.User;
+import com.example.app.repository.UserRepository;
 import com.example.app.service.interfaces.IAuthService;
 import com.example.app.service.RegistrationService;
 import com.example.app.util.JwtUtil;

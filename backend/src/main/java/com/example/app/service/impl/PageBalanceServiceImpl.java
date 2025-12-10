@@ -7,10 +7,12 @@ import com.example.app.dto.PurchasePagesRequestDTO;
 import com.example.app.dto.PurchasePagesResponseDTO;
 import com.example.app.entity.PageBalance;
 import com.example.app.entity.PageTransaction;
+import com.example.app.entity.User;
 import com.example.app.exception.ResourceNotFoundException;
 import com.example.app.exception.BusinessException;
 import com.example.app.repository.PageBalanceRepository;
 import com.example.app.repository.PageTransactionRepository;
+import com.example.app.repository.UserRepository;
 import com.example.app.service.interfaces.IPageBalanceService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,9 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
     
     @Autowired
     private PageTransactionRepository pageTransactionRepository;
+    
+    @Autowired
+    private UserRepository userRepository;
     
     @Override
     public PageBalanceResponseDTO getPageBalance(String studentId) {
@@ -127,20 +132,6 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
             0,  // balanceAfter - không sử dụng
             transaction.getNotes(),
             transaction.getCreatedAt()
-    private UserRepository userRepository;
-    
-    @Override
-    public PageBalanceResponseDTO getBalanceForStudent(String studentId) {
-        PageBalance balance = pageBalanceRepository.findByStudentId(studentId)
-                .orElseGet(() -> createDefaultBalance(studentId));
-        
-        return new PageBalanceResponseDTO(
-                balance.getA4Balance(),
-                balance.getA3Balance(),
-            balance.getTotalA4Equivalent() != null
-                ? balance.getTotalA4Equivalent()
-                : (balance.getA4Balance() + balance.getA3Balance() * 2),
-                balance.getLastUpdated()
         );
     }
     
@@ -204,6 +195,10 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
             totalPrice,
             pages
         );
+    }
+    
+    @Override
+    @Transactional
     public void deductBalance(String studentId, int a4Pages, int a3Pages) {
         PageBalance balance = pageBalanceRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy số dư trang của sinh viên"));
