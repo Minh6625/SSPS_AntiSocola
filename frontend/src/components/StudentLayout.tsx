@@ -111,7 +111,7 @@ export default function StudentLayout({ children }: LayoutProps) {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-2">
-          {studentMenuItems.map((item) => (
+          {studentMenuItems.map((item: any) => (
             <div key={item.href}>
               <Link
                 href={item.href}
