@@ -2,13 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { pageBalanceService } from '@/services/pageBalanceService';
-import { PageTransaction, PageTransactionResponse, TransactionType } from '@/types/pageBalance';
+import { PageTransaction } from '@/types/pageBalance';
 
-interface TransactionHistoryProps {
-  onClose?: () => void;
-}
-
-const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onClose }) => {
+const TransactionHistory: React.FC = () => {
   const [transactions, setTransactions] = useState<PageTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,21 +59,27 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onClose }) => {
   };
 
   // Get transaction type label
-  const getTypeLabel = (type: TransactionType): string => {
-    const labels: Record<TransactionType, string> = {
-      ALLOCATED: 'Cấp phát',
-      PURCHASED: 'Mua thêm',
-      DEDUCTED: 'Khấu trừ (in)',
+  const getTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      'Allocate': 'Cấp phát',
+      'Purchase': 'Mua thêm',
+      'Use': 'Khấu trừ (in)',
+      'ALLOCATED': 'Cấp phát',
+      'PURCHASED': 'Mua thêm',
+      'DEDUCTED': 'Khấu trừ (in)',
     };
     return labels[type] || type;
   };
 
   // Get transaction type color
-  const getTypeColor = (type: TransactionType): string => {
-    const colors: Record<TransactionType, string> = {
-      ALLOCATED: 'bg-blue-100 text-blue-800',
-      PURCHASED: 'bg-green-100 text-green-800',
-      DEDUCTED: 'bg-orange-100 text-orange-800',
+  const getTypeColor = (type: string): string => {
+    const colors: Record<string, string> = {
+      'Allocate': 'bg-blue-100 text-blue-800',
+      'Purchase': 'bg-green-100 text-green-800',
+      'Use': 'bg-orange-100 text-orange-800',
+      'ALLOCATED': 'bg-blue-100 text-blue-800',
+      'PURCHASED': 'bg-green-100 text-green-800',
+      'DEDUCTED': 'bg-orange-100 text-orange-800',
     };
     return colors[type] || 'bg-gray-100 text-gray-800';
   };
@@ -116,9 +118,9 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onClose }) => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Tất cả</option>
-              <option value="ALLOCATED">Cấp phát</option>
-              <option value="PURCHASED">Mua thêm</option>
-              <option value="DEDUCTED">Khấu trừ (in)</option>
+              <option value="Allocate">Cấp phát</option>
+              <option value="Purchase">Mua thêm</option>
+              <option value="Use">Khấu trừ (in)</option>
             </select>
           </div>
 
@@ -190,9 +192,6 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onClose }) => {
                   <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
                     Số trang
                   </th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
-                    Số dư sau
-                  </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                     Ghi chú
                   </th>
@@ -200,28 +199,25 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onClose }) => {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {transactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={transaction.transactionId} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {formatDate(transaction.transactionDate)}
+                      {formatDate(transaction.createdAt)}
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span
                         className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getTypeColor(
-                          transaction.type
+                          transaction.transactionType
                         )}`}
                       >
-                        {getTypeLabel(transaction.type)}
+                        {getTypeLabel(transaction.transactionType)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-right text-gray-900 font-medium">
-                      {transaction.type === 'DEDUCTED' ? '-' : '+'}
-                      {transaction.amount}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-right text-gray-900 font-medium">
-                      {transaction.balanceAfter}
+                      {transaction.transactionType === 'Use' ? '-' : '+'}
+                      {transaction.a4Pages}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      {transaction.description}
+                      {transaction.notes}
                     </td>
                   </tr>
                 ))}

@@ -98,7 +98,7 @@ export const pageBalanceService = {
    * Mua thêm trang in
    * 
    * Request: { pages: number }
-   * Response: { message, newBalance, totalA4Equivalent }
+   * Response: { message, pagesA4, pagesA3, totalA4Equivalent, totalPrice, pagesPurchased }
    */
   async purchasePages(pages: number): Promise<any> {
     try {

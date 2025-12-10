@@ -2,6 +2,7 @@ package com.example.app.service.interfaces;
 
 import com.example.app.dto.PageBalanceResponseDTO;
 import com.example.app.dto.PageTransactionResponseDTO;
+import com.example.app.dto.PurchasePagesResponseDTO;
 
 /**
  * Service Interface: Quản lý số dư trang in
@@ -27,4 +28,12 @@ public interface IPageBalanceService {
      */
     PageTransactionResponseDTO getTransactionHistory(String studentId, Integer page, Integer size, 
                                                       String type, String startDate, String endDate);
+    
+    /**
+     * Mua thêm trang in
+     * @param studentId - ID sinh viên
+     * @param pages - số trang A4 muốn mua
+     * @return PurchasePagesResponseDTO
+     */
+    PurchasePagesResponseDTO purchasePages(String studentId, Integer pages);
 }

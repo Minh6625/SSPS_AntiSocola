@@ -8,9 +8,10 @@ import java.time.LocalDateTime;
 public class PageTransactionDTO {
     
     private Integer transactionId;
-    private String transactionType;  // ALLOCATED, PURCHASED, DEDUCTED
+    private String transactionType;  // Allocate, Purchase, Use
     private Integer a4Pages;
     private Integer a3Pages;
+    private Integer balanceAfter;  // Số dư A4 sau giao dịch
     private String notes;
     private LocalDateTime createdAt;
     
@@ -18,11 +19,12 @@ public class PageTransactionDTO {
     public PageTransactionDTO() {}
     
     public PageTransactionDTO(Integer transactionId, String transactionType, Integer a4Pages, 
-                             Integer a3Pages, String notes, LocalDateTime createdAt) {
+                             Integer a3Pages, Integer balanceAfter, String notes, LocalDateTime createdAt) {
         this.transactionId = transactionId;
         this.transactionType = transactionType;
         this.a4Pages = a4Pages;
         this.a3Pages = a3Pages;
+        this.balanceAfter = balanceAfter;
         this.notes = notes;
         this.createdAt = createdAt;
     }
@@ -39,6 +41,9 @@ public class PageTransactionDTO {
     
     public Integer getA3Pages() { return a3Pages; }
     public void setA3Pages(Integer a3Pages) { this.a3Pages = a3Pages; }
+    
+    public Integer getBalanceAfter() { return balanceAfter; }
+    public void setBalanceAfter(Integer balanceAfter) { this.balanceAfter = balanceAfter; }
     
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }

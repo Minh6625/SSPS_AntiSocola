@@ -55,6 +55,8 @@ public class PageTransaction {
     @Column(name = "CreatedBy", length = 20)
     private String createdBy;
     
+    // Getter/Setter cho balanceAfter được tự động generate bởi @Data
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "StudentID", insertable = false, updatable = false)
     private User student;

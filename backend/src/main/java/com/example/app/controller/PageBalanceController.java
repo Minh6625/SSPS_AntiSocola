@@ -2,6 +2,8 @@ package com.example.app.controller;
 
 import com.example.app.dto.PageBalanceResponseDTO;
 import com.example.app.dto.PageTransactionResponseDTO;
+import com.example.app.dto.PurchasePagesRequestDTO;
+import com.example.app.dto.PurchasePagesResponseDTO;
 import com.example.app.service.interfaces.IPageBalanceService;
 import com.example.app.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -181,6 +183,97 @@ public class PageBalanceController {
             log.error("Error type: {}", e.getClass().getName());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+    
+    /**
+     * POST /api/page-balance/purchase
+     * Mua thêm trang in
+     * 
+     * Request: { pages: number }
+     * Response: { message, pagesA4, pagesA3, totalA4Equivalent, totalPrice, pagesPurchased }
+     */
+    @PostMapping("/purchase")
+    @Operation(
+        summary = "Mua thêm trang in",
+        description = "Mua thêm trang in và cập nhật số dư"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Mua trang thành công"),
+        @ApiResponse(responseCode = "400", description = "Dữ liệu không hợp lệ"),
+        @ApiResponse(responseCode = "401", description = "Token không hợp lệ hoặc hết hạn"),
+        @ApiResponse(responseCode = "404", description = "Không tìm thấy số dư trang")
+    })
+    public ResponseEntity<?> purchasePages(
+            HttpServletRequest request,
+            @RequestBody PurchasePagesRequestDTO requestDTO
+    ) {
+        log.info("=== Purchase Pages Request Started ===");
+        try {
+            // Lấy token từ header Authorization
+            String token = extractTokenFromRequest(request);
+            
+            if (token == null || token.isEmpty()) {
+                log.warn("No token provided in request");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            // Validate token
+            try {
+                if (jwtUtil.isTokenExpired(token)) {
+                    log.warn("Token expired");
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+                }
+            } catch (Exception e) {
+                log.warn("Invalid token: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            // Lấy StudentID từ token
+            String studentId = jwtUtil.extractUserId(token);
+            log.info("StudentID extracted: {}", studentId);
+            
+            if (studentId == null || studentId.isEmpty()) {
+                log.warn("StudentID not found in token");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            // Validate request
+            if (requestDTO.getPages() == null || requestDTO.getPages() <= 0) {
+                log.warn("Invalid pages: {}", requestDTO.getPages());
+                return ResponseEntity.badRequest().body(new ErrorResponse("Số trang phải lớn hơn 0"));
+            }
+            
+            log.info("Processing purchase for student: {}, pages: {}", studentId, requestDTO.getPages());
+            
+            // Gọi Service
+            PurchasePagesResponseDTO response = pageBalanceService.purchasePages(studentId, requestDTO.getPages());
+            
+            log.info("Purchase completed successfully for student: {}", studentId);
+            log.info("=== Purchase Pages Request Completed ===");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("=== ERROR in Purchase Pages Request ===", e);
+            log.error("Error message: {}", e.getMessage());
+            log.error("Error type: {}", e.getClass().getName());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Mua trang thất bại: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Error Response DTO
+     */
+    public static class ErrorResponse {
+        private String message;
+        
+        public ErrorResponse(String message) {
+            this.message = message;
+        }
+        
+        public String getMessage() { return message; }
+        public void setMessage(String message) { this.message = message; }
     }
     
     /**
