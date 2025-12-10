@@ -1,8 +1,12 @@
 'use client';
 
+import React from 'react';
+import { useRouter } from 'next/navigation';
 import StudentLayout from '@/components/StudentLayout';
 
 export default function StudentDashboard() {
+  const router = useRouter();
+
   return (
     <StudentLayout>
       <div className="space-y-6">
@@ -65,7 +69,10 @@ export default function StudentDashboard() {
             <button className="bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-semibold transition">
               🖨️ In tài liệu
             </button>
-            <button className="bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-semibold transition">
+            <button 
+              onClick={() => router.push('/student/page-balance')}
+              className="bg-purple-600 hover:bg-purple-700 text-white py-3 px-4 rounded-lg font-semibold transition"
+            >
               💳 Mua thêm trang
             </button>
           </div>
@@ -109,6 +116,7 @@ export default function StudentDashboard() {
             </table>
           </div>
         </div>
+
       </div>
     </StudentLayout>
   );

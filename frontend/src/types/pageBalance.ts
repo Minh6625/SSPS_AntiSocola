@@ -1,15 +1,36 @@
 /**
- * TYPE DEFINITIONS - Page Balance
+ * PAGE BALANCE TYPES
  */
 
-export interface PageBalanceResponse {
+export type TransactionType = 'ALLOCATED' | 'PURCHASED' | 'DEDUCTED';
+
+export interface PageTransaction {
+  id: number;
+  userId: number;
+  type: TransactionType;
+  amount: number;
+  balanceAfter: number;
+  relatedJobId?: number;
+  transactionDate: string;
+  description: string;
+}
+
+export interface PageTransactionResponse {
+  content: PageTransaction[];
+  totalElements: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
+export interface PageBalance {
+  id: number;
+  userId: number;
   pagesA4: number;
   pagesA3: number;
-  totalA4Equivalent: number;
   lastUpdated: string;
 }
 
-export interface PageBalanceError {
-  error: string;
-  timestamp: string;
+export interface PageBalanceResponse extends PageBalance {
+  totalA4Equivalent: number;
 }
