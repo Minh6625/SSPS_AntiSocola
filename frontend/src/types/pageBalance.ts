@@ -2,17 +2,16 @@
  * PAGE BALANCE TYPES
  */
 
-export type TransactionType = 'ALLOCATED' | 'PURCHASED' | 'DEDUCTED';
+export type TransactionType = 'Allocate' | 'Purchase' | 'Use' | 'ALLOCATED' | 'PURCHASED' | 'DEDUCTED';
 
 export interface PageTransaction {
-  id: number;
-  userId: number;
-  type: TransactionType;
-  amount: number;
+  transactionId: number;
+  transactionType: string;
+  a4Pages: number;
+  a3Pages: number;
   balanceAfter: number;
-  relatedJobId?: number;
-  transactionDate: string;
-  description: string;
+  notes: string;
+  createdAt: string;
 }
 
 export interface PageTransactionResponse {

@@ -3,9 +3,12 @@ package com.example.app.service.impl;
 import com.example.app.dto.PageBalanceResponseDTO;
 import com.example.app.dto.PageTransactionDTO;
 import com.example.app.dto.PageTransactionResponseDTO;
+import com.example.app.dto.PurchasePagesRequestDTO;
+import com.example.app.dto.PurchasePagesResponseDTO;
 import com.example.app.entity.PageBalance;
 import com.example.app.entity.PageTransaction;
 import com.example.app.exception.ResourceNotFoundException;
+import com.example.app.exception.BusinessException;
 import com.example.app.repository.PageBalanceRepository;
 import com.example.app.repository.PageTransactionRepository;
 import com.example.app.service.interfaces.IPageBalanceService;
@@ -15,7 +18,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -114,16 +119,76 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
      * Convert PageTransaction Entity → PageTransactionDTO
      */
     private PageTransactionDTO convertTransactionToDTO(PageTransaction transaction) {
-        // Tính tổng trang A4 tương đương
-        Integer totalPages = transaction.getA4Pages() + (transaction.getA3Pages() * 2);
-        
         return new PageTransactionDTO(
             transaction.getTransactionId(),
             transaction.getTransactionType(),
-            totalPages,
+            transaction.getA4Pages(),
             transaction.getA3Pages(),
+            0,  // balanceAfter - không sử dụng
             transaction.getNotes(),
             transaction.getCreatedAt()
+        );
+    }
+    
+    @Override
+    @Transactional
+    public PurchasePagesResponseDTO purchasePages(String studentId, Integer pages) {
+        log.info("Processing purchase pages for student: {}, pages: {}", studentId, pages);
+        
+        // Validate input
+        if (pages == null || pages <= 0) {
+            throw new BusinessException("Số trang phải lớn hơn 0");
+        }
+        
+        // Lấy số dư hiện tại
+        PageBalance pageBalance = pageBalanceRepository.findByStudentId(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy số dư trang cho sinh viên: " + studentId));
+        
+        // Tính giá (500 VND/trang A4)
+        Integer pricePerPage = 500;
+        BigDecimal totalPrice = BigDecimal.valueOf(pages * pricePerPage);
+        
+        log.info("Purchase details - Pages: {}, Price per page: {}, Total: {}", pages, pricePerPage, totalPrice);
+        
+        // Mock payment - Giả sử thanh toán thành công
+        boolean paymentSuccess = true;
+        if (!paymentSuccess) {
+            throw new BusinessException("Thanh toán thất bại. Vui lòng thử lại.");
+        }
+        
+        // Cập nhật số dư (thêm trang A4)
+        pageBalance.setA4Balance(pageBalance.getA4Balance() + pages);
+        pageBalance.setLastUpdated(LocalDateTime.now());
+        pageBalanceRepository.save(pageBalance);
+        
+        log.info("Balance updated - New A4 balance: {}", pageBalance.getA4Balance());
+        
+        // Tạo transaction record
+        PageTransaction transaction = new PageTransaction();
+        transaction.setStudentId(studentId);
+        transaction.setTransactionType("Purchase");  // Phải là "Purchase" không phải "PURCHASED"
+        transaction.setA4Pages(pages);
+        transaction.setA3Pages(0);
+        transaction.setAmount(totalPrice);
+        transaction.setPaymentMethod("SIUPay");
+        transaction.setTransactionStatus("Completed");
+        transaction.setNotes("Mua " + pages + " trang A4 với giá " + totalPrice + " VND");
+        transaction.setCreatedBy(studentId);
+        pageTransactionRepository.save(transaction);
+        
+        log.info("Transaction created - ID: {}", transaction.getTransactionId());
+        
+        // Tính A4 tương đương
+        Integer totalA4Equivalent = pageBalance.getA4Balance() + (pageBalance.getA3Balance() * 2);
+        
+        // Trả về response
+        return new PurchasePagesResponseDTO(
+            "Mua trang in thành công! Đã thêm " + pages + " trang A4 vào tài khoản của bạn.",
+            pageBalance.getA4Balance(),
+            pageBalance.getA3Balance(),
+            totalA4Equivalent,
+            totalPrice,
+            pages
         );
     }
 }

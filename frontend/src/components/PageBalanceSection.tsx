@@ -46,12 +46,15 @@ const PageBalanceSection: React.FC = () => {
     try {
       setPurchasing(true);
       setError(null);
-      await pageBalanceService.purchasePages(purchasePages);
+      const response = await pageBalanceService.purchasePages(purchasePages);
 
       // Refresh balance
       await fetchBalance();
       setShowPurchaseModal(false);
       setPurchasePages(10);
+      
+      // Show success message
+      alert(response.message || 'Mua trang in thành công!');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Mua trang thất bại');
     } finally {
