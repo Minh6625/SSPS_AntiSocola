@@ -105,4 +105,11 @@ public interface DocumentRepository extends JpaRepository<Document, Integer> {
         @Param("fileExtension") String fileExtension,
         Pageable pageable
     );
+    
+    /**
+     * Lấy tất cả documents của sinh viên (không phân trang)
+     * @param studentId ID của sinh viên
+     * @return List của Document
+     */
+    List<Document> findByStudentIdAndIsDeletedFalse(String studentId);
 }

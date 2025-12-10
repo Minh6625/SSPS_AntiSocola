@@ -43,6 +43,9 @@ public class AuthController {
     
     @Autowired
     private JwtUtil jwtUtil;
+    
+    @Autowired
+    private UserRepository userRepository;
 
     @Value("${jwt.refresh.expiration:604800000}")
     private Long refreshTokenExpiration;
@@ -149,8 +152,12 @@ public class AuthController {
             String userId = jwtUtil.extractUserId(refreshToken);
             String email = jwtUtil.extractEmail(refreshToken);
             
-            // TODO: Lấy role từ database
-            String newAccessToken = jwtUtil.generateAccessToken(userId, email, "User");
+            // Lấy role từ database
+            User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User không tồn tại"));
+            
+            String role = user.getUserType(); // Lấy role thực từ database (Student/SPSO/Admin)
+            String newAccessToken = jwtUtil.generateAccessToken(userId, email, role);
             
             Map<String, Object> response_body = new HashMap<>();
             response_body.put("accessToken", newAccessToken);

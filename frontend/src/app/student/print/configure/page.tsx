@@ -14,10 +14,12 @@ export default function PrintConfigurePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const documentId = searchParams.get('documentId');
+  const documentIds = searchParams.get('documentIds');
   const printerId = searchParams.get('printerId');
 
   // Data
   const [document, setDocument] = useState<DocumentResponse | null>(null);
+  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [printer, setPrinter] = useState<Printer | null>(null);
   const [pageBalance, setPageBalance] = useState<PageBalance | null>(null);
 
@@ -25,7 +27,11 @@ export default function PrintConfigurePage() {
   const [paperSize, setPaperSize] = useState<'A4' | 'A3'>('A4');
   const [pageRangeType, setPageRangeType] = useState<'all' | 'custom'>('all');
   const [pageRangeInput, setPageRangeInput] = useState('');
+  const [documentPageRanges, setDocumentPageRanges] = useState<{[key: number]: string}>({});
   const [duplex, setDuplex] = useState(true);
+  const [colorMode, setColorMode] = useState<'bw' | 'color' | 'partial'>('bw');
+  const [colorPageRange, setColorPageRange] = useState('');
+  const [documentColorRanges, setDocumentColorRanges] = useState<{[key: number]: string}>({});
   const [copies, setCopies] = useState(1);
 
   // UI State
@@ -37,7 +43,7 @@ export default function PrintConfigurePage() {
   // Load document, printer, and balance
   useEffect(() => {
     const loadData = async () => {
-      if (!documentId || !printerId) {
+      if ((!documentId && !documentIds) || !printerId) {
         setError('Thiếu thông tin tài liệu hoặc máy in');
         setLoading(false);
         return;
@@ -46,9 +52,33 @@ export default function PrintConfigurePage() {
       try {
         setLoading(true);
         
-        // Load document
-        const docResponse = await documentService.getDocumentById(parseInt(documentId));
-        setDocument(docResponse);
+        // Load document(s)
+        if (documentIds) {
+          // Multiple documents
+          const ids = documentIds.split(',').map(id => parseInt(id.trim()));
+          const docPromises = ids.map(id => documentService.getDocumentById(id));
+          const docsResponse = await Promise.all(docPromises);
+          setDocuments(docsResponse);
+          setDocument(null);
+          
+          // Initialize page ranges for each document
+          const initialRanges: {[key: number]: string} = {};
+          const initialColorRanges: {[key: number]: string} = {};
+          docsResponse.forEach(doc => {
+            initialRanges[doc.id] = '';
+            initialColorRanges[doc.id] = '';
+          });
+          setDocumentPageRanges(initialRanges);
+          setDocumentColorRanges(initialColorRanges);
+        } else if (documentId) {
+          // Single document
+          const docResponse = await documentService.getDocumentById(parseInt(documentId));
+          console.log('[DEBUG] Document response:', docResponse);
+          console.log('[DEBUG] fileSizeKB value:', docResponse?.fileSizeKB);
+          console.log('[DEBUG] fileSizeKB type:', typeof docResponse?.fileSizeKB);
+          setDocument(docResponse);
+          setDocuments([]);
+        }
 
         // Load printer by id
         const printerResponse = await printerService.getPrinterById(printerId);
@@ -66,52 +96,85 @@ export default function PrintConfigurePage() {
     };
 
     loadData();
-  }, [documentId, printerId]);
+  }, [documentId, documentIds, printerId]);
 
   // Calculate pages in real-time
   const calculation = useCallback(() => {
-    if (!document) return { totalPages: 0, pagesA4Equivalent: 0, balanceBefore: 0, balanceAfter: 0, hasEnoughBalance: false };
+    const allDocs = documents.length > 0 ? documents : (document ? [document] : []);
+    if (allDocs.length === 0) return { totalPages: 0, pagesA4Equivalent: 0, balanceBefore: 0, balanceAfter: 0, hasEnoughBalance: false };
 
-    const documentPages = document.totalPages || 10; // Assume 10 if not available
-    const pageRange = pageRangeType === 'custom' ? pageRangeInput : undefined;
-    
-    const pagesA4Equivalent = printJobService.calculatePages(
-      documentPages,
-      paperSize,
-      duplex,
-      copies,
-      pageRange
-    );
+    let totalPagesA4Equivalent = 0;
+    let totalDocumentPages = 0;
+
+    allDocs.forEach(doc => {
+      const documentPages = doc.totalPages || 10;
+      totalDocumentPages += documentPages;
+      
+      // Use individual page range for each document if available
+      const pageRange = pageRangeType === 'custom' 
+        ? (documents.length > 1 ? documentPageRanges[doc.id] : pageRangeInput)
+        : undefined;
+      
+      const pagesA4Equivalent = printJobService.calculatePages(
+        documentPages,
+        paperSize,
+        duplex,
+        copies,
+        pageRange || undefined
+      );
+      totalPagesA4Equivalent += pagesA4Equivalent;
+    });
 
     const balanceBefore = pageBalance?.totalA4Equivalent
       ?? (pageBalance ? pageBalance.a4 + pageBalance.a3 * 2 : 0);
-    const balanceAfter = balanceBefore - pagesA4Equivalent;
+    const balanceAfter = balanceBefore - totalPagesA4Equivalent;
     const hasEnoughBalance = balanceAfter >= 0;
 
     return {
-      totalPages: documentPages,
-      pagesA4Equivalent,
+      totalPages: totalDocumentPages,
+      pagesA4Equivalent: totalPagesA4Equivalent,
       balanceBefore,
       balanceAfter,
       hasEnoughBalance,
     };
-  }, [document, paperSize, pageRangeType, pageRangeInput, duplex, copies, pageBalance]);
+  }, [document, documents, paperSize, pageRangeType, pageRangeInput, documentPageRanges, duplex, copies, pageBalance]);
 
   const calc = calculation();
 
   // Validate page range
   useEffect(() => {
-    if (pageRangeType === 'custom' && pageRangeInput) {
-      const validation = printJobService.validatePageRange(pageRangeInput, document?.totalPages || 100);
-      setPageRangeError(validation.valid ? null : validation.error || null);
+    if (pageRangeType === 'custom') {
+      if (documents.length > 1) {
+        // Validate each document's page range
+        let hasError = false;
+        documents.forEach(doc => {
+          const range = documentPageRanges[doc.id];
+          if (range && range.trim()) {
+            const validation = printJobService.validatePageRange(range, doc.totalPages || 100);
+            if (!validation.valid) {
+              hasError = true;
+            }
+          }
+        });
+        setPageRangeError(hasError ? 'Một hoặc nhiều range không hợp lệ' : null);
+      } else if (pageRangeInput) {
+        // Single document
+        const allDocs = document ? [document] : [];
+        const maxPages = allDocs.length > 0 ? (allDocs[0].totalPages || 100) : 100;
+        const validation = printJobService.validatePageRange(pageRangeInput, maxPages);
+        setPageRangeError(validation.valid ? null : validation.error || null);
+      } else {
+        setPageRangeError(null);
+      }
     } else {
       setPageRangeError(null);
     }
-  }, [pageRangeInput, pageRangeType, document]);
+  }, [pageRangeInput, documentPageRanges, pageRangeType, document, documents]);
 
   // Submit print job
   const handleSubmit = async () => {
-    if (!documentId || !printerId || !document) {
+    const allDocs = documents.length > 0 ? documents : (document ? [document] : []);
+    if (allDocs.length === 0 || !printerId) {
       alert('Thiếu thông tin');
       return;
     }
@@ -128,16 +191,41 @@ export default function PrintConfigurePage() {
 
     setSubmitting(true);
     try {
-      await printJobService.submitPrintJob({
-        documentId: parseInt(documentId),
-        printerId: printerId,
-        paperSize,
-        pageRange: pageRangeType === 'custom' ? pageRangeInput : undefined,
-        duplex,
-        copies,
+      // Submit print job for each document
+      const promises = allDocs.map(doc => {
+        // Use individual page range for each document if available
+        const pageRange = pageRangeType === 'custom'
+          ? (documents.length > 1 ? documentPageRanges[doc.id] : pageRangeInput)
+          : undefined;
+        
+        // Determine color mode and color page range
+        let finalColorMode: 'BW' | 'COLOR' = 'BW';
+        let finalColorPageRange: string | undefined = undefined;
+        
+        if (colorMode === 'color') {
+          finalColorMode = 'COLOR';
+        } else if (colorMode === 'partial') {
+          finalColorMode = 'BW'; // Base mode is BW
+          finalColorPageRange = documents.length > 1 
+            ? documentColorRanges[doc.id] 
+            : colorPageRange;
+        }
+        
+        return printJobService.submitPrintJob({
+          documentId: doc.id,
+          printerId: printerId,
+          paperSize,
+          pageRange: pageRange || undefined,
+          duplex,
+          copies,
+          colorMode: finalColorMode,
+          colorPageRange: finalColorPageRange || undefined,
+        });
       });
 
-      alert('Gửi lệnh in thành công!');
+      await Promise.all(promises);
+
+      alert(`Gửi lệnh in thành công cho ${allDocs.length} tài liệu!`);
       router.push('/student/print-history');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Gửi lệnh in thất bại');
@@ -159,7 +247,7 @@ export default function PrintConfigurePage() {
     );
   }
 
-  if (error || !document || !printer) {
+  if (error || (!document && documents.length === 0) || !printer) {
     return (
       <StudentLayout>
         <div className="p-6">
@@ -230,20 +318,42 @@ export default function PrintConfigurePage() {
           <div className="lg:col-span-2 space-y-6">
             {/* Document Info */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <h3 className="font-semibold text-gray-800 mb-3">Tài liệu</h3>
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
+              <h3 className="font-semibold text-gray-800 mb-3">
+                {documents.length > 0 ? `Tài liệu (${documents.length})` : 'Tài liệu'}
+              </h3>
+              {documents.length > 0 ? (
+                <div className="space-y-2">
+                  {documents.map((doc, index) => (
+                    <div key={doc.id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-800 truncate">{doc.originalFileName || doc.fileName}</p>
+                        <p className="text-xs text-gray-500">
+                          {doc.fileExtension} • {doc.fileSizeKB ? (doc.fileSizeKB / 1024).toFixed(2) : '0.00'} MB • {doc.totalPages || 10} trang
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-800">{document.originalFileName}</p>
-                  <p className="text-sm text-gray-500">
-                    {document.fileExtension} • {(document.fileSizeKB / 1024).toFixed(2)} MB
-                  </p>
+              ) : document ? (
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-800">{document.originalFileName}</p>
+                    <p className="text-sm text-gray-500">
+                      {document.fileExtension} • {document.fileSizeKB ? (document.fileSizeKB / 1024).toFixed(2) : '0.00'} MB
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ) : null}
             </div>
 
             {/* Printer Info */}
@@ -307,6 +417,7 @@ export default function PrintConfigurePage() {
             {/* Page Range */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <h3 className="font-semibold text-gray-800 mb-3">Trang cần in</h3>
+              
               <div className="space-y-3">
                 <label className="flex items-center space-x-2 cursor-pointer">
                   <input
@@ -329,22 +440,67 @@ export default function PrintConfigurePage() {
                   <span className="text-gray-700">Tùy chọn</span>
                 </label>
                 {pageRangeType === 'custom' && (
-                  <div className="ml-6">
-                    <input
-                      type="text"
-                      value={pageRangeInput}
-                      onChange={(e) => setPageRangeInput(e.target.value)}
-                      placeholder="VD: 1-5,10,15-20"
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        pageRangeError ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {pageRangeError && (
-                      <p className="text-sm text-red-600 mt-1">{pageRangeError}</p>
+                  <div className="ml-6 space-y-3">
+                    {documents.length > 1 ? (
+                      // Multiple documents - show input for each
+                      <div className="space-y-3">
+                        <p className="text-sm text-blue-600 font-medium">
+                          Nhập trang cần in cho từng file:
+                        </p>
+                        {documents.map((doc, index) => {
+                          const range = documentPageRanges[doc.id] || '';
+                          const validation = range && range.trim() 
+                            ? printJobService.validatePageRange(range, doc.totalPages || 100)
+                            : { valid: true };
+                          
+                          return (
+                            <div key={doc.id} className="border-l-2 border-blue-300 pl-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {index + 1}. {doc.originalFileName || doc.fileName}
+                                <span className="text-gray-500 ml-2">({doc.totalPages || 10} trang)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={range}
+                                onChange={(e) => setDocumentPageRanges({
+                                  ...documentPageRanges,
+                                  [doc.id]: e.target.value
+                                })}
+                                placeholder={`VD: 1-${doc.totalPages || 10}`}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                  !validation.valid ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              />
+                              {!validation.valid && (
+                                <p className="text-xs text-red-600 mt-1">{validation.error}</p>
+                              )}
+                              {!range && (
+                                <p className="text-xs text-gray-500 mt-1">Để trống = in tất cả trang</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      // Single document - single input
+                      <div>
+                        <input
+                          type="text"
+                          value={pageRangeInput}
+                          onChange={(e) => setPageRangeInput(e.target.value)}
+                          placeholder="VD: 1-5,10,15-20"
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            pageRangeError ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                        />
+                        {pageRangeError && (
+                          <p className="text-sm text-red-600 mt-1">{pageRangeError}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          Nhập các trang cách nhau bởi dấu phẩy. VD: 1-5,10,15-20
+                        </p>
+                      </div>
                     )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      Nhập các trang cách nhau bởi dấu phẩy. VD: 1-5,10,15-20
-                    </p>
                   </div>
                 )}
               </div>
@@ -368,6 +524,123 @@ export default function PrintConfigurePage() {
                   <div className="w-full h-full bg-gray-300 rounded-full peer-checked:bg-blue-600 peer-disabled:opacity-50 transition"></div>
                   <div className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full peer-checked:translate-x-6 transition"></div>
                 </label>
+              </div>
+            </div>
+
+            {/* Color Printing */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <h3 className="font-semibold text-gray-800 mb-3">Màu sắc</h3>
+              <div className="space-y-3">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="colorMode"
+                    checked={colorMode === 'bw'}
+                    onChange={() => setColorMode('bw')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-gray-700">
+                    <span className="font-medium">Đen trắng</span>
+                    <span className="text-sm text-gray-500 ml-2">(Tất cả trang)</span>
+                  </span>
+                </label>
+                
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="colorMode"
+                    checked={colorMode === 'color'}
+                    onChange={() => setColorMode('color')}
+                    disabled={!printer.colorPrinting}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className={printer.colorPrinting ? 'text-gray-700' : 'text-gray-400'}>
+                    <span className="font-medium">Màu</span>
+                    <span className="text-sm text-gray-500 ml-2">(Tất cả trang)</span>
+                    {!printer.colorPrinting && <span className="text-xs text-red-500 ml-2">(Không hỗ trợ)</span>}
+                  </span>
+                </label>
+                
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="colorMode"
+                    checked={colorMode === 'partial'}
+                    onChange={() => setColorMode('partial')}
+                    disabled={!printer.colorPrinting}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className={printer.colorPrinting ? 'text-gray-700' : 'text-gray-400'}>
+                    <span className="font-medium">Màu cho một số trang</span>
+                    {!printer.colorPrinting && <span className="text-xs text-red-500 ml-2">(Không hỗ trợ)</span>}
+                  </span>
+                </label>
+                
+                {colorMode === 'partial' && (
+                  <div className="ml-6 space-y-3">
+                    {documents.length > 1 ? (
+                      // Multiple documents
+                      <div className="space-y-3">
+                        <p className="text-sm text-blue-600 font-medium">
+                          Nhập trang cần in màu cho từng file:
+                        </p>
+                        {documents.map((doc, index) => {
+                          const range = documentColorRanges[doc.id] || '';
+                          const validation = range && range.trim() 
+                            ? printJobService.validatePageRange(range, doc.totalPages || 100)
+                            : { valid: true };
+                          
+                          return (
+                            <div key={doc.id} className="border-l-2 border-blue-300 pl-3">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {index + 1}. {doc.originalFileName || doc.fileName}
+                                <span className="text-gray-500 ml-2">({doc.totalPages || 10} trang)</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={range}
+                                onChange={(e) => setDocumentColorRanges({
+                                  ...documentColorRanges,
+                                  [doc.id]: e.target.value
+                                })}
+                                placeholder={`VD: 1,3-5 (để trống = không in màu)`}
+                                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                  !validation.valid ? 'border-red-500' : 'border-gray-300'
+                                }`}
+                              />
+                              {!validation.valid && (
+                                <p className="text-xs text-red-600 mt-1">{validation.error}</p>
+                              )}
+                              {!range && (
+                                <p className="text-xs text-gray-500 mt-1">Để trống = tất cả trang đen trắng</p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      // Single document
+                      <div>
+                        <input
+                          type="text"
+                          value={colorPageRange}
+                          onChange={(e) => setColorPageRange(e.target.value)}
+                          placeholder="VD: 1,3-5,10"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Nhập các trang cần in màu. Các trang khác sẽ in đen trắng.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {(colorMode === 'color' || colorMode === 'partial') && printer.colorPrinting && (
+                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                    ⚠️ In màu tiêu tốn nhiều mực hơn
+                  </div>
+                )}
               </div>
             </div>
 

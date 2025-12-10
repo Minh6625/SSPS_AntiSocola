@@ -10,6 +10,7 @@ export default function PrinterSelectionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const documentId = searchParams.get('documentId');
+  const documentIds = searchParams.get('documentIds');
 
   const [printers, setPrinters] = useState<Printer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +29,17 @@ export default function PrinterSelectionPage() {
   const [building, setBuilding] = useState<string>('');
   const [keyword, setKeyword] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState(true);
+
+  // Auto-sync filters when UI controls change
+  useEffect(() => {
+    setCurrentPage(0);
+    setFilters({
+      campus: campus || undefined,
+      building: building || undefined,
+      status: showAvailableOnly ? 'Active' : undefined,
+      keyword: keyword || undefined,
+    });
+  }, [campus, building, showAvailableOnly, keyword]);
 
   // Fetch printers
   const fetchPrinters = useCallback(async () => {
@@ -48,39 +60,24 @@ export default function PrinterSelectionPage() {
 
   useEffect(() => {
     fetchPrinters();
-  }, [filters, currentPage]);
-
-  // Apply filters
-  const handleApplyFilters = () => {
-    setFilters({
-      campus: campus || undefined,
-      building: building || undefined,
-      status: showAvailableOnly ? 'Active' : undefined,
-      keyword: keyword || undefined,
-    });
-    setCurrentPage(0);
-  };
-
-  // Reset filters
-  const handleResetFilters = () => {
-    setCampus('');
-    setBuilding('');
-    setKeyword('');
-    setShowAvailableOnly(true);
-    setFilters({ status: 'Active' });
-    setCurrentPage(0);
-  };
+  }, [fetchPrinters]);
 
   // Select printer
   const handleSelectPrinter = (printerId: string) => {
-    if (!documentId) {
+    if (!documentId && !documentIds) {
       alert('Vui lòng chọn tài liệu trước');
       router.push('/student/print-document');
       return;
     }
     
     // Navigate to print configuration with selected printer
-    router.push(`/student/print/configure?documentId=${documentId}&printerId=${printerId}`);
+    if (documentIds) {
+      // Multiple documents
+      router.push(`/student/print/configure?documentIds=${documentIds}&printerId=${printerId}`);
+    } else {
+      // Single document
+      router.push(`/student/print/configure?documentId=${documentId}&printerId=${printerId}`);
+    }
   };
 
   // Status badge color
@@ -171,21 +168,6 @@ export default function PrinterSelectionPage() {
             </div>
           </div>
 
-          {/* Filter buttons */}
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={handleApplyFilters}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              Áp dụng
-            </button>
-            <button
-              onClick={handleResetFilters}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-            >
-              Đặt lại
-            </button>
-          </div>
         </div>
 
         {/* Error state */}
@@ -276,7 +258,7 @@ export default function PrinterSelectionPage() {
                           : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       }`}
                     >
-                      {printer.status === 'Active' ? 'Chọn máy in này' : 'Không khả dụng'}
+                      {printer.status === 'Active' ? 'Chọn' : 'Không khả dụng'}
                     </button>
                   </div>
                 ))}

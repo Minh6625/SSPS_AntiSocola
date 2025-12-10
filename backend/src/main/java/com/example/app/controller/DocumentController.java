@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -157,10 +159,41 @@ public class DocumentController {
             byte[] fileBytes = documentService.downloadDocument(documentId, studentId);
             DocumentResponseDTO documentDTO = documentService.getDocumentById(documentId);
             
+            // Xác định Content-Type dựa vào file extension
+            String contentType = "application/octet-stream";
+            String extension = documentDTO.getFileExtension().toLowerCase();
+            switch (extension) {
+                case "pdf":
+                    contentType = "application/pdf";
+                    break;
+                case "docx":
+                    contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                    break;
+                case "xlsx":
+                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    break;
+                case "pptx":
+                    contentType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+                    break;
+                case "doc":
+                    contentType = "application/msword";
+                    break;
+                case "xls":
+                    contentType = "application/vnd.ms-excel";
+                    break;
+                case "ppt":
+                    contentType = "application/vnd.ms-powerpoint";
+                    break;
+            }
+            
+            // Encode filename để hỗ trợ UTF-8 và tên file đúng
+            String encodedFilename = URLEncoder.encode(documentDTO.getOriginalFileName(), StandardCharsets.UTF_8)
+                .replaceAll("\\+", "%20");
+            
             return ResponseEntity.ok()
                 .header("Content-Disposition", 
-                    "attachment; filename=\"" + documentDTO.getOriginalFileName() + "\"")
-                .header("Content-Type", "application/octet-stream")
+                    "attachment; filename*=UTF-8''" + encodedFilename)
+                .header("Content-Type", contentType)
                 .body(fileBytes);
             
         } catch (Exception e) {
@@ -169,6 +202,32 @@ public class DocumentController {
             response.put("success", false);
             response.put("message", "Lỗi khi download file");
             return ResponseEntity.status(500).body(response);
+        }
+    }
+    
+    @PostMapping("/recount-pages")
+    @Operation(summary = "Recount pages for all documents (Admin/Debug)")
+    public ResponseEntity<Map<String, Object>> recountAllPages(Authentication authentication) {
+        
+        checkStudentRole(authentication);
+        String studentId = authentication.getName();
+        
+        logger.info("Request recount pages for all documents: studentId={}", studentId);
+        
+        try {
+            int updatedCount = documentService.recountPagesForAllDocuments(studentId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Đã cập nhật lại số trang cho " + updatedCount + " tài liệu");
+            response.put("data", Map.of("updatedCount", updatedCount));
+            
+            logger.info("✅ Recount pages success: {} documents updated", updatedCount);
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("❌ Recount pages error: {}", e.getMessage(), e);
+            throw new ApplicationException("Lỗi: " + e.getMessage(), 500);
         }
     }
 }

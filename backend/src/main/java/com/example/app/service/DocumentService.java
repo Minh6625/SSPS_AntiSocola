@@ -18,6 +18,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -155,17 +161,19 @@ public class DocumentService {
         document.setFilePath(uploadDir + "/" + storedFileName);
         document.setFileExtension(fileExtension.toLowerCase());
         document.setFileSizeKB(new BigDecimal(fileStorageService.getFileSizeKB(file)));
-        document.setTotalPages(detectPageCount(fileExtension)); // TODO: Implement PDF page count detection
+        document.setTotalPages(detectPageCount(uploadDir + "/" + storedFileName, fileExtension));
         document.setUploadDate(LocalDateTime.now());
         document.setIsDeleted(false);
         
         // STEP 9: Lưu vào DB
         Document savedDocument = documentRepository.save(document);
-        logger.info("Document lưu thành công: documentId={}, studentId={}", 
-                    savedDocument.getDocumentId(), studentId);
+        logger.info("Document lưu thành công: documentId={}, studentId={}, fileSizeKB={}", 
+                    savedDocument.getDocumentId(), studentId, savedDocument.getFileSizeKB());
         
         // STEP 10: Trả về DTO
-        return modelMapper.map(savedDocument, DocumentResponseDTO.class);
+        DocumentResponseDTO responseDTO = modelMapper.map(savedDocument, DocumentResponseDTO.class);
+        logger.info("DocumentResponseDTO mapped: fileSizeKB={}", responseDTO.getFileSizeKB());
+        return responseDTO;
     }
     
     /**
@@ -312,7 +320,12 @@ public class DocumentService {
         Document document = documentRepository.findByDocumentIdAndIsDeletedFalse(documentId)
             .orElseThrow(() -> new ApplicationException("Tài liệu không tồn tại hoặc đã bị xóa", 404));
         
-        return modelMapper.map(document, DocumentResponseDTO.class);
+        logger.info("Document from DB: id={}, fileSizeKB={}", document.getDocumentId(), document.getFileSizeKB());
+        
+        DocumentResponseDTO responseDTO = modelMapper.map(document, DocumentResponseDTO.class);
+        logger.info("DocumentResponseDTO mapped: id={}, fileSizeKB={}", responseDTO.getDocumentId(), responseDTO.getFileSizeKB());
+        
+        return responseDTO;
     }
     
     /**
@@ -374,17 +387,135 @@ public class DocumentService {
     
     /**
      * Detect số trang của file
-     * TODO: Sử dụng Apache PDFBox hoặc library tương tự để detect PDF pages
-     * Hiện tại default về 1 trang
+     * Hỗ trợ: PDF, DOCX, PPTX, XLSX
      * 
+     * @param filePath Đường dẫn đầy đủ đến file
      * @param fileExtension Loại file
-     * @return Số trang (mặc định 1)
+     * @return Số trang thực sự
      */
-    private int detectPageCount(String fileExtension) {
-        // TODO: Implement PDF page detection logic
-        // Có thể dùng Apache PDFBox library:
-        // - Thêm dependency: org.apache.pdfbox:pdfbox
-        // - Sử dụng PDDocument để đếm pages
-        return DEFAULT_PAGES;
+    private int detectPageCount(String filePath, String fileExtension) {
+        File file = new File(filePath);
+        
+        if (!file.exists()) {
+            logger.warn("File không tồn tại để detect pages: {}", filePath);
+            return DEFAULT_PAGES;
+        }
+        
+        try {
+            switch (fileExtension.toLowerCase()) {
+                case "pdf":
+                    return detectPdfPages(file);
+                    
+                case "docx":
+                    return detectDocxPages(file);
+                    
+                case "pptx":
+                    return detectPptxPages(file);
+                    
+                case "xlsx":
+                    return detectXlsxPages(file);
+                    
+                default:
+                    logger.warn("Không hỗ trợ detect pages cho extension: {}", fileExtension);
+                    return DEFAULT_PAGES;
+            }
+        } catch (Exception e) {
+            logger.error("Lỗi khi detect page count: {}", filePath, e);
+            return DEFAULT_PAGES;
+        }
+    }
+    
+    /**
+     * Detect số trang của PDF file
+     */
+    private int detectPdfPages(File file) throws IOException {
+        try (PDDocument document = PDDocument.load(file)) {
+            int pageCount = document.getNumberOfPages();
+            logger.info("PDF pages detected: {} pages in {}", pageCount, file.getName());
+            return pageCount;
+        }
+    }
+    
+    /**
+     * Detect số trang của DOCX file
+     * Note: DOCX không có concept "page" rõ ràng, ước tính dựa trên số đoạn văn
+     */
+    private int detectDocxPages(File file) throws IOException {
+        try (FileInputStream fis = new FileInputStream(file);
+             XWPFDocument document = new XWPFDocument(fis)) {
+            
+            // Ước tính: ~30 paragraphs = 1 page (A4, font size 12)
+            int paragraphs = document.getParagraphs().size();
+            int estimatedPages = Math.max(1, (paragraphs + 29) / 30);
+            
+            logger.info("DOCX pages estimated: {} pages (~{} paragraphs) in {}", 
+                       estimatedPages, paragraphs, file.getName());
+            return estimatedPages;
+        }
+    }
+    
+    /**
+     * Detect số trang của PPTX file (số slides)
+     */
+    private int detectPptxPages(File file) throws IOException {
+        try (FileInputStream fis = new FileInputStream(file);
+             XMLSlideShow ppt = new XMLSlideShow(fis)) {
+            
+            int slideCount = ppt.getSlides().size();
+            logger.info("PPTX slides detected: {} slides in {}", slideCount, file.getName());
+            return slideCount;
+        }
+    }
+    
+    /**
+     * Detect số trang của XLSX file (số sheets)
+     */
+    private int detectXlsxPages(File file) throws IOException {
+        try (FileInputStream fis = new FileInputStream(file);
+             XSSFWorkbook workbook = new XSSFWorkbook(fis)) {
+            
+            int sheetCount = workbook.getNumberOfSheets();
+            logger.info("XLSX sheets detected: {} sheets in {}", sheetCount, file.getName());
+            return sheetCount;
+        }
+    }
+    
+    /**
+     * Recount pages for all documents of a student
+     * Useful for updating old documents after implementing page detection
+     * 
+     * @param studentId ID sinh viên
+     * @return Số lượng documents đã được update
+     */
+    @Transactional
+    public int recountPagesForAllDocuments(String studentId) {
+        logger.info("Starting recount pages for studentId: {}", studentId);
+        
+        // Get all non-deleted documents of student
+        var documents = documentRepository.findByStudentIdAndIsDeletedFalse(studentId);
+        
+        int updatedCount = 0;
+        for (Document doc : documents) {
+            try {
+                // Recount pages
+                int newPageCount = detectPageCount(doc.getFilePath(), doc.getFileExtension());
+                
+                if (doc.getTotalPages() != newPageCount) {
+                    doc.setTotalPages(newPageCount);
+                    documentRepository.save(doc);
+                    updatedCount++;
+                    logger.info("Updated pages for documentId={}: {} -> {} pages", 
+                               doc.getDocumentId(), doc.getTotalPages(), newPageCount);
+                }
+                
+            } catch (Exception e) {
+                logger.error("Failed to recount pages for documentId={}: {}", 
+                            doc.getDocumentId(), e.getMessage());
+                // Continue với documents khác
+            }
+        }
+        
+        logger.info("Recount completed: {} documents updated", updatedCount);
+        return updatedCount;
     }
 }

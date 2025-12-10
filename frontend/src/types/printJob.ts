@@ -10,6 +10,7 @@ export interface PrintJobRequest {
   duplex: boolean; // 2-sided printing
   copies: number; // 1-10
   colorMode?: 'BW' | 'COLOR'; // Optional
+  colorPageRange?: string; // Pages to print in color when colorMode is 'BW'
 }
 
 export interface PrintJobResponse {

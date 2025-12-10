@@ -26,6 +26,15 @@ const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue = [];
 };
 
+// Helper function to get cookie value
+const getCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+};
+
 // Create axios instance
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -49,7 +58,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response Interceptor - Auto refresh token on 401
+// Response Interceptor - Auto refresh token on 401 or 403
 apiClient.interceptors.response.use(
   (response) => {
     return response;
@@ -57,9 +66,17 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    // Nếu lỗi 401 và chưa retry
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log('[AXIOS] 401 Error detected, attempting token refresh...');
+    // Bỏ qua refresh token cho endpoint refresh-token và login
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/refresh-token') || 
+                          originalRequest.url?.includes('/auth/login') ||
+                          originalRequest.url?.includes('/auth/verify-otp') ||
+                          originalRequest.url?.includes('/auth/register');
+
+    // Nếu lỗi 401 HOẶC 403 và chưa retry và không phải auth endpoint
+    const isUnauthorized = error.response?.status === 401 || error.response?.status === 403;
+    
+    if (isUnauthorized && !originalRequest._retry && !isAuthEndpoint) {
+      console.log(`[AXIOS] ${error.response?.status} Error detected, attempting token refresh...`);
       if (isRefreshing) {
         console.log('[AXIOS] Already refreshing, queueing request...');
         // Đang refresh, đợi trong queue
@@ -81,18 +98,21 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Gọi API refresh token
-        const refreshToken = localStorage.getItem('refreshToken');
-        console.log('[AXIOS] Refresh token from storage:', refreshToken ? 'EXISTS' : 'MISSING');
+        // Lấy refresh token từ cookie (backend đã set) hoặc localStorage (fallback)
+        const refreshToken = getCookie('refreshToken') || localStorage.getItem('refreshToken');
+        console.log('[AXIOS] Refresh token from cookie/storage:', refreshToken ? 'EXISTS' : 'MISSING');
         
         if (!refreshToken) {
           throw new Error('No refresh token');
         }
 
         console.log('[AXIOS] Calling refresh API...');
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
-          refreshToken,
-        });
+        // Gọi API refresh với withCredentials để gửi cookie
+        const response = await axios.post(
+          `${API_BASE_URL}/auth/refresh-token`, 
+          { refreshToken },
+          { withCredentials: true }
+        );
 
         const newAccessToken = response.data.accessToken;
         console.log('[AXIOS] Token refresh successful!');

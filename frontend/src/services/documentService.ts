@@ -41,6 +41,7 @@ type BackendDocumentDTO = {
   fileSizeKB: number;
   uploadDate: string;
   isDeleted: boolean;
+  totalPages?: number;
 };
 
 export interface DocumentError {
@@ -178,6 +179,7 @@ export const documentService = {
           fileSizeKB: Number(item.fileSizeKB || 0),
           uploadDate: item.uploadDate,
           isDeleted: item.isDeleted,
+          totalPages: item.totalPages,
         })),
         totalElements: data.totalElements,
         totalPages: data.totalPages,
@@ -198,7 +200,24 @@ export const documentService = {
   async getDocumentById(documentId: number): Promise<DocumentResponse> {
     try {
       const response = await apiClient.get(`/documents/${documentId}`);
-      return response.data;
+      console.log('[DEBUG documentService] Full response:', response);
+      console.log('[DEBUG documentService] response.data:', response.data);
+      console.log('[DEBUG documentService] response.data.data:', response.data.data);
+      
+      // Backend trả về: { success: true, message: "...", data: DocumentResponseDTO }
+      const data = response.data.data;
+      
+      // Map backend DTO to frontend interface
+      return {
+        id: data.documentId,
+        fileName: data.originalFileName,
+        originalFileName: data.originalFileName,
+        fileExtension: data.fileExtension,
+        fileSizeKB: data.fileSizeKB,
+        uploadDate: data.uploadDate,
+        isDeleted: data.isDeleted,
+        totalPages: data.totalPages,
+      };
     } catch (error) {
       const axiosError = error as AxiosError<DocumentError>;
       const errorMessage = axiosError.response?.data?.error || 'Lấy thông tin thất bại';
@@ -224,9 +243,17 @@ export const documentService = {
       // Lấy tên file từ Content-Disposition header
       const contentDisposition = response.headers['content-disposition'];
       let fileName = 'download';
+      
       if (contentDisposition) {
-        const matches = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (matches) fileName = matches[1];
+        // Hỗ trợ cả filename* (UTF-8) và filename (ASCII)
+        const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+        const filenameMatch = contentDisposition.match(/filename="?([^";\n]+)"?/i);
+        
+        if (filenameStarMatch) {
+          fileName = decodeURIComponent(filenameStarMatch[1]);
+        } else if (filenameMatch) {
+          fileName = filenameMatch[1];
+        }
       }
 
       link.setAttribute('download', fileName);
