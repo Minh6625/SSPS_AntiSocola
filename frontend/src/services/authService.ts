@@ -3,6 +3,7 @@
  */
 
 import axios, { AxiosError } from 'axios';
+import apiClient from '@/config/axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api';
 
@@ -77,7 +78,7 @@ const authClient = axios.create({
 });
 
 // Add Authorization header từ localStorage
-authClient.interceptors.request.use((config) => {
+authClient.interceptors.request.use((config: any) => {
   const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -113,7 +114,7 @@ export const authService = {
     try {
       const deviceId = credentials.deviceId || this.generateDeviceFingerprint();
       
-      const response = await authClient.post<LoginResponse>('/login', {
+      const response = await apiClient.post<LoginResponse>('/auth/login', {
         email: credentials.email,
         password: credentials.password,
         deviceId,
@@ -134,9 +135,11 @@ export const authService = {
       // Thành công (200) - Lưu token
       if (response.data.accessToken) {
         localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
         localStorage.setItem('userId', response.data.userId);
         localStorage.setItem('userEmail', response.data.email);
         localStorage.setItem('userRole', response.data.role);
+        localStorage.setItem('userFullName', response.data.fullName || '');
         localStorage.setItem('deviceId', deviceId);
       }
 
@@ -159,7 +162,7 @@ export const authService = {
    */
   async verifyOtp(request: VerifyOtpRequest) {
     try {
-      const response = await authClient.post<LoginResponse>('/verify-otp', {
+      const response = await apiClient.post<LoginResponse>('/auth/verify-otp', {
         email: request.email,
         otpCode: request.otpCode,
         deviceId: request.deviceId,
@@ -169,9 +172,11 @@ export const authService = {
       // Lưu token
       if (response.data.accessToken) {
         localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
         localStorage.setItem('userId', response.data.userId);
         localStorage.setItem('userEmail', response.data.email);
         localStorage.setItem('userRole', response.data.role);
+        localStorage.setItem('userFullName', response.data.fullName || '');
       }
 
       return {
@@ -192,7 +197,7 @@ export const authService = {
    */
   async refreshToken(refreshToken: string) {
     try {
-      const response = await authClient.post<{ accessToken: string }>('/refresh-token', {
+      const response = await apiClient.post<{ accessToken: string }>('/auth/refresh-token', {
         refreshToken,
       });
 
@@ -201,7 +206,7 @@ export const authService = {
       }
 
       return response.data;
-    } catch (error) {
+    } catch {
       this.logout();
       throw new Error('Phiên làm việc hết hạn. Vui lòng đăng nhập lại.');
     }
@@ -212,9 +217,11 @@ export const authService = {
    */
   logout() {
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userRole');
+    localStorage.removeItem('userFullName');
     localStorage.removeItem('deviceId');
   },
 
@@ -243,6 +250,7 @@ export const authService = {
       userId: localStorage.getItem('userId'),
       email: localStorage.getItem('userEmail'),
       role: localStorage.getItem('userRole'),
+      fullName: localStorage.getItem('userFullName') || undefined,
     };
   },
 
@@ -261,13 +269,13 @@ export const authService = {
     confirmPassword: string;
   }) {
     try {
-      const response = await authClient.post('/register', data);
+      const response = await apiClient.post('/auth/register', data);
       return {
         status: 201,
         data: response.data,
       };
     } catch (error) {
-      const axiosError = error as AxiosError<any>;
+      const axiosError = error as AxiosError<AuthError>;
       
       // Xử lý error từ backend
       if (axiosError.response?.data?.message) {
@@ -307,7 +315,7 @@ export const authService = {
         data: response.data,
       };
     } catch (error) {
-      const axiosError = error as AxiosError<any>;
+      const axiosError = error as AxiosError<AuthError>;
       
       if (axiosError.response?.data?.message) {
         throw new Error(axiosError.response.data.message);
@@ -339,7 +347,7 @@ export const authService = {
         data: response.data,
       };
     } catch (error) {
-      const axiosError = error as AxiosError<any>;
+      const axiosError = error as AxiosError<AuthError>;
       
       if (axiosError.response?.data?.message) {
         throw new Error(axiosError.response.data.message);

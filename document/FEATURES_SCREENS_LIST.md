@@ -8,15 +8,15 @@
 
 **Tổng giao diện:** 15 màn hình
 
-**Tổng chức năng:** 29 chức năng
+**Tổng chức năng:** 31 chức năng (bổ sung Notifications & SSO)
 
 **Ưu tiên:** P0 (Critical) → P1 (High) → P2 (Medium) → P3 (Low)
 
 **PHÂN LOẠI THEO VAI TRÒ:**
 
-- **STUDENT:** 6 màn hình | 12 chức năng
+- **STUDENT:** 6 màn hình | 13 chức năng
 - **SPSO:** 6 màn hình | 10 chức năng
-- **COMMON:** 3 màn hình | 7 chức năng
+- **COMMON:** 3 màn hình | 8 chức năng
 
 ---
 
@@ -50,7 +50,7 @@
 
 - Input: email, password
 - Validate: email format, password không để trống
-- Call API: POST /api/auth/login
+- Call API: POST /api/auth/login (hoặc redirect SSO: HCMSIU_SSO, nhận back code/token)
 - On success:
   - Lưu token
   - Redirect theo role:
@@ -61,7 +61,7 @@
 
 **BACKEND API:**
 
-- **POST /api/auth/login (P0)**
+- **POST /api/auth/login (P0)** (hoặc SSO callback)
   - Input: { email, password }
   - Output: { token, user: { userId, email, fullName, userType } }
 
@@ -672,6 +672,27 @@
 
 ---
 
+### Notifications
+
+**[F27] Xem danh sách thông báo (P3)**
+
+- Call API: GET /api/notifications
+- Hiển thị danh sách, paginate
+- Lọc: chưa đọc/đã đọc
+
+**[F28] Đánh dấu thông báo đã đọc (P3)**
+
+- Call API: PATCH /api/notifications/:id/read
+- Hỗ trợ đánh dấu tất cả: POST /api/notifications/mark-all-read
+
+**BACKEND API:**
+
+- **GET /api/notifications (P3)**
+- **PATCH /api/notifications/:id/read (P3)**
+- **POST /api/notifications/mark-all-read (P3)**
+
+---
+
 ### MÀN 15: USER PROFILE PAGE
 
 **Role:** Common (Student & SPSO)  
@@ -697,15 +718,15 @@
 
 **CHỨC NĂNG:**
 
-**[F27] Xem thông tin cá nhân (P3)**
+**[F29] Xem thông tin cá nhân (P3)**
 
 - Call API: GET /api/users/me
 
-**[F28] Cập nhật thông tin cá nhân (P3)**
+**[F30] Cập nhật thông tin cá nhân (P3)**
 
 - Call API: PUT /api/users/me
 
-**[F29] Đổi mật khẩu (P3)**
+**[F31] Đổi mật khẩu (P3)**
 
 - Call API: POST /api/auth/change-password
 
@@ -723,20 +744,20 @@
 
 | Priority    | Số màn hình | Số chức năng | Tỷ lệ              |
 | ----------- | ----------- | ------------ | ------------------ |
-| P0 Critical | 9           | 15           | 52% - MUST HAVE    |
-| P1 High     | 4           | 8            | 28% - SHOULD HAVE  |
+| P0 Critical | 9           | 15           | 48% - MUST HAVE    |
+| P1 High     | 4           | 8            | 26% - SHOULD HAVE  |
 | P2 Medium   | 1           | 3            | 10% - NICE TO HAVE |
-| P3 Low      | 1           | 3            | 10% - CAN SKIP     |
-| **TOTAL**   | **15**      | **29**       | **100%**           |
+| P3 Low      | 1           | 5            | 16% - CAN SKIP     |
+| **TOTAL**   | **15**      | **31**       | **100%**           |
 
 ### THỐNG KÊ THEO ROLE
 
 | Role      | Số màn hình | Số chức năng |
 | --------- | ----------- | ------------ |
-| Student   | 6           | 12           |
+| Student   | 6           | 13           |
 | SPSO      | 6           | 10           |
-| Common    | 3           | 7            |
-| **TOTAL** | **15**      | **29**       |
+| Common    | 3           | 8            |
+| **TOTAL** | **15**      | **31**       |
 
 ### THỐNG KÊ THEO NHÓM CHỨC NĂNG
 
@@ -750,7 +771,7 @@
 | 6. Lịch sử in (SPSO)          | P0       | 1        | 2         | Core flow  |
 | 7. Báo cáo (SPSO)             | P1       | 2        | 2         | Important  |
 | 8. Cấu hình (SPSO)            | P2       | 1        | 1         | Config 1x  |
-| 9. Profile & Notifications    | P3       | 1        | 3         | Nice-have  |
+| 9. Profile & Notifications    | P3       | 1        | 5         | Nice-have  |
 
 ---
 
@@ -808,7 +829,7 @@
 
 ---
 
-## DANH SÁCH API CẦN THIẾT (28 APIs)
+## DANH SÁCH API CẦN THIẾT (31 APIs)
 
 ### P0 - CRITICAL APIs (Must-have for Sprint 1) - 17 APIs
 
@@ -881,6 +902,12 @@
 **AUTH (1):**
 
 28. POST /api/auth/forgot-password - Forgot password
+
+**NOTIFICATIONS (3):**
+
+29. GET /api/notifications - List notifications
+30. PATCH /api/notifications/:id/read - Mark single as read
+31. POST /api/notifications/mark-all-read - Mark all as read
 
 ---
 

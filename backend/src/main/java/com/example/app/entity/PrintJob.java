@@ -39,6 +39,9 @@ public class PrintJob {
     @Column(name = "ColorMode", length = 20)
     private String colorMode = "BlackWhite";  // Color, Grayscale, BlackWhite
     
+    @Column(name = "ColorPageRange", length = 255)
+    private String colorPageRange;  // Pages to print in color (e.g., "1-3,5,10-15")
+    
     @Column(name = "IsSingleSided")
     private Boolean isSingleSided = false;
     

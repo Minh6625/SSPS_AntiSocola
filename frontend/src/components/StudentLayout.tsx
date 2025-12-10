@@ -9,11 +9,24 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+type UserInfo = {
+  userId?: string | null;
+  email?: string | null;
+  role?: string | null;
+  fullName?: string | null;
+};
+
+interface MenuItem {
+  name: string;
+  icon: React.ReactElement;
+  href: string;
+  submenu?: Array<{ name: string; href: string }>;
+}
+
 export default function StudentLayout({ children }: LayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userInfo, setUserInfo] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -25,7 +38,6 @@ export default function StudentLayout({ children }: LayoutProps) {
       return;
     }
 
-    setIsAuthenticated(true);
     const user = authService.getUserInfo();
     setUserInfo(user);
   }, [router]);
@@ -36,174 +48,205 @@ export default function StudentLayout({ children }: LayoutProps) {
   };
 
   // Student sidebar navigation
-  const studentMenuItems = [
-    {
-      name: 'Dashboard',
-      icon: '📊',
-      href: '/student/dashboard',
-      badge: null,
-    },
-    {
-      name: 'In tài liệu',
-      icon: '📄',
-      href: '/student/print',
-      badge: null,
-      submenu: [
-        { name: 'Tải tài liệu', href: '/student/documents/upload' },
-        { name: 'Chọn máy in', href: '/student/printers' },
-        { name: 'Cấu hình in', href: '/student/print/configure' },
-      ],
-    },
-    {
-      name: 'Lịch sử in',
-      icon: '📋',
-      href: '/student/print-history',
-      badge: null,
-    },
-    {
-      name: 'Số dư trang',
-      icon: '📄',
-      href: '/student/page-balance',
-      badge: '50',
-    },
-    {
-      name: 'Thông báo',
-      icon: '🔔',
-      href: '/student/notifications',
-      badge: '3',
-    },
-    {
-      name: 'Hỗ trợ',
-      icon: '❓',
-      href: '/student/support',
-      badge: null,
-    },
+  const Icons = {
+    home: (
+      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 11 12 4l9 7" />
+        <path d="M5 10v10h14V10" />
+        <path d="M9 21V13h6v8" />
+      </svg>
+    ),
+    upload: (
+      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+        <polyline points="14 3 14 9 20 9" />
+        <path d="M12 17v-6m-3 3h6" />
+      </svg>
+    ),
+    history: (
+      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 12a9 9 0 1 1 3 6.7" />
+        <path d="M3 12h3" />
+        <path d="M12 7v6l3 3" />
+      </svg>
+    ),
+    balance: (
+      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="5" width="16" height="14" rx="2" />
+        <path d="M4 10h16" />
+        <path d="M8 15h.01" />
+        <path d="M12 15h4" />
+      </svg>
+    ),
+    bell: (
+      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+    ),
+    help: (
+      <svg className="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 17v.01" />
+        <path d="M12 13a2 2 0 1 0-2-2" />
+      </svg>
+    ),
+    chevronDown: (
+      <svg className="w-4 h-4 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    ),
+  };
+
+  const studentMenuItems: MenuItem[] = [
+    { name: 'Dashboard', icon: Icons.home, href: '/student/dashboard' },
+    { name: 'In tài liệu', icon: Icons.upload, href: '/student/print-document' },
+    { name: 'Lịch sử in', icon: Icons.history, href: '/student/print-history' },
+    { name: 'Số dư trang', icon: Icons.balance, href: '/student/page-balance' },
+    { name: 'Thông báo', icon: Icons.bell, href: '/student/notifications' },
+    { name: 'Hỗ trợ', icon: Icons.help, href: '/student/support' },
   ];
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen" style={{ background: '#f8fafc' }}
+    >
       {/* Sidebar */}
       <aside
         className={`${
-          sidebarOpen ? 'w-64' : 'w-20'
-        } bg-white shadow-lg transition-all duration-300 flex flex-col`}
+          sidebarOpen ? 'w-60' : 'w-20'
+        } text-gray-700 transition-all duration-300 flex flex-col border-r border-gray-200 bg-white`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
-          {sidebarOpen && (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold">
-                S
+        <div className="h-16 px-3 flex items-center">
+          <div className="w-full py-3 border-b border-gray-200">
+            {sidebarOpen ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-md">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                  </div>
+                  <span className="font-bold text-gray-900 text-sm">SPSS Portal</span>
+                </div>
+                
+                {/* Toggle Button */}
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-gray-100 text-gray-600 transition flex-shrink-0"
+                  title="Thu gọn"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
               </div>
-              <span className="font-bold text-gray-800 text-sm">SSPS</span>
-            </div>
-          )}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition"
-            title={sidebarOpen ? 'Thu gọn' : 'Mở rộng'}
-          >
-            {sidebarOpen ? '◀' : '▶'}
-          </button>
+            ) : (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-10 h-10 bg-blue-600 rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-md">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                </div>
+                
+                {/* Toggle Button */}
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-gray-100 text-gray-600 transition"
+                  title="Mở rộng"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Navigation */}
+<<<<<<< HEAD
         <nav className="flex-1 overflow-y-auto py-4 px-2">
           {studentMenuItems.map((item: any) => (
             <div key={item.href}>
+=======
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-4">
+          <div className="space-y-2 pb-4 border-b border-gray-200">
+            {sidebarOpen && <p className="text-xs font-semibold text-gray-500 tracking-wide">TỔNG QUAN</p>}
+            {[studentMenuItems[0], studentMenuItems[4]].map((item) => (
+>>>>>>> 4d6b6a2 (feat: Triển khai trang cấu hình in + chỉnh sửa giao diện cho các trang trước)
               <Link
+                key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg transition mb-2 ${
+                className={`flex items-center gap-3 px-2 py-2 rounded-lg transition ${
                   isActive(item.href)
-                    ? 'bg-blue-100 text-blue-600 font-semibold'
-                    : 'text-gray-700 hover:bg-gray-100'
+                    ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-300 shadow-sm'
+                    : 'text-gray-700 hover:bg-gray-100 hover:shadow-sm'
                 }`}
               >
-                <span className="text-xl">{item.icon}</span>
-                {sidebarOpen && (
-                  <div className="flex-1 flex items-center justify-between">
-                    <span className="text-sm">{item.name}</span>
-                    {item.badge && (
-                      <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        {item.badge}
-                      </span>
-                    )}
-                  </div>
-                )}
+                <span className={`text-base leading-none ${isActive(item.href) ? 'text-blue-600' : 'text-gray-600'}`}>
+                  {item.icon}
+                </span>
+                {sidebarOpen && <span className="text-sm">{item.name}</span>}
               </Link>
+            ))}
+          </div>
 
-              {/* Submenu */}
-              {sidebarOpen && item.submenu && isActive(item.href) && (
-                <div className="ml-8 space-y-1">
-                  {item.submenu.map((subitem) => (
-                    <Link
-                      key={subitem.href}
-                      href={subitem.href}
-                      className={`block px-4 py-2 text-sm rounded-lg transition ${
-                        isActive(subitem.href)
-                          ? 'text-blue-600 bg-blue-50 font-semibold'
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      {subitem.name}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+          <div className="space-y-2">
+            {sidebarOpen && <p className="text-xs font-semibold text-gray-500 tracking-wide">CÔNG VIỆC IN ẤN</p>}
+            {[studentMenuItems[1], studentMenuItems[2], studentMenuItems[3]].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-2 py-2 rounded-lg transition ${
+                  isActive(item.href)
+                    ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-300 shadow-sm'
+                    : 'text-gray-700 hover:bg-gray-100 hover:shadow-sm'
+                }`}
+              >
+                <span className={`text-base leading-none ${isActive(item.href) ? 'text-blue-600' : 'text-gray-600'}`}>
+                  {item.icon}
+                </span>
+                {sidebarOpen && <span className="text-sm">{item.name}</span>}
+              </Link>
+            ))}
+          </div>
         </nav>
 
         {/* Sidebar Footer */}
-        {sidebarOpen && (
-          <div className="p-4 border-t border-gray-200 text-xs text-gray-600">
-            <div className="text-center">
-              <p>Hệ thống in HCMIU</p>
-              <p className="text-gray-500">v1.0</p>
-            </div>
-          </div>
-        )}
+         {sidebarOpen && (
+           <div className="px-3 py-4">
+             <div className="pt-4 border-t border-gray-200 text-xs text-gray-600 text-center space-y-1">
+               <p className="font-medium text-gray-800">Hệ thống in HCMIU</p>
+               <p className="text-gray-600">Phiên bản 1.0</p>
+             </div>
+           </div>
+         )}
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold text-gray-800">
-              {userInfo?.email || 'Student'}
-            </h1>
-          </div>
-
+        <header
+          className="h-16 border-b border-gray-200 flex items-center justify-end px-6 bg-white"
+        >
           {/* User Menu */}
           <div className="relative">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition"
+              className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded-lg transition text-gray-700"
             >
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                {userInfo?.email?.charAt(0).toUpperCase() || 'U'}
+              <div className="w-9 h-9 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-sm">
+                {userInfo?.fullName?.charAt(0).toUpperCase() || userInfo?.email?.charAt(0).toUpperCase() || 'U'}
               </div>
-              <span className="text-sm text-gray-700 hidden md:block">
-                {userInfo?.email?.split('@')[0] || 'User'}
+              <span className="text-sm text-gray-700 block">
+                {userInfo?.fullName || userInfo?.email?.split('@')[0] || 'User'}
               </span>
-              <svg
-                className={`w-4 h-4 text-gray-600 transition ${
-                  dropdownOpen ? 'transform rotate-180' : ''
-                }`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 14l-7 7m0 0l-7-7m7 7V3"
-                />
-              </svg>
+              <span className={`transition ${dropdownOpen ? 'rotate-180' : ''}`}>
+                {Icons.chevronDown}
+              </span>
             </button>
 
             {/* Dropdown Menu */}
@@ -238,6 +281,7 @@ export default function StudentLayout({ children }: LayoutProps) {
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
+
     </div>
   );
 }

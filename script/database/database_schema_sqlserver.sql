@@ -118,6 +118,9 @@ GO
 -- ================================================================
 -- PHÂN QUYỀN (RBAC) - Roles & Permissions
 -- ================================================================
+-- ================================================================
+-- RBAC: Roles, Permissions, UserRoles, RolePermissions
+-- ================================================================
 CREATE TABLE Roles (
     RoleID INT IDENTITY(1,1) PRIMARY KEY,
     RoleName NVARCHAR(50) NOT NULL UNIQUE,
@@ -128,7 +131,9 @@ GO
 CREATE TABLE Permissions (
     PermissionID INT IDENTITY(1,1) PRIMARY KEY,
     PermissionKey NVARCHAR(100) NOT NULL UNIQUE,
-    Description NVARCHAR(200)
+    Description NVARCHAR(200),
+    Module NVARCHAR(50), -- Ví dụ: 'AUTH', 'PRINT_JOB', 'PRINTER', 'REPORT', etc.
+    INDEX IX_Permissions_Key (PermissionKey)
 );
 GO
 
@@ -390,6 +395,23 @@ GO
 CREATE UNIQUE INDEX UX_EmailOtp_Active ON EmailOtpCodes(UserID, Purpose) WHERE ConsumedAt IS NULL AND UserID IS NOT NULL;
 CREATE INDEX IX_EmailOtp_UserPurpose ON EmailOtpCodes(UserID, Purpose, ExpiresAt);
 CREATE INDEX IX_EmailOtp_EmailPurpose ON EmailOtpCodes(Email, Purpose, ExpiresAt);
+GO
+
+-- Forgot password reset tokens (phục vụ F03)
+CREATE TABLE PasswordResetTokens (
+    TokenID NVARCHAR(100) PRIMARY KEY,                  -- UUID
+    UserID NVARCHAR(20) NOT NULL,
+    Token NVARCHAR(200) NOT NULL,                       -- giá trị token gửi qua email
+    ExpiresAt DATETIME2 NOT NULL,
+    ConsumedAt DATETIME2 NULL,
+    RequestedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
+    RequestedByIp NVARCHAR(45),
+
+    FOREIGN KEY (UserID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+GO
+
+CREATE INDEX IX_PwdReset_UserExpiry ON PasswordResetTokens(UserID, ExpiresAt);
 GO
 
 CREATE TABLE TrustedDevices (

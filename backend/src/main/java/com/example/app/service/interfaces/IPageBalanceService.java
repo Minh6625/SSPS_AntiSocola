@@ -36,4 +36,34 @@ public interface IPageBalanceService {
      * @return PurchasePagesResponseDTO
      */
     PurchasePagesResponseDTO purchasePages(String studentId, Integer pages);
+     * Lấy số dư trang của sinh viên
+     * @param studentId ID của sinh viên
+     * @return PageBalanceResponseDTO
+     */
+    PageBalanceResponseDTO getBalanceForStudent(String studentId);
+    
+    /**
+     * Trừ số dư trang (khi in)
+     * @param studentId ID sinh viên
+     * @param a4Pages Số trang A4 cần trừ
+     * @param a3Pages Số trang A3 cần trừ
+     */
+    void deductBalance(String studentId, int a4Pages, int a3Pages);
+    
+    /**
+     * Cộng thêm số dư trang (khi mua)
+     * @param studentId ID sinh viên
+     * @param a4Pages Số trang A4 cần cộng
+     * @param a3Pages Số trang A3 cần cộng
+     */
+    void addBalance(String studentId, int a4Pages, int a3Pages);
+    
+    /**
+     * Kiểm tra có đủ số dư không
+     * @param studentId ID sinh viên
+     * @param a4Pages Số trang A4 cần kiểm tra
+     * @param a3Pages Số trang A3 cần kiểm tra
+     * @return true nếu đủ số dư
+     */
+    boolean hasSufficientBalance(String studentId, int a4Pages, int a3Pages);
 }

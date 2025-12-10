@@ -127,6 +127,20 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
             0,  // balanceAfter - không sử dụng
             transaction.getNotes(),
             transaction.getCreatedAt()
+    private UserRepository userRepository;
+    
+    @Override
+    public PageBalanceResponseDTO getBalanceForStudent(String studentId) {
+        PageBalance balance = pageBalanceRepository.findByStudentId(studentId)
+                .orElseGet(() -> createDefaultBalance(studentId));
+        
+        return new PageBalanceResponseDTO(
+                balance.getA4Balance(),
+                balance.getA3Balance(),
+            balance.getTotalA4Equivalent() != null
+                ? balance.getTotalA4Equivalent()
+                : (balance.getA4Balance() + balance.getA3Balance() * 2),
+                balance.getLastUpdated()
         );
     }
     
@@ -190,5 +204,61 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
             totalPrice,
             pages
         );
+    public void deductBalance(String studentId, int a4Pages, int a3Pages) {
+        PageBalance balance = pageBalanceRepository.findByStudentId(studentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy số dư trang của sinh viên"));
+        
+        if (balance.getA4Balance() < a4Pages) {
+            throw new RuntimeException("Không đủ số dư trang A4");
+        }
+        
+        if (balance.getA3Balance() < a3Pages) {
+            throw new RuntimeException("Không đủ số dư trang A3");
+        }
+        
+        balance.setA4Balance(balance.getA4Balance() - a4Pages);
+        balance.setA3Balance(balance.getA3Balance() - a3Pages);
+        pageBalanceRepository.save(balance);
+    }
+    
+    @Override
+    @Transactional
+    public void addBalance(String studentId, int a4Pages, int a3Pages) {
+        PageBalance balance = pageBalanceRepository.findByStudentId(studentId)
+                .orElseGet(() -> createDefaultBalance(studentId));
+        
+        balance.setA4Balance(balance.getA4Balance() + a4Pages);
+        balance.setA3Balance(balance.getA3Balance() + a3Pages);
+        pageBalanceRepository.save(balance);
+    }
+    
+    @Override
+    public boolean hasSufficientBalance(String studentId, int a4Pages, int a3Pages) {
+        PageBalance balance = pageBalanceRepository.findByStudentId(studentId)
+                .orElse(null);
+        
+        if (balance == null) {
+            return false;
+        }
+        
+        return balance.getA4Balance() >= a4Pages && balance.getA3Balance() >= a3Pages;
+    }
+    
+    /**
+     * Tạo số dư mặc định cho sinh viên mới
+     * Mặc định: 100 trang A4, 50 trang A3
+     */
+    private PageBalance createDefaultBalance(String studentId) {
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sinh viên"));
+        
+        PageBalance balance = new PageBalance();
+        balance.setStudentId(studentId);
+        balance.setStudent(student);
+        balance.setA4Balance(100); // Số dư mặc định
+        balance.setA3Balance(50);  // Số dư mặc định
+        balance.setLastUpdated(LocalDateTime.now());
+        
+        return pageBalanceRepository.save(balance);
     }
 }
