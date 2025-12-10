@@ -323,7 +323,7 @@ export default function PrintConfigurePage() {
               </h3>
               {documents.length > 0 ? (
                 <div className="space-y-2">
-                  {documents.map((doc, index) => (
+                  {documents.map((doc) => (
                     <div key={doc.id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
                       <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">

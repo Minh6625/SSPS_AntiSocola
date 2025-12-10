@@ -91,18 +91,6 @@ export default function PrintDocumentPage() {
     }
   };
 
-  const handleDelete = async (documentId: number) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa tài liệu này?')) return;
-
-    try {
-      await documentService.deleteDocument(documentId);
-      alert('Xóa tài liệu thành công');
-      loadDocuments(currentPage);
-    } catch (error) {
-      alert(`Lỗi xóa tài liệu: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
-    }
-  };
-
   const handleTabChange = (tab: 'upload' | 'list') => {
     setActiveTab(tab);
     if (tab === 'list' && documents.length === 0) {
