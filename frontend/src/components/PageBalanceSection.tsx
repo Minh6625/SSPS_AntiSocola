@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { pageBalanceService } from '@/services/pageBalanceService';
+import { pagePricingService } from '@/services/pagePricingService';
 import { PageBalanceResponse } from '@/types/pageBalance';
+import { PagePricing } from '@/types/pagePricing';
 import TransactionHistory from '@/app/student/page-balance/transaction-history';
 
 const PageBalanceSection: React.FC = () => {
@@ -12,10 +14,13 @@ const PageBalanceSection: React.FC = () => {
   const [purchasePages, setPurchasePages] = useState<number>(10);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
+  const [pricingData, setPricingData] = useState<PagePricing[]>([]);
+  const [pricePerPage, setPricePerPage] = useState<number>(500); // Default
 
-  // Fetch balance on mount
+  // Fetch balance and pricing on mount
   useEffect(() => {
     fetchBalance();
+    fetchPricing();
   }, []);
 
   const fetchBalance = async () => {
@@ -34,6 +39,21 @@ const PageBalanceSection: React.FC = () => {
       setBalance(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPricing = async () => {
+    try {
+      const pricings = await pagePricingService.getAllPricing();
+      setPricingData(pricings);
+      
+      // Set default price (A4)
+      const a4Price = pricings.find(p => p.paperSize === 'A4');
+      if (a4Price) {
+        setPricePerPage(a4Price.pricePerPage);
+      }
+    } catch (err) {
+      console.error('Failed to fetch pricing:', err);
     }
   };
 
@@ -62,7 +82,6 @@ const PageBalanceSection: React.FC = () => {
     }
   };
 
-  const pricePerPage = 500; // VND
   const totalPrice = purchasePages * pricePerPage;
 
   if (loading) {
@@ -177,7 +196,9 @@ const PageBalanceSection: React.FC = () => {
                 <div className="text-2xl font-bold text-blue-600">
                   {totalPrice.toLocaleString('vi-VN')} VND
                 </div>
-                <p className="text-xs text-gray-600 mt-1">500 VND/trang</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {pricePerPage.toLocaleString('vi-VN')} VND/trang
+                </p>
               </div>
               <button
                 onClick={() => setShowPurchaseModal(true)}
@@ -207,7 +228,9 @@ const PageBalanceSection: React.FC = () => {
               </div>
               <div className="flex justify-between mb-2">
                 <span className="text-gray-700">Giá/trang:</span>
-                <span className="font-semibold text-gray-900">500 VND</span>
+                <span className="font-semibold text-gray-900">
+                  {pricePerPage.toLocaleString('vi-VN')} VND
+                </span>
               </div>
               <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
                 <span className="text-gray-900 font-semibold">Tổng cộng:</span>

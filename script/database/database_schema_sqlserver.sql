@@ -96,6 +96,7 @@ CREATE TABLE Printers (
     Campus NVARCHAR(50) NOT NULL,                       -- Dĩ An, Linh Trung
     Building NVARCHAR(50) NOT NULL,                     -- H6, A...
     RoomNumber NVARCHAR(20) NOT NULL,                   -- 101, 202...
+    IPAddress NVARCHAR(50),                             -- IP máy in (VD: 192.168.1.100 hoặc printer.local)
     
     -- Cấu hình máy
     PaperSizes NVARCHAR(50) DEFAULT 'A4,A3',           -- Khổ giấy hỗ trợ
@@ -250,6 +251,7 @@ GO
 -- ================================================================
 CREATE TABLE PrintJobs (
     JobID INT IDENTITY(1,1) PRIMARY KEY,
+    ColorPageRange NVARCHAR(255) NULL, -- Trang in màu ("1-3,5,10-15"), NULL: theo ColorMode
     StudentID NVARCHAR(20) NOT NULL,
     DocumentID INT NOT NULL,
     PrinterID NVARCHAR(20) NOT NULL,
@@ -272,6 +274,7 @@ CREATE TABLE PrintJobs (
     StartedAt DATETIME2,
     CompletedAt DATETIME2,
     ErrorMessage NVARCHAR(500),
+    Notes NVARCHAR(500),                                -- Ghi chú (VD: số lần retry)
     
     CONSTRAINT CK_PrintJobs_Totals CHECK (
         TotalPagesToPrint >= 0 AND TotalSheetsUsed >= 0 AND A4EquivalentPages >= 0

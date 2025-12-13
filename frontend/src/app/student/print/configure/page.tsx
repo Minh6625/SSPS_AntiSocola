@@ -199,13 +199,13 @@ export default function PrintConfigurePage() {
           : undefined;
         
         // Determine color mode and color page range
-        let finalColorMode: 'BW' | 'COLOR' = 'BW';
+        let finalColorMode: 'BlackWhite' | 'Color' = 'BlackWhite';
         let finalColorPageRange: string | undefined = undefined;
         
         if (colorMode === 'color') {
-          finalColorMode = 'COLOR';
+          finalColorMode = 'Color';
         } else if (colorMode === 'partial') {
-          finalColorMode = 'BW'; // Base mode is BW
+          finalColorMode = 'BlackWhite'; // Base mode is BlackWhite
           finalColorPageRange = documents.length > 1 
             ? documentColorRanges[doc.id] 
             : colorPageRange;

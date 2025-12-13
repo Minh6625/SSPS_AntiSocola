@@ -9,8 +9,8 @@ export interface PrintJobRequest {
   pageRange?: string; // "1-5,10,15-20" or null for all pages
   duplex: boolean; // 2-sided printing
   copies: number; // 1-10
-  colorMode?: 'BW' | 'COLOR'; // Optional
-  colorPageRange?: string; // Pages to print in color when colorMode is 'BW'
+  colorMode?: 'BlackWhite' | 'Color' | 'Grayscale'; // Optional - must match database CHECK constraint
+  colorPageRange?: string; // Pages to print in color when colorMode is 'BlackWhite'
 }
 
 export interface PrintJobResponse {
@@ -28,6 +28,29 @@ export interface PrintJobResponse {
   submittedAt: string;
   completedAt?: string;
   errorMessage?: string;
+}
+
+// Alias for compatibility
+export interface PrintJob {
+  jobId: number;
+  documentId: number;
+  printerId: string;
+  studentId: string;
+  paperSize: string;
+  pagesToPrint?: string;
+  colorMode: string;
+  colorPageRange?: string;
+  isSingleSided: boolean;
+  numCopies: number;
+  totalPagesToPrint: number;
+  totalSheetsUsed: number;
+  a4EquivalentPages: number;
+  jobStatus: 'Pending' | 'Printing' | 'Completed' | 'Failed' | 'Cancelled';
+  submittedAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  errorMessage?: string;
+  notes?: string;
 }
 
 export interface PageBalance {

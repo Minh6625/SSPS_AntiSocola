@@ -243,19 +243,19 @@ GO
 -- 5. SEED PRINTERS
 -- ================================================================
 
-INSERT INTO Printers (PrinterID, PrinterName, Brand, Model, Location, Campus, Building, RoomNumber, Status, CreatedBy)
+INSERT INTO Printers (PrinterID, PrinterName, Brand, Model, Location, Campus, Building, RoomNumber, IPAddress, Status, CreatedBy)
 VALUES 
 ('PR-H6-101', N'Máy in H6 - 101', 'HP', 'LaserJet Pro M428fdw', 
- N'Dĩ An - H6 - P101', N'Dĩ An', 'H6', '101', 'Active', 'SPSO001'),
+ N'Dĩ An - H6 - P101', N'Dĩ An', 'H6', '101', '192.168.1.101', 'Active', 'SPSO001'),
  
 ('PR-H6-201', N'Máy in H6 - 201', 'Canon', 'imageRUNNER 2625i', 
- N'Dĩ An - H6 - P201', N'Dĩ An', 'H6', '201', 'Active', 'SPSO001'),
+ N'Dĩ An - H6 - P201', N'Dĩ An', 'H6', '201', '192.168.1.102', 'Active', 'SPSO001'),
  
 ('PR-A-102', N'Máy in A - 102', 'Epson', 'WorkForce Pro WF-C5790', 
- N'Dĩ An - A - P102', N'Dĩ An', 'A', '102', 'Active', 'SPSO001'),
+ N'Dĩ An - A - P102', N'Dĩ An', 'A', '102', '192.168.2.101', 'Active', 'SPSO001'),
  
 ('PR-LIB-G01', N'Máy in Thư viện', 'HP', 'LaserJet Enterprise M607', 
- N'Dĩ An - Thư viện - G01', N'Dĩ An', N'Thư viện', 'G01', 'Active', 'SPSO001');
+ N'Dĩ An - Thư viện - G01', N'Dĩ An', N'Thư viện', 'G01', '192.168.3.101', 'Active', 'SPSO001');
 GO
 
 -- ================================================================
@@ -265,8 +265,7 @@ GO
 INSERT INTO PagePricing (PaperSize, PricePerPage, Currency, EffectiveFrom, IsActive, Notes)
 VALUES 
 ('A4', 500.00, 'VND', '2024-01-01', 1, N'Giá tiêu chuẩn trang A4'),
-('A3', 1000.00, 'VND', '2024-01-01', 1, N'Giá tiêu chuẩn trang A3 (= 2 x A4)'),
-('A5', 300.00, 'VND', '2024-01-01', 1, N'Giá tiêu chuẩn trang A5');
+('A3', 1000.00, 'VND', '2024-01-01', 1, N'Giá tiêu chuẩn trang A3 (= 2 x A4)');
 GO
 
 -- ================================================================

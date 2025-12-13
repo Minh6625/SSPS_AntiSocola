@@ -4,7 +4,7 @@
 
 import { AxiosError } from 'axios';
 import apiClient from '@/config/axios';
-import { PrintJobRequest, PrintJobResponse, PageBalance } from '@/types/printJob';
+import { PrintJobRequest, PrintJobResponse, PageBalance, PrintJob } from '@/types/printJob';
 
 interface ErrorResponse {
   error: string;
@@ -23,6 +23,35 @@ export const printJobService = {
     } catch (error) {
       const axiosError = error as AxiosError<ErrorResponse>;
       const errorMessage = axiosError.response?.data?.error || 'Gửi lệnh in thất bại';
+      throw new Error(errorMessage);
+    }
+  },
+
+  /**
+   * GET /api/print-jobs
+   * Get all print jobs of current student
+   */
+  async getMyPrintJobs(): Promise<PrintJob[]> {
+    try {
+      const response = await apiClient.get('/print-jobs');
+      return response.data as PrintJob[];
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 'Lấy lịch sử in thất bại';
+      throw new Error(errorMessage);
+    }
+  },
+
+  /**
+   * DELETE /api/print-jobs/{id}
+   * Cancel a pending print job
+   */
+  async cancelPrintJob(jobId: number): Promise<void> {
+    try {
+      await apiClient.delete(`/print-jobs/${jobId}`);
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 'Hủy job thất bại';
       throw new Error(errorMessage);
     }
   },
