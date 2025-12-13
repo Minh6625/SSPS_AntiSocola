@@ -72,6 +72,9 @@ public class PrintJob {
     @Column(name = "ErrorMessage", length = 500)
     private String errorMessage;
     
+    @Column(name = "Notes", length = 500)
+    private String notes;  // Ghi chú (VD: số lần retry)
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "StudentID", insertable = false, updatable = false)
     private User student;

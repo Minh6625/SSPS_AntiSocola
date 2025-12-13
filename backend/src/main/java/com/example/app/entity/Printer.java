@@ -42,6 +42,9 @@ public class Printer {
     @Column(name = "RoomNumber", nullable = false, length = 20)
     private String roomNumber;
     
+    @Column(name = "IPAddress", length = 50)
+    private String ipAddress;  // IP máy in (VD: 192.168.1.100 hoặc printer.local)
+    
     @Column(name = "PaperSizes", length = 50)
     private String paperSizes = "A4,A3";
     
