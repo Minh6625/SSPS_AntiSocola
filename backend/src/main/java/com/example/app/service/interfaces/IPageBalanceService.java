@@ -30,12 +30,21 @@ public interface IPageBalanceService {
                                                       String type, String startDate, String endDate);
     
     /**
-     * Mua thêm trang in
+     * Mua thêm trang in (A4 only - backward compatibility)
      * @param studentId - ID sinh viên
-     * @param pages - số trang A4 muốn mua
+     * @param a4Pages - số trang A4 muốn mua
      * @return PurchasePagesResponseDTO
      */
-    PurchasePagesResponseDTO purchasePages(String studentId, Integer pages);
+    PurchasePagesResponseDTO purchasePages(String studentId, Integer a4Pages);
+    
+    /**
+     * Mua thêm trang in (A4 và A3)
+     * @param studentId - ID sinh viên
+     * @param a4Pages - số trang A4 muốn mua
+     * @param a3Pages - số trang A3 muốn mua
+     * @return PurchasePagesResponseDTO
+     */
+    PurchasePagesResponseDTO purchasePagesWithA3(String studentId, Integer a4Pages, Integer a3Pages);
     
     /**
      * Trừ số dư trang (khi in)

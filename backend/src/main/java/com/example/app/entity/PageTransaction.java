@@ -34,6 +34,12 @@ public class PageTransaction {
     @Column(name = "A3Pages", nullable = false)
     private Integer a3Pages = 0;
     
+    @Column(name = "BalanceAfterA4")
+    private Integer balanceAfterA4;
+    
+    @Column(name = "BalanceAfterA3")
+    private Integer balanceAfterA3;
+    
     @Column(name = "Amount", precision = 10, scale = 2)
     private BigDecimal amount;
     

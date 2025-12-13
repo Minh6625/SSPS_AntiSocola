@@ -129,7 +129,8 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
             transaction.getTransactionType(),
             transaction.getA4Pages(),
             transaction.getA3Pages(),
-            0,  // balanceAfter - không sử dụng
+            transaction.getBalanceAfterA4(),  // Số dư A4 sau giao dịch
+            transaction.getBalanceAfterA3(),  // Số dư A3 sau giao dịch
             transaction.getNotes(),
             transaction.getCreatedAt()
         );
@@ -137,23 +138,41 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
     
     @Override
     @Transactional
-    public PurchasePagesResponseDTO purchasePages(String studentId, Integer pages) {
-        log.info("Processing purchase pages for student: {}, pages: {}", studentId, pages);
+    public PurchasePagesResponseDTO purchasePages(String studentId, Integer a4Pages) {
+        // Overload method - gọi method mới với a3Pages = 0
+        return purchasePagesWithA3(studentId, a4Pages, 0);
+    }
+    
+    /**
+     * Mua thêm trang in (A4 và A3)
+     */
+    @Transactional
+    public PurchasePagesResponseDTO purchasePagesWithA3(String studentId, Integer a4Pages, Integer a3Pages) {
+        log.info("Processing purchase pages for student: {}, A4: {}, A3: {}", studentId, a4Pages, a3Pages);
         
         // Validate input
-        if (pages == null || pages <= 0) {
-            throw new BusinessException("Số trang phải lớn hơn 0");
+        if (a4Pages == null || a4Pages < 0 || a4Pages > 1000) {
+            throw new BusinessException("Số trang A4 phải từ 0 đến 1000");
+        }
+        if (a3Pages == null || a3Pages < 0 || a3Pages > 500) {
+            throw new BusinessException("Số trang A3 phải từ 0 đến 500");
+        }
+        // Phải mua ít nhất 1 trang
+        if (a4Pages == 0 && a3Pages == 0) {
+            throw new BusinessException("Vui lòng nhập ít nhất 1 trang");
         }
         
         // Lấy số dư hiện tại
         PageBalance pageBalance = pageBalanceRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy số dư trang cho sinh viên: " + studentId));
         
-        // Tính giá (500 VND/trang A4)
-        Integer pricePerPage = 500;
-        BigDecimal totalPrice = BigDecimal.valueOf(pages * pricePerPage);
+        // Tính giá (500 VND/trang A4, 1000 VND/trang A3)
+        Integer priceA4 = 500;
+        Integer priceA3 = 1000;
+        BigDecimal totalPrice = BigDecimal.valueOf((a4Pages * priceA4) + (a3Pages * priceA3));
         
-        log.info("Purchase details - Pages: {}, Price per page: {}, Total: {}", pages, pricePerPage, totalPrice);
+        log.info("Purchase details - A4: {} ({} VND), A3: {} ({} VND), Total: {}", 
+            a4Pages, priceA4, a3Pages, priceA3, totalPrice);
         
         // Mock payment - Giả sử thanh toán thành công
         boolean paymentSuccess = true;
@@ -161,23 +180,26 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
             throw new BusinessException("Thanh toán thất bại. Vui lòng thử lại.");
         }
         
-        // Cập nhật số dư (thêm trang A4)
-        pageBalance.setA4Balance(pageBalance.getA4Balance() + pages);
+        // Cập nhật số dư
+        pageBalance.setA4Balance(pageBalance.getA4Balance() + a4Pages);
+        pageBalance.setA3Balance(pageBalance.getA3Balance() + a3Pages);
         pageBalance.setLastUpdated(LocalDateTime.now());
         pageBalanceRepository.save(pageBalance);
         
-        log.info("Balance updated - New A4 balance: {}", pageBalance.getA4Balance());
+        log.info("Balance updated - New A4: {}, New A3: {}", pageBalance.getA4Balance(), pageBalance.getA3Balance());
         
         // Tạo transaction record
         PageTransaction transaction = new PageTransaction();
         transaction.setStudentId(studentId);
-        transaction.setTransactionType("Purchase");  // Phải là "Purchase" không phải "PURCHASED"
-        transaction.setA4Pages(pages);
-        transaction.setA3Pages(0);
+        transaction.setTransactionType("Purchase");
+        transaction.setA4Pages(a4Pages);
+        transaction.setA3Pages(a3Pages);
+        transaction.setBalanceAfterA4(pageBalance.getA4Balance());
+        transaction.setBalanceAfterA3(pageBalance.getA3Balance());
         transaction.setAmount(totalPrice);
         transaction.setPaymentMethod("SIUPay");
         transaction.setTransactionStatus("Completed");
-        transaction.setNotes("Mua " + pages + " trang A4 với giá " + totalPrice + " VND");
+        transaction.setNotes("Mua " + a4Pages + " trang A4 + " + a3Pages + " trang A3 với giá " + totalPrice + " VND");
         transaction.setCreatedBy(studentId);
         pageTransactionRepository.save(transaction);
         
@@ -188,12 +210,12 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
         
         // Trả về response
         return new PurchasePagesResponseDTO(
-            "Mua trang in thành công! Đã thêm " + pages + " trang A4 vào tài khoản của bạn.",
+            "Mua trang in thành công! Đã thêm " + a4Pages + " trang A4 và " + a3Pages + " trang A3 vào tài khoản của bạn.",
             pageBalance.getA4Balance(),
             pageBalance.getA3Balance(),
             totalA4Equivalent,
             totalPrice,
-            pages
+            a4Pages + a3Pages
         );
     }
     
@@ -211,9 +233,25 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
             throw new RuntimeException("Không đủ số dư trang A3");
         }
         
-        balance.setA4Balance(balance.getA4Balance() - a4Pages);
-        balance.setA3Balance(balance.getA3Balance() - a3Pages);
+        // Tính số dư sau khi trừ
+        Integer newA4Balance = balance.getA4Balance() - a4Pages;
+        Integer newA3Balance = balance.getA3Balance() - a3Pages;
+        
+        balance.setA4Balance(newA4Balance);
+        balance.setA3Balance(newA3Balance);
         pageBalanceRepository.save(balance);
+        
+        // Tạo transaction record
+        PageTransaction transaction = new PageTransaction();
+        transaction.setStudentId(studentId);
+        transaction.setTransactionType("Use");
+        transaction.setA4Pages(-a4Pages);  // Âm vì là trừ
+        transaction.setA3Pages(-a3Pages);
+        transaction.setBalanceAfterA4(newA4Balance);  // Số dư A4 sau giao dịch
+        transaction.setBalanceAfterA3(newA3Balance);  // Số dư A3 sau giao dịch
+        transaction.setTransactionStatus("Completed");
+        transaction.setNotes("Khấu trừ trang in");
+        pageTransactionRepository.save(transaction);
     }
     
     @Override
@@ -222,9 +260,25 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
         PageBalance balance = pageBalanceRepository.findByStudentId(studentId)
                 .orElseGet(() -> createDefaultBalance(studentId));
         
-        balance.setA4Balance(balance.getA4Balance() + a4Pages);
-        balance.setA3Balance(balance.getA3Balance() + a3Pages);
+        // Tính số dư sau khi cộng
+        Integer newA4Balance = balance.getA4Balance() + a4Pages;
+        Integer newA3Balance = balance.getA3Balance() + a3Pages;
+        
+        balance.setA4Balance(newA4Balance);
+        balance.setA3Balance(newA3Balance);
         pageBalanceRepository.save(balance);
+        
+        // Tạo transaction record
+        PageTransaction transaction = new PageTransaction();
+        transaction.setStudentId(studentId);
+        transaction.setTransactionType("Allocate");
+        transaction.setA4Pages(a4Pages);
+        transaction.setA3Pages(a3Pages);
+        transaction.setBalanceAfterA4(newA4Balance);  // Số dư A4 sau giao dịch
+        transaction.setBalanceAfterA3(newA3Balance);  // Số dư A3 sau giao dịch
+        transaction.setTransactionStatus("Completed");
+        transaction.setNotes("Cấp phát trang in");
+        pageTransactionRepository.save(transaction);
     }
     
     @Override

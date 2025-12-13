@@ -9,7 +9,8 @@ export interface PageTransaction {
   transactionType: string;
   a4Pages: number;
   a3Pages: number;
-  balanceAfter: number;
+  balanceAfterA4: number;
+  balanceAfterA3: number;
   notes: string;
   createdAt: string;
 }

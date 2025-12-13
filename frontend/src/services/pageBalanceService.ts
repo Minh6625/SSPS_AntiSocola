@@ -97,12 +97,12 @@ export const pageBalanceService = {
    * POST /api/page-balance/purchase
    * Mua thêm trang in
    * 
-   * Request: { pages: number }
+   * Request: { a4Pages: number, a3Pages: number }
    * Response: { message, pagesA4, pagesA3, totalA4Equivalent, totalPrice, pagesPurchased }
    */
-  async purchasePages(pages: number): Promise<any> {
+  async purchasePages(a4Pages: number, a3Pages: number = 0): Promise<any> {
     try {
-      const response = await apiClient.post('/purchase', { pages });
+      const response = await apiClient.post('/purchase', { a4Pages, a3Pages });
       return response.data;
     } catch (error) {
       throw new Error(handleApiError(error));

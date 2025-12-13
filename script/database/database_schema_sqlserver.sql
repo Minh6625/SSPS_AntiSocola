@@ -68,6 +68,8 @@ CREATE TABLE PageTransactions (
     TransactionType NVARCHAR(20) NOT NULL CHECK (TransactionType IN ('Allocate', 'Purchase', 'Use')),
     A4Pages INT NOT NULL DEFAULT 0,                     -- Số trang A4 (+/-)
     A3Pages INT NOT NULL DEFAULT 0,                     -- Số trang A3 (+/-)
+    BalanceAfterA4 INT,                                 -- Số dư A4 sau giao dịch
+    BalanceAfterA3 INT,                                 -- Số dư A3 sau giao dịch
     Amount DECIMAL(10,2),                               -- Số tiền (nếu mua)
     PaymentMethod NVARCHAR(50),                         -- SIUPay, BankTransfer...
     TransactionStatus NVARCHAR(20) DEFAULT 'Completed' CHECK (TransactionStatus IN ('Pending', 'Completed', 'Failed')),
