@@ -238,15 +238,24 @@ public class PageBalanceController {
             }
             
             // Validate request
-            if (requestDTO.getPages() == null || requestDTO.getPages() <= 0) {
-                log.warn("Invalid pages: {}", requestDTO.getPages());
-                return ResponseEntity.badRequest().body(new ErrorResponse("Số trang phải lớn hơn 0"));
+            if (requestDTO.getA4Pages() == null || requestDTO.getA4Pages() < 0 || requestDTO.getA4Pages() > 1000) {
+                log.warn("Invalid A4 pages: {}", requestDTO.getA4Pages());
+                return ResponseEntity.badRequest().body(new ErrorResponse("Số trang A4 phải từ 0 đến 1000"));
+            }
+            if (requestDTO.getA3Pages() == null || requestDTO.getA3Pages() < 0 || requestDTO.getA3Pages() > 500) {
+                log.warn("Invalid A3 pages: {}", requestDTO.getA3Pages());
+                return ResponseEntity.badRequest().body(new ErrorResponse("Số trang A3 phải từ 0 đến 500"));
+            }
+            // Phải mua ít nhất 1 trang
+            if (requestDTO.getA4Pages() == 0 && requestDTO.getA3Pages() == 0) {
+                log.warn("Both A4 and A3 pages are 0");
+                return ResponseEntity.badRequest().body(new ErrorResponse("Vui lòng nhập ít nhất 1 trang"));
             }
             
-            log.info("Processing purchase for student: {}, pages: {}", studentId, requestDTO.getPages());
+            log.info("Processing purchase for student: {}, A4: {}, A3: {}", studentId, requestDTO.getA4Pages(), requestDTO.getA3Pages());
             
             // Gọi Service
-            PurchasePagesResponseDTO response = pageBalanceService.purchasePages(studentId, requestDTO.getPages());
+            PurchasePagesResponseDTO response = pageBalanceService.purchasePagesWithA3(studentId, requestDTO.getA4Pages(), requestDTO.getA3Pages());
             
             log.info("Purchase completed successfully for student: {}", studentId);
             log.info("=== Purchase Pages Request Completed ===");

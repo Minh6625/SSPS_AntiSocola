@@ -11,11 +11,12 @@ const PageBalanceSection: React.FC = () => {
   const [balance, setBalance] = useState<PageBalanceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [purchasePages, setPurchasePages] = useState<number>(10);
+  const [purchaseA4Pages, setPurchaseA4Pages] = useState<number>(0);
+  const [purchaseA3Pages, setPurchaseA3Pages] = useState<number>(0);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
-  const [pricingData, setPricingData] = useState<PagePricing[]>([]);
-  const [pricePerPage, setPricePerPage] = useState<number>(500); // Default
+  const [priceA4, setPriceA4] = useState<number>(500); // Default A4 price
+  const [priceA3, setPriceA3] = useState<number>(1000); // Default A3 price
 
   // Fetch balance and pricing on mount
   useEffect(() => {
@@ -45,12 +46,16 @@ const PageBalanceSection: React.FC = () => {
   const fetchPricing = async () => {
     try {
       const pricings = await pagePricingService.getAllPricing();
-      setPricingData(pricings);
       
-      // Set default price (A4)
+      // Set prices for A4 and A3
       const a4Price = pricings.find(p => p.paperSize === 'A4');
+      const a3Price = pricings.find(p => p.paperSize === 'A3');
+      
       if (a4Price) {
-        setPricePerPage(a4Price.pricePerPage);
+        setPriceA4(a4Price.pricePerPage);
+      }
+      if (a3Price) {
+        setPriceA3(a3Price.pricePerPage);
       }
     } catch (err) {
       console.error('Failed to fetch pricing:', err);
@@ -58,20 +63,34 @@ const PageBalanceSection: React.FC = () => {
   };
 
   const handlePurchase = async () => {
-    if (purchasePages <= 0) {
+    // Validate input - phải mua ít nhất 1 trang (A4 hoặc A3)
+    if ((purchaseA4Pages < 0 || purchaseA4Pages > 1000) && (purchaseA3Pages < 0 || purchaseA3Pages > 500)) {
       setError('Vui lòng nhập số trang hợp lệ');
+      return;
+    }
+    if (purchaseA4Pages < 0 || purchaseA4Pages > 1000) {
+      setError('Số trang A4 phải từ 0 đến 1000');
+      return;
+    }
+    if (purchaseA3Pages < 0 || purchaseA3Pages > 500) {
+      setError('Số trang A3 phải từ 0 đến 500');
+      return;
+    }
+    if (purchaseA4Pages === 0 && purchaseA3Pages === 0) {
+      setError('Vui lòng nhập ít nhất 1 trang');
       return;
     }
 
     try {
       setPurchasing(true);
       setError(null);
-      const response = await pageBalanceService.purchasePages(purchasePages);
+      const response = await pageBalanceService.purchasePages(purchaseA4Pages, purchaseA3Pages);
 
       // Refresh balance
       await fetchBalance();
       setShowPurchaseModal(false);
-      setPurchasePages(10);
+      setPurchaseA4Pages(0);
+      setPurchaseA3Pages(0);
       
       // Show success message
       alert(response.message || 'Mua trang in thành công!');
@@ -82,7 +101,12 @@ const PageBalanceSection: React.FC = () => {
     }
   };
 
-  const totalPrice = purchasePages * pricePerPage;
+  const totalPrice = (purchaseA4Pages * priceA4) + (purchaseA3Pages * priceA3);
+  // Form hợp lệ: phải mua ít nhất 1 trang, và số lượng trong range
+  const isValidForm = 
+    (purchaseA4Pages >= 0 && purchaseA4Pages <= 1000) &&
+    (purchaseA3Pages >= 0 && purchaseA3Pages <= 500) &&
+    (purchaseA4Pages > 0 || purchaseA3Pages > 0);
 
   if (loading) {
     return (
@@ -175,37 +199,78 @@ const PageBalanceSection: React.FC = () => {
           {/* Purchase Section */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Mua thêm trang in</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              {/* A4 Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số trang A4 muốn mua
+                  Số trang A4 (0-1000)
                 </label>
                 <input
                   type="number"
-                  min="1"
+                  min="0"
                   max="1000"
-                  value={purchasePages}
-                  onChange={(e) => setPurchasePages(Math.max(1, parseInt(e.target.value) || 0))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={purchaseA4Pages}
+                  onChange={(e) => setPurchaseA4Pages(Math.max(0, parseInt(e.target.value) || 0))}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    purchaseA4Pages >= 0 && purchaseA4Pages <= 1000
+                      ? 'border-gray-300 focus:ring-blue-500'
+                      : 'border-red-300 focus:ring-red-500'
+                  }`}
                 />
+                {purchaseA4Pages > 1000 && (
+                  <p className="text-xs text-red-600 mt-1">Tối đa 1000 trang</p>
+                )}
               </div>
+
+              {/* A3 Input */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Giá tiền
+                  Số trang A3 (0-500)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="500"
+                  value={purchaseA3Pages}
+                  onChange={(e) => setPurchaseA3Pages(Math.max(0, parseInt(e.target.value) || 0))}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
+                    purchaseA3Pages >= 0 && purchaseA3Pages <= 500
+                      ? 'border-gray-300 focus:ring-blue-500'
+                      : 'border-red-300 focus:ring-red-500'
+                  }`}
+                />
+                {purchaseA3Pages > 500 && (
+                  <p className="text-xs text-red-600 mt-1">Tối đa 500 trang</p>
+                )}
+              </div>
+
+              {/* Price Display */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tổng tiền
                 </label>
                 <div className="text-2xl font-bold text-blue-600">
                   {totalPrice.toLocaleString('vi-VN')} VND
                 </div>
                 <p className="text-xs text-gray-600 mt-1">
-                  {pricePerPage.toLocaleString('vi-VN')} VND/trang
+                  A4: {priceA4.toLocaleString('vi-VN')} | A3: {priceA3.toLocaleString('vi-VN')}
                 </p>
               </div>
-              <button
-                onClick={() => setShowPurchaseModal(true)}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                Thanh toán qua SIUPay
-              </button>
+
+              {/* Button */}
+              <div className="flex items-end">
+                <button
+                  onClick={() => setShowPurchaseModal(true)}
+                  disabled={!isValidForm}
+                  className={`w-full px-6 py-2 rounded-lg transition-colors font-medium ${
+                    isValidForm
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  Thanh toán qua SIUPay
+                </button>
+              </div>
             </div>
           </div>
 
@@ -223,13 +288,23 @@ const PageBalanceSection: React.FC = () => {
             <h3 className="text-xl font-bold text-gray-900 mb-4">Xác nhận mua trang in</h3>
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <div className="flex justify-between mb-2">
-                <span className="text-gray-700">Số trang:</span>
-                <span className="font-semibold text-gray-900">{purchasePages} trang</span>
+                <span className="text-gray-700">Số trang A4:</span>
+                <span className="font-semibold text-gray-900">{purchaseA4Pages} trang</span>
               </div>
               <div className="flex justify-between mb-2">
-                <span className="text-gray-700">Giá/trang:</span>
+                <span className="text-gray-700">Số trang A3:</span>
+                <span className="font-semibold text-gray-900">{purchaseA3Pages} trang</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-700">Giá A4:</span>
                 <span className="font-semibold text-gray-900">
-                  {pricePerPage.toLocaleString('vi-VN')} VND
+                  {(purchaseA4Pages * priceA4).toLocaleString('vi-VN')} VND
+                </span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-700">Giá A3:</span>
+                <span className="font-semibold text-gray-900">
+                  {(purchaseA3Pages * priceA3).toLocaleString('vi-VN')} VND
                 </span>
               </div>
               <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
