@@ -22,6 +22,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -51,11 +52,8 @@ public class DocumentService {
     
     private final DocumentRepository documentRepository;
     private final AllowedFileTypeRepository allowedFileTypeRepository;
-    private final FileStorageService fileStorageService;
+    private final SupabaseStorageService supabaseStorageService;
     private final ModelMapper modelMapper;
-    
-    @Value("${file.upload-dir:uploads}")
-    private String uploadDir;
     
     /**
      * Upload document từ student
@@ -85,7 +83,7 @@ public class DocumentService {
                     studentId, file.getOriginalFilename());
         
         // STEP 2: Lấy file extension và validate
-        String fileExtension = fileStorageService.getFileExtension(file.getOriginalFilename());
+        String fileExtension = supabaseStorageService.getFileExtension(file.getOriginalFilename());
         if (fileExtension.isEmpty()) {
             throw new ApplicationException("Tệp phải có extension hợp lệ", 400);
         }
@@ -131,10 +129,10 @@ public class DocumentService {
             }
         }
         
-        // STEP 6: Lưu file vật lý
-        String storedFileName;
+        // STEP 6: Upload file lên Supabase Storage
+        String fileUrl;
         try {
-            storedFileName = fileStorageService.saveFile(file);
+            fileUrl = supabaseStorageService.uploadFile(file);
         } catch (IOException e) {
             // Kiểm tra nếu là lỗi validation tên file (ký tự đặc biệt, độ dài)
             String errorMessage = e.getMessage();
@@ -144,11 +142,14 @@ public class DocumentService {
                 throw new ApplicationException(errorMessage, 400); // 400 Bad Request
             }
             // Lỗi khác (IO error)
-            logger.error("Lỗi khi lưu file: {}", file.getOriginalFilename(), e);
-            throw new ApplicationException("Lỗi khi lưu file. Vui lòng thử lại", 500);
+            logger.error("Lỗi khi upload file lên Supabase: {}", file.getOriginalFilename(), e);
+            throw new ApplicationException("Lỗi khi upload file. Vui lòng thử lại", 500);
         }
         
-        // STEP 7: Kiểm tra storedFileName đã tồn tại chưa (double-check unique)
+        // STEP 7: Trích xuất tên file từ URL
+        String storedFileName = supabaseStorageService.extractFileNameFromUrl(fileUrl);
+        
+        // STEP 7.5: Kiểm tra storedFileName đã tồn tại chưa (double-check unique)
         if (documentRepository.existsByStoredFileName(storedFileName)) {
             throw new ApplicationException("File đã tồn tại trong hệ thống. Vui lòng upload lại", 500);
         }
@@ -158,10 +159,18 @@ public class DocumentService {
         document.setStudentId(studentId);
         document.setOriginalFileName(file.getOriginalFilename());
         document.setStoredFileName(storedFileName);
-        document.setFilePath(uploadDir + "/" + storedFileName);
+        document.setFilePath(fileUrl); // Lưu URL Supabase thay vì đường dẫn local
         document.setFileExtension(fileExtension.toLowerCase());
-        document.setFileSizeKB(new BigDecimal(fileStorageService.getFileSizeKB(file)));
-        document.setTotalPages(detectPageCount(uploadDir + "/" + storedFileName, fileExtension));
+        document.setFileSizeKB(new BigDecimal(supabaseStorageService.getFileSizeKB(file)));
+        
+        // Detect page count từ file bytes
+        int pageCount = DEFAULT_PAGES;
+        try {
+            pageCount = detectPageCountFromBytes(file.getBytes(), fileExtension);
+        } catch (IOException e) {
+            logger.warn("Không thể đọc file bytes để detect pages, sử dụng mặc định: {}", DEFAULT_PAGES);
+        }
+        document.setTotalPages(pageCount);
         document.setUploadDate(LocalDateTime.now());
         document.setIsDeleted(false);
         
@@ -345,6 +354,15 @@ public class DocumentService {
             throw new ApplicationException("Bạn không có quyền xóa tài liệu này", 403);
         }
         
+        // Xóa file trên Supabase Storage
+        boolean deletedFromSupabase = supabaseStorageService.deleteFile(document.getStoredFileName());
+        if (deletedFromSupabase) {
+            logger.info("File đã xóa khỏi Supabase: {}", document.getStoredFileName());
+        } else {
+            logger.warn("Không thể xóa file khỏi Supabase: {}", document.getStoredFileName());
+        }
+        
+        // Soft-delete trong database
         document.setIsDeleted(true);
         documentRepository.save(document);
         logger.info("Document đã bị soft-delete: documentId={}", documentId);
@@ -369,30 +387,63 @@ public class DocumentService {
         }
         
         try {
-            // Đọc file từ disk
-            byte[] fileBytes = java.nio.file.Files.readAllBytes(
-                java.nio.file.Paths.get(document.getFilePath())
-            );
+            // Download file từ Supabase
+            byte[] fileBytes = supabaseStorageService.downloadFile(document.getFilePath());
             
-            logger.info("Document download thành công: documentId={}, studentId={}", 
+            logger.info("Document download thành công từ Supabase: documentId={}, studentId={}", 
                         documentId, studentId);
             
             return fileBytes;
             
         } catch (java.io.IOException e) {
-            logger.error("Lỗi khi đọc file: {}", document.getFilePath(), e);
+            logger.error("Lỗi khi download file từ Supabase: {}", document.getFilePath(), e);
             throw new ApplicationException("Lỗi khi download file. Vui lòng thử lại", 500);
         }
     }
     
     /**
-     * Detect số trang của file
+     * Detect số trang của file từ byte array
      * Hỗ trợ: PDF, DOCX, PPTX, XLSX
      * 
-     * @param filePath Đường dẫn đầy đủ đến file
+     * @param fileBytes Byte array của file
      * @param fileExtension Loại file
      * @return Số trang thực sự
      */
+    private int detectPageCountFromBytes(byte[] fileBytes, String fileExtension) {
+        if (fileBytes == null || fileBytes.length == 0) {
+            logger.warn("File bytes rỗng để detect pages");
+            return DEFAULT_PAGES;
+        }
+        
+        try {
+            switch (fileExtension.toLowerCase()) {
+                case "pdf":
+                    return detectPdfPagesFromBytes(fileBytes);
+                    
+                case "docx":
+                    return detectDocxPagesFromBytes(fileBytes);
+                    
+                case "pptx":
+                    return detectPptxPagesFromBytes(fileBytes);
+                    
+                case "xlsx":
+                    return detectXlsxPagesFromBytes(fileBytes);
+                    
+                default:
+                    logger.warn("Không hỗ trợ detect pages cho extension: {}", fileExtension);
+                    return DEFAULT_PAGES;
+            }
+        } catch (Exception e) {
+            logger.error("Lỗi khi detect page count từ bytes: {}", e.getMessage(), e);
+            return DEFAULT_PAGES;
+        }
+    }
+    
+    /**
+     * Detect số trang của file (dùng cho recount - deprecated)
+     * @deprecated Use detectPageCountFromBytes() instead
+     */
+    @Deprecated
     private int detectPageCount(String filePath, String fileExtension) {
         File file = new File(filePath);
         
@@ -422,6 +473,60 @@ public class DocumentService {
         } catch (Exception e) {
             logger.error("Lỗi khi detect page count: {}", filePath, e);
             return DEFAULT_PAGES;
+        }
+    }
+    
+    /**
+     * Detect số trang của PDF file từ byte array
+     */
+    private int detectPdfPagesFromBytes(byte[] fileBytes) throws IOException {
+        try (PDDocument document = PDDocument.load(fileBytes)) {
+            int pageCount = document.getNumberOfPages();
+            logger.info("PDF pages detected: {} pages", pageCount);
+            return pageCount;
+        }
+    }
+    
+    /**
+     * Detect số trang của DOCX file từ byte array
+     */
+    private int detectDocxPagesFromBytes(byte[] fileBytes) throws IOException {
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(fileBytes);
+             XWPFDocument document = new XWPFDocument(bis)) {
+            
+            // Ước tính: ~30 paragraphs = 1 page (A4, font size 12)
+            int paragraphs = document.getParagraphs().size();
+            int estimatedPages = Math.max(1, (paragraphs + 29) / 30);
+            
+            logger.info("DOCX pages estimated: {} pages (~{} paragraphs)", 
+                       estimatedPages, paragraphs);
+            return estimatedPages;
+        }
+    }
+    
+    /**
+     * Detect số trang của PPTX file từ byte array (số slides)
+     */
+    private int detectPptxPagesFromBytes(byte[] fileBytes) throws IOException {
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(fileBytes);
+             XMLSlideShow ppt = new XMLSlideShow(bis)) {
+            
+            int slideCount = ppt.getSlides().size();
+            logger.info("PPTX slides detected: {} slides", slideCount);
+            return slideCount;
+        }
+    }
+    
+    /**
+     * Detect số trang của XLSX file từ byte array (số sheets)
+     */
+    private int detectXlsxPagesFromBytes(byte[] fileBytes) throws IOException {
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(fileBytes);
+             XSSFWorkbook workbook = new XSSFWorkbook(bis)) {
+            
+            int sheetCount = workbook.getNumberOfSheets();
+            logger.info("XLSX sheets detected: {} sheets", sheetCount);
+            return sheetCount;
         }
     }
     
