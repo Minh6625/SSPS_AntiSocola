@@ -2,7 +2,17 @@
 
 ## 📋 Tổng quan
 
-Dự án này sử dụng **GitHub Actions** để tự động hóa quá trình build, test và deploy cho cả Backend (Spring Boot) và Frontend (Next.js).
+Dự án này sử dụng **GitHub Actions** và **Git Flow** để tự động hóa quá trình build, test và deploy cho cả Backend (Spring Boot) và Frontend (Next.js).
+
+### 🌳 Branching Strategy (Git Flow)
+
+```
+main (production) ← chỉ dùng khi release chính thức
+  ↑
+develop (staging) ← nhánh phát triển chính, merge tất cả features vào đây
+  ↑
+feat/feature-name ← các nhánh tính năng, rẽ từ develop
+```
 
 ## 🔧 Các Workflow đã cài đặt
 
@@ -10,9 +20,9 @@ Dự án này sử dụng **GitHub Actions** để tự động hóa quá trình
 
 **Kích hoạt khi:**
 
-- Push code vào các nhánh: `main`, `develop`, `feat/**`
+- Push code vào các nhánh: `develop`, `feat/**`
 - Có thay đổi trong thư mục `backend/`
-- Pull request vào `main` hoặc `develop`
+- Pull request vào `develop`
 
 **Các bước thực hiện:**
 
@@ -28,9 +38,9 @@ Dự án này sử dụng **GitHub Actions** để tự động hóa quá trình
 
 **Kích hoạt khi:**
 
-- Push code vào các nhánh: `main`, `develop`, `feat/**`
+- Push code vào các nhánh: `develop`, `feat/**`
 - Có thay đổi trong thư mục `frontend/`
-- Pull request vào `main` hoặc `develop`
+- Pull request vào `develop`
 
 **Các bước thực hiện:**
 
@@ -45,33 +55,65 @@ Dự án này sử dụng **GitHub Actions** để tự động hóa quá trình
 
 **Kích hoạt khi:**
 
-- Tạo Pull Request vào `main` hoặc `develop`
+- Tạo Pull Request vào `develop`
 
 **Kiểm tra:**
 
 - Backend: Checkstyle, SpotBugs
 - Frontend: ESLint, TypeScript type checking
 
-### 4. **Deploy to Production** (`.github/workflows/deploy.yml`)
+### 4. **Deploy to Staging** (`.github/workflows/deploy-staging.yml`)
 
 **Kích hoạt khi:**
 
-- Push vào nhánh `main`
+- Push vào nhánh `develop`
 - Hoặc trigger thủ công
 
 **Chức năng:**
 
-- Deploy backend và frontend lên production server
+- Deploy backend và frontend lên staging/develop environment
 
-## 🚀 Hướng dẫn sử dụng
+### 5. **Deploy to Production** (`.github/workflows/deploy.yml`)
 
-### Bước 1: Push code lên GitHub
+\*\*KíWorkflow làm việc với Git Flow
 
 ```bash
-# Đảm bảo đang ở nhánh feat/ci-cd
+# 1. Tạo nhánh feature mới từ develop
+git checkout develop
+git pull origin develop
+git checkout -b feat/ten-tinh-nang
+
+# 2. Làm việc và commit
+git add .
+git commit -m "feat: Thêm tính năng mới"
+
+# 3. Push lên GitHub (CI sẽ tự động chạy)
+git push origin feat/ten-tinh-nang
+
+# 4. Tạo Pull Request vào develop trên GitHub
+# Code quality checks sẽ tự động chạy
+
+# 5. Sau khi review, merge vào develop
+# Deploy staging sẽ tự động chạy
+
+# 6. Khi sẵn sàng release production, merge develop vào main
+git checkout main
+git merge develop
+git push origin main
+# Deploy production sẽ tự động chạy
+```
+
+### Kiểm tra workflow chạy
+
+1. Vào repository trên GitHub
+2. Click tab **Actions**
+3. Xem các workflow đang chạy
+
+###ang ở nhánh feat/ci-cd
 git add .github/
 git commit -m "Add CI/CD workflows"
 git push origin feat/ci-cd
+
 ```
 
 ### Bước 2: Kiểm tra workflow chạy
@@ -105,6 +147,7 @@ Sau khi workflow chạy xong:
 ### Cho Backend:
 
 ```
+
 DB_HOST=your-database-host
 DB_PORT=1433
 DB_NAME=HCMSIU_SSPS
@@ -112,14 +155,17 @@ DB_USERNAME=your-db-username
 DB_PASSWORD=your-db-password
 SERVER_HOST=your-production-server
 SSH_PRIVATE_KEY=your-ssh-key
+
 ```
 
 ### Cho Frontend:
 
 ```
+
 NEXT_PUBLIC_API_URL=https://api.yourdomain.com
 VERCEL_TOKEN=your-vercel-token
-```
+
+````
 
 ## 🛠️ Tùy chỉnh Deployment
 
@@ -139,7 +185,7 @@ Sửa file `.github/workflows/deploy.yml`:
       git pull
       mvn clean package -DskipTests
       systemctl restart ssps-backend
-```
+````
 
 ### Deployment với Docker
 
@@ -217,21 +263,34 @@ npm run build
 
 1. **Branch Protection**: Bật protection cho nhánh `main`
 
-   - Require PR trước khi merge
-   - Require CI pass trước khi merge
+┌─────────────────────────────────────────────────────────────┐
+│ Git Flow Workflow │
+└─────────────────────────────────────────────────────────────┘
 
-2. **Code Review**: Review code trước khi merge PR
+1. Feature Development:
+   feat/new-feature → Push → CI runs (build + test)
+   ↓
+   Create PR to develop
+   ↓
+   Code Quality Check
+   ↓
+   Code Review
+   ↓
+   Merge to develop
+   ↓
+   Deploy to Staging ✅
 
-3. **Semantic Versioning**: Đặt tag cho mỗi release
+2. Production Release:
+   develop → Merge to main → Deploy to Production ✅ cho mỗi release
 
    ```bash
    git tag -a v1.0.0 -m "Release version 1.0.0"
    git push origin v1.0.0
    ```
 
-4. **Environment Variables**: Không commit secrets/passwords
+3. **Environment Variables**: Không commit secrets/passwords
 
-5. **Testing**: Viết tests đầy đủ trước khi push
+4. **Testing**: Viết tests đầy đủ trước khi push
 
 ## 🔄 Workflow Diagram
 
