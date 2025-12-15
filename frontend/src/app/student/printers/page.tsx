@@ -6,6 +6,8 @@ import { printerService } from '@/services/printerService';
 import { Printer, PrinterFilters } from '@/types/printer';
 import StudentLayout from '@/components/StudentLayout';
 
+export const dynamic = 'force-dynamic';
+
 export default function PrinterSelectionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
