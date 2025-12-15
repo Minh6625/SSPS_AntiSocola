@@ -10,6 +10,8 @@ import { Printer } from '@/types/printer';
 import { DocumentResponse } from '@/services/documentService';
 import { PageBalance } from '@/types/printJob';
 
+export const dynamic = 'force-dynamic';
+
 export default function PrintConfigurePage() {
   const router = useRouter();
   const searchParams = useSearchParams();

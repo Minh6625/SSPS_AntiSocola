@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authService, type VerifyOtpRequest } from '@/services/authService';
 
+export const dynamic = 'force-dynamic';
+
 export default function VerifyOtpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
