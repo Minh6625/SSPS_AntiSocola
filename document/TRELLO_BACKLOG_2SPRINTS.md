@@ -888,7 +888,7 @@
 
 ### 📋 List: STUDENT DASHBOARD
 
-**054 - [DOCS] Đặc tả yêu cầu: Dashboard Sinh Viên**
+**056 - [DOCS] Đặc tả yêu cầu: Dashboard Sinh Viên**
 
 - Mô tả:
   - Viết tài liệu chi tiết requirement cho Student Dashboard
@@ -902,7 +902,7 @@
   - [ ] Quick actions list
   - [ ] Document approval
 
-**055 - [UI] Thiết kế Wireframe Dashboard Sinh Viên**
+**057- [UI] Thiết kế Wireframe Dashboard Sinh Viên**
 
 - Mô tả:
   - Thiết kế wireframe cho Student Dashboard
@@ -915,7 +915,7 @@
   - [ ] Quick actions
   - [ ] Clickable prototype
 
-**056 - [BE] Xây dựng API Lấy Lịch Sử In Gần Đây (GET /api/print-jobs/recent)**
+**058 - [BE] Xây dựng API Lấy Lịch Sử In Gần Đây (GET /api/print-jobs/recent)**
 
 - Mô tả:
   - Xây dựng API Lấy Lịch Sử In Gần Đây
@@ -928,7 +928,7 @@
   - [ ] Sort by submittedAt DESC
   - [ ] Kiểm tra đơn vị
 
-**057 - [FE] Triển khai Dashboard Sinh Viên**
+**059 - [FE] Triển khai Dashboard Sinh Viên**
 
 - Mô tả:
   - Implement Student Dashboard (Next.js)
@@ -945,7 +945,7 @@
   - [ ] API integration
   - [ ] Responsive design
 
-**058 - [QA] Kiểm thử Dashboard Sinh Viên**
+**060 - [QA] Kiểm thử Dashboard Sinh Viên**
 
 - Mô tả:
   - Test Dashboard load, Widget display, Chart rendering
@@ -961,7 +961,7 @@
 
 ### 📋 List: SPSO DASHBOARD & REPORTS
 
-**059 - [DOCS] Đặc tả yêu cầu: Dashboard & Báo Cáo SPSO**
+**061 - [DOCS] Đặc tả yêu cầu: Dashboard & Báo Cáo SPSO**
 
 - Mô tả:
   - Viết tài liệu chi tiết requirement cho SPSO Dashboard & Reports
@@ -977,7 +977,7 @@
   - [ ] Authorization rules (SPSO only)
   - [ ] Document approval
 
-**060 - [UI] Thiết kế Wireframe Dashboard SPSO**
+**062 - [UI] Thiết kế Wireframe Dashboard SPSO**
 
 - Mô tả:
   - Thiết kế wireframe cho SPSO Dashboard
@@ -989,7 +989,7 @@
   - [ ] Charts layout
   - [ ] Clickable prototype
 
-**061 - [UI] Thiết kế Wireframe Trang Báo Cáo (SPSO)**
+**063 - [UI] Thiết kế Wireframe Trang Báo Cáo (SPSO)**
 
 - Mô tả:
   - Thiết kế wireframe cho Reports Page
@@ -1002,7 +1002,7 @@
   - [ ] Tables design
   - [ ] Clickable prototype
 
-**062 - [BE] Xây dựng API Thống Kê Dashboard (GET /api/reports/dashboard)**
+**064 - [BE] Xây dựng API Thống Kê Dashboard (GET /api/reports/dashboard)**
 
 - Mô tả:
   - Xây dựng API Thống Kê Dashboard (chỉ SPSO)
@@ -1016,7 +1016,7 @@
   - [ ] Chart data calculation
   - [ ] Kiểm tra đơn vị
 
-**063 - [BE] Xây dựng API Báo Cáo Theo Tháng (GET /api/reports/monthly)**
+**065 - [BE] Xây dựng API Báo Cáo Theo Tháng (GET /api/reports/monthly)**
 
 - Mô tả:
   - Xây dựng API Báo Cáo Theo Tháng
@@ -1030,7 +1030,7 @@
   - [ ] Aggregate queries
   - [ ] Kiểm tra đơn vị
 
-**064 - [BE] Xây dựng API Báo Cáo Theo Năm (GET /api/reports/yearly)**
+**066 - [BE] Xây dựng API Báo Cáo Theo Năm (GET /api/reports/yearly)**
 
 - Mô tả:
   - Xây dựng API Báo Cáo Theo Năm
@@ -1042,7 +1042,7 @@
   - [ ] SPSO authorization
   - [ ] Kiểm tra đơn vị
 
-**065 - [FE] Triển khai Dashboard SPSO**
+**067 - [FE] Triển khai Dashboard SPSO**
 
 - Mô tả:
   - Implement SPSO Dashboard (Next.js)
@@ -1057,7 +1057,7 @@
   - [ ] API integration
   - [ ] SPSO authorization
 
-**066 - [FE] Triển khai Trang Báo Cáo (SPSO)**
+**068 - [FE] Triển khai Trang Báo Cáo (SPSO)**
 
 - Mô tả:
   - Implement Reports Page (Next.js)
@@ -1073,7 +1073,7 @@
   - [ ] Export buttons (optional P2)
   - [ ] API integration
 
-**067 - [QA] Kiểm thử Dashboard & Báo Cáo SPSO**
+**069 - [QA] Kiểm thử Dashboard & Báo Cáo SPSO**
 
 - Mô tả:
   - Test Dashboard metrics, Charts, Reports generation, Authorization
@@ -1090,7 +1090,7 @@
 
 ### 📋 List: SYSTEM SETTINGS & PROFILE
 
-**068 - [DOCS] Đặc tả yêu cầu: Cài Đặt Hệ Thống & Hồ Sơ**
+**070 - [DOCS] Đặc tả yêu cầu: Cài Đặt Hệ Thống & Hồ Sơ**
 
 - Mô tả:
   - Viết tài liệu chi tiết requirement cho System Settings & Profile
@@ -1106,7 +1106,7 @@
   - [ ] Authorization rules (SPSO for system settings)
   - [ ] Document approval
 
-**069 - [UI] Thiết kế Wireframe Trang Cài Đặt Hệ Thống (SPSO)**
+**071 - [UI] Thiết kế Wireframe Trang Cài Đặt Hệ Thống (SPSO)**
 
 - Mô tả:
   - Thiết kế wireframe cho System Settings Page
@@ -1117,7 +1117,7 @@
   - [ ] Settings form layout
   - [ ] Clickable prototype
 
-**070 - [UI] Thiết kế Wireframe Trang Hồ Sơ Người Dùng**
+**072 - [UI] Thiết kế Wireframe Trang Hồ Sơ Người Dùng**
 
 - Mô tả:
   - Thiết kế wireframe cho User Profile Page
@@ -1129,7 +1129,7 @@
   - [ ] Change password section
   - [ ] Clickable prototype
 
-**071 - [BE] Xây dựng API Lấy Cấu Hình Hệ Thống (GET /api/system-config)**
+**073 - [BE] Xây dựng API Lấy Cấu Hình Hệ Thống (GET /api/system-config)**
 
 - Mô tả:
   - Xây dựng API Lấy Cấu Hình Hệ Thống (chỉ SPSO)
@@ -1141,7 +1141,7 @@
   - [ ] SPSO authorization
   - [ ] Kiểm tra đơn vị
 
-**072 - [BE] Xây dựng API Cập Nhật Cấu Hình Hệ Thống (PUT /api/system-config)**
+**074 - [BE] Xây dựng API Cập Nhật Cấu Hình Hệ Thống (PUT /api/system-config)**
 
 - Mô tả:
   - Xây dựng API Cập Nhật Cấu Hình Hệ Thống (chỉ SPSO)
@@ -1153,7 +1153,7 @@
   - [ ] SPSO authorization
   - [ ] Kiểm tra đơn vị
 
-**073 - [BE] Xây dựng API Lấy Hồ Sơ Người Dùng (GET /api/users/me)**
+**075 - [BE] Xây dựng API Lấy Hồ Sơ Người Dùng (GET /api/users/me)**
 
 - Mô tả:
   - Xây dựng API Lấy Hồ Sơ Người Dùng
@@ -1164,7 +1164,7 @@
   - [ ] UserController.getProfile()
   - [ ] Kiểm tra đơn vị
 
-**074 - [BE] Xây dựng API Cập Nhật Hồ Sơ Người Dùng (PUT /api/users/me)**
+**076 - [BE] Xây dựng API Cập Nhật Hồ Sơ Người Dùng (PUT /api/users/me)**
 
 - Mô tả:
   - Xây dựng API Cập Nhật Hồ Sơ Người Dùng
@@ -1175,7 +1175,7 @@
   - [ ] Validation
   - [ ] Kiểm tra đơn vị
 
-**075 - [BE] Xây dựng API Đổi Mật Khẩu (POST /api/auth/change-password)**
+**077 - [BE] Xây dựng API Đổi Mật Khẩu (POST /api/auth/change-password)**
 
 - Mô tả:
   - Xây dựng API Đổi Mật Khẩu
@@ -1189,7 +1189,7 @@
   - [ ] Password hashing
   - [ ] Kiểm tra đơn vị
 
-**076 - [FE] Triển khai Trang Cài Đặt Hệ Thống (SPSO)**
+**078 - [FE] Triển khai Trang Cài Đặt Hệ Thống (SPSO)**
 
 - Mô tả:
   - Implement System Settings Page (Next.js)
@@ -1204,7 +1204,7 @@
   - [ ] Success notification
   - [ ] SPSO authorization
 
-**077 - [FE] Triển khai Trang Hồ Sơ Người Dùng**
+**079 - [FE] Triển khai Trang Hồ Sơ Người Dùng**
 
 - Mô tả:
   - Implement User Profile Page (Next.js)
@@ -1219,7 +1219,7 @@
   - [ ] API integration
   - [ ] Success notifications
 
-**078 - [QA] Kiểm thử Cài Đặt Hệ Thống & Hồ Sơ**
+**080 - [QA] Kiểm thử Cài Đặt Hệ Thống & Hồ Sơ**
 
 - Mô tả:
   - Test System settings update, Profile update, Change password
@@ -1235,7 +1235,7 @@
 
 ### 📋 List: UI/UX POLISH & OPTIMIZATION
 
-**079 - [FE] Triển khai Điều Hướng & Bố Cục**
+**081 - [FE] Triển khai Điều Hướng & Bố Cục**
 
 - Mô tả:
   - Implement global layout: Sidebar navigation, Top header (user menu, notifications)
@@ -1251,7 +1251,7 @@
   - [ ] Mobile responsive menu
   - [ ] Active route highlighting
 
-**080 - [FE] Triển khai Trạng Thái Tải & Xử Lý Lỗi**
+**082 - [FE] Triển khai Trạng Thái Tải & Xử Lý Lỗi**
 
 - Mô tả:
   - Global loading spinner
@@ -1266,7 +1266,7 @@
   - [ ] Toast notification system (Ant Design notification)
   - [ ] Error pages (404, 403, 500)
 
-**081 - [FE] Triển khai Bảo Vệ Xác Thực**
+**083 - [FE] Triển khai Bảo Vệ Xác Thực**
 
 - Mô tả:
   - Protected routes (require authentication)
@@ -1280,7 +1280,7 @@
   - [ ] Redirect logic
   - [ ] Token refresh logic
 
-**082 - [FE] Tối Ưu Hiệu Suất Frontend**
+**084 - [FE] Tối Ưu Hiệu Suất Frontend**
 
 - Mô tả:
   - Code splitting (Next.js dynamic imports)
@@ -1295,7 +1295,7 @@
   - [ ] API caching setup
   - [ ] Lazy loading
 
-**083 - [BE] Tối Ưu Hiệu Suất & Caching Backend**
+**085 - [BE] Tối Ưu Hiệu Suất & Caching Backend**
 
 - Mô tả:
   - Database query optimization (indexes)
@@ -1310,7 +1310,7 @@
   - [ ] Connection pool tuning
   - [ ] Pagination review
 
-**084 - [BE] Tăng Cường Bảo Mật Backend**
+**086 - [BE] Tăng Cường Bảo Mật Backend**
 
 - Mô tả:
   - CORS configuration
@@ -1326,7 +1326,7 @@
   - [ ] Input validation on all APIs
   - [ ] Security headers configured
 
-**085 - [QA] Kiểm thử Đa Trình Duyệt & Responsive**
+**087 - [QA] Kiểm thử Đa Trình Duyệt & Responsive**
 
 - Mô tả:
   - Test trên Chrome, Firefox, Edge, Safari
@@ -1344,7 +1344,7 @@
   - [ ] Mobile responsive test
   - [ ] Bug reports filed
 
-**086 - [QA] Kiểm thử End-to-End**
+**088 - [QA] Kiểm thử End-to-End**
 
 - Mô tả:
   - E2E test cho complete flow: Login → Upload Document → Select Printer → Configure → Submit → View History
@@ -1356,7 +1356,7 @@
   - [ ] SPSO E2E flow test
   - [ ] Bug reports filed
 
-**087 - [QA] Kiểm thử Hiệu Suất & Tải**
+**089 - [QA] Kiểm thử Hiệu Suất & Tải**
 
 - Mô tả:
   - Test response time của các API
@@ -1375,7 +1375,7 @@
 
 ### 📋 List: DOCUMENTATION & DEPLOYMENT
 
-**088 - [DOCS] Tài Liệu API (Swagger/OpenAPI)**
+**090 - [DOCS] Tài Liệu API (Swagger/OpenAPI)**
 
 - Mô tả:
   - Complete Swagger/OpenAPI documentation cho tất cả APIs
@@ -1389,7 +1389,7 @@
   - [ ] Request/Response schemas
   - [ ] Error codes documented
 
-**089 - [DOCS] Hướng Dẫn Sử Dụng (Sinh Viên)**
+**091 - [DOCS] Hướng Dẫn Sử Dụng (Sinh Viên)**
 
 - Mô tả:
   - Viết user manual cho Student
@@ -1404,7 +1404,7 @@
   - [ ] Page balance guide
   - [ ] Screenshots
 
-**090 - [DOCS] Hướng Dẫn Sử Dụng (SPSO)**
+**092 - [DOCS] Hướng Dẫn Sử Dụng (SPSO)**
 
 - Mô tả:
   - Viết user manual cho SPSO
@@ -1419,7 +1419,7 @@
   - [ ] System settings guide
   - [ ] Screenshots
 
-**091 - [DOCS] Hướng Dẫn Triển Khai**
+**093 - [DOCS] Hướng Dẫn Triển Khai**
 
 - Mô tả:
   - Viết deployment guide
@@ -1436,7 +1436,7 @@
   - [ ] Environment variables list
   - [ ] Troubleshooting section
 
-**092 - [DEPLOY] Triển Khai Lên Production**
+**094 - [DEPLOY] Triển Khai Lên Production**
 
 - Mô tả:
   - Deploy Frontend to Vercel/Netlify
@@ -1458,7 +1458,7 @@
 
 ### 📋 List: SPRINT 2 CLOSURE & FINAL DEMO
 
-**093 - [QA] Kiểm Thử Hồi Quy Cuối Cùng**
+**095 - [QA] Kiểm Thử Hồi Quy Cuối Cùng**
 
 - Mô tả:
   - Full regression test cho tất cả tính năng
@@ -1473,7 +1473,7 @@
   - [ ] Critical bugs verified fixed
   - [ ] Final test report
 
-**094 - [DEMO] Demo Cuối Cùng & Kết Thúc Dự Án**
+**096 - [DEMO] Demo Cuối Cùng & Kết Thúc Dự Án**
 
 - Mô tả:
   - Final demo cho stakeholders

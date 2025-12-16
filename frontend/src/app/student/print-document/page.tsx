@@ -141,16 +141,27 @@ export default function PrintDocumentPage() {
 
   return (
     <StudentLayout>
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="space-y-1">
-          <h1 className="text-3xl font-semibold text-gray-900">In Tài Liệu</h1>
-          
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                In Tài Liệu
+              </h1>
+              <p className="text-sm text-gray-500 mt-0.5">Tải lên và quản lý tài liệu của bạn</p>
+            </div>
+          </div>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="flex border-b border-gray-100 bg-gray-50/60">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+          <div className="flex border-b border-gray-200 bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
             <button
               onClick={() => handleTabChange('upload')}
               className={`flex-1 py-3 px-6 text-sm font-medium transition ${
@@ -174,7 +185,7 @@ export default function PrintDocumentPage() {
           </div>
 
           {/* Content */}
-          <div className="p-6 bg-white">
+          <div className="p-6 bg-gradient-to-br from-gray-50/30 via-white to-blue-50/20">
             {/* Tab: Upload */}
             {activeTab === 'upload' && (
               <div className="space-y-4">

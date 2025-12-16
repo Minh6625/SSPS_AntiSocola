@@ -41,7 +41,9 @@ export interface PrintJob {
   colorMode: string;
   colorPageRange?: string;
   isSingleSided: boolean;
+  duplex: boolean;
   numCopies: number;
+  copies: number;
   totalPagesToPrint: number;
   totalSheetsUsed: number;
   a4EquivalentPages: number;

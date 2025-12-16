@@ -295,10 +295,17 @@ export default function PrintHistoryPage() {
       <div className="space-y-4">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <ClipboardIcon />
-            Lịch sử in
-          </h1>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg shadow-md">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">Lịch sử in</h1>
+              <p className="text-sm text-gray-500 mt-0.5">Xem lại các lệnh in đã thực hiện</p>
+            </div>
+          </div>
         </div>
 
         {/* Statistics Cards - Đưa lên đầu */}
@@ -564,7 +571,7 @@ export default function PrintHistoryPage() {
                         <span>Kiểu in</span>
                       </div>
                       <div className="text-sm font-medium text-gray-900">
-                        {selectedJob.isSingleSided ? 'In 1 mặt' : 'In 2 mặt'}
+                        {selectedJob.duplex ? 'In 2 mặt' : 'In 1 mặt'}
                       </div>
                     </div>
                   </div>
@@ -594,10 +601,10 @@ export default function PrintHistoryPage() {
                     <div>
                       <div className="flex items-center gap-2 text-xs text-gray-600 mb-1">
                         <span className="text-blue-500"><HashIcon /></span>
-                        <span>Tổng số trang</span>
+                        <span>Số trang</span>
                       </div>
                       <div className="text-sm font-medium text-gray-900">
-                        {selectedJob.totalPagesToPrint} trang
+                        {selectedJob.totalPagesToPrint} trang × {selectedJob.copies} bản
                       </div>
                     </div>
 
