@@ -27,6 +27,7 @@ public class PrintJobResponseDTO {
     private String paperSize;
     private String pageRange;
     private Boolean duplex;
+    private Boolean isSingleSided;
     private Integer copies;
     private String colorMode;
     private String colorPageRange;

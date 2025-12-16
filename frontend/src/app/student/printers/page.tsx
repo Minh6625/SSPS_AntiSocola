@@ -49,7 +49,7 @@ export default function PrinterSelectionPage() {
     setError(null);
 
     try {
-      const result = await printerService.getPrinters(filters, currentPage, 20);
+      const result = await printerService.getPrinters(filters, currentPage, 8);
       setPrinters(result.content);
       setTotalPages(result.totalPages);
       setTotalElements(result.totalElements);
@@ -82,37 +82,27 @@ export default function PrinterSelectionPage() {
     }
   };
 
-  // Status badge color
-  const getStatusBadge = (status: string) => {
-    const badges = {
-      Active: 'bg-green-100 text-green-800 border-green-300',
-      Inactive: 'bg-gray-100 text-gray-800 border-gray-300',
-      Maintenance: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      Error: 'bg-red-100 text-red-800 border-red-300',
-    };
-    const text = {
-      Active: 'Khả dụng',
-      Inactive: 'Tắt',
-      Maintenance: 'Bảo trì',
-      Error: 'Lỗi',
-    };
-    return (
-      <span className={`px-2 py-1 rounded text-xs font-medium border ${badges[status as keyof typeof badges] || badges.Inactive}`}>
-        {text[status as keyof typeof text] || status}
-      </span>
-    );
-  };
-
   return (
     <StudentLayout>
       <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Chọn máy in</h1>
-          <p className="text-sm text-gray-500 mt-1">Chọn máy in phù hợp với nhu cầu của bạn</p>
-        </div>
+        {/* Main wrapper with shadow */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Chọn máy in</h1>
+                <p className="text-sm text-gray-500 mt-0.5">Chọn máy in phù hợp với nhu cầu của bạn</p>
+              </div>
+            </div>
+          </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+          {/* Filters */}
+          <div className="bg-blue-50 rounded-lg border-2 border-blue-300 p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Campus */}
             <div>
@@ -149,7 +139,7 @@ export default function PrinterSelectionPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Tìm kiếm</label>
               <input
                 type="text"
-                placeholder="Tên máy in, phòng..."
+                placeholder="Tên máy in..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -158,18 +148,17 @@ export default function PrinterSelectionPage() {
 
             {/* Available Toggle */}
             <div className="flex items-end">
-              <label className="flex items-center space-x-2 cursor-pointer">
+              <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer hover:bg-gray-50 transition">
                 <input
                   type="checkbox"
                   checked={showAvailableOnly}
                   onChange={(e) => setShowAvailableOnly(e.target.checked)}
                   className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
-                <span className="text-sm font-medium text-gray-700">Chỉ máy khả dụng</span>
+                <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Chỉ máy khả dụng</span>
               </label>
             </div>
           </div>
-
         </div>
 
         {/* Error state */}
@@ -198,26 +187,45 @@ export default function PrinterSelectionPage() {
                 <p className="text-gray-500 mt-4">Không có máy in nào khả dụng</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {printers.map((printer) => (
                   <div
                     key={printer.printerId}
-                    className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition"
+                    className="bg-blue-50 rounded-lg border border-blue-300 p-4 shadow-md hover:shadow-lg transition"
                   >
                     {/* Printer icon */}
                     <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                           <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                           </svg>
                         </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-800">{printer.printerName}</h3>
-                          <p className="text-xs text-gray-500">{printer.brand} {printer.model}</p>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-gray-800 truncate">{printer.printerName}</h3>
+                          <p className="text-xs text-gray-500 truncate">{printer.brand} {printer.model}</p>
                         </div>
                       </div>
-                      {getStatusBadge(printer.status)}
+                      {printer.status === 'Active' && (
+                        <span className="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap flex-shrink-0 ml-2">
+                          Khả dụng
+                        </span>
+                      )}
+                      {printer.status === 'Inactive' && (
+                        <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 whitespace-nowrap flex-shrink-0 ml-2">
+                          Tắt
+                        </span>
+                      )}
+                      {printer.status === 'Maintenance' && (
+                        <span className="px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 whitespace-nowrap flex-shrink-0 ml-2">
+                          Bảo trì
+                        </span>
+                      )}
+                      {printer.status === 'Error' && (
+                        <span className="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 whitespace-nowrap flex-shrink-0 ml-2">
+                          Lỗi
+                        </span>
+                      )}
                     </div>
 
                     {/* Location */}
@@ -254,13 +262,13 @@ export default function PrinterSelectionPage() {
                     <button
                       onClick={() => handleSelectPrinter(printer.printerId)}
                       disabled={printer.status !== 'Active'}
-                      className={`w-full py-2 rounded-lg font-medium transition ${
+                      className={`w-full py-2 rounded-lg font-medium transition-all ${
                         printer.status === 'Active'
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          ? 'bg-blue-600 text-white hover:bg-blue-700 hover:-translate-y-1 hover:shadow-lg'
                           : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       }`}
                     >
-                      {printer.status === 'Active' ? 'Chọn' : 'Không khả dụng'}
+                      {printer.status === 'Active' ? 'Chọn máy in này' : 'Không khả dụng'}
                     </button>
                   </div>
                 ))}
@@ -296,6 +304,7 @@ export default function PrinterSelectionPage() {
             )}
           </>
         )}
+        </div>
       </div>
     </StudentLayout>
   );

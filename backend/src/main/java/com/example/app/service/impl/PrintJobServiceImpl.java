@@ -293,6 +293,7 @@ public class PrintJobServiceImpl implements IPrintJobService {
                 .paperSize(job.getPaperSize())
                 .pageRange(job.getPagesToPrint())
                 .duplex(!job.getIsSingleSided())
+                .isSingleSided(job.getIsSingleSided())
                 .copies(job.getNumCopies())
                 .colorMode(job.getColorMode())
                 .colorPageRange(job.getColorPageRange())

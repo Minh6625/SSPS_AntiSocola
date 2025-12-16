@@ -7,6 +7,10 @@ on:
 jobs:
   validate-pr:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
 
     steps:
       # Tạm thời tắt semantic PR validation

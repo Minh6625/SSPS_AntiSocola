@@ -257,10 +257,10 @@ export default function PrintConfigurePage() {
             {error || 'Không tìm thấy thông tin'}
           </div>
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push(`/student/printers?documentId=${documentId}`)}
             className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
           >
-            Quay lại
+            Đổi máy in
           </button>
         </div>
       </StudentLayout>
@@ -360,14 +360,8 @@ export default function PrintConfigurePage() {
 
             {/* Printer Info */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between mb-3">
+              <div className="mb-3">
                 <h3 className="font-semibold text-gray-800">Máy in</h3>
-                <button
-                  onClick={() => router.push(`/student/printers?documentId=${documentId}`)}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Đổi máy in
-                </button>
               </div>
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -712,10 +706,10 @@ export default function PrintConfigurePage() {
                   {submitting ? 'Đang gửi...' : 'Xác nhận in'}
                 </button>
                 <button
-                  onClick={() => router.back()}
+                  onClick={() => router.push(`/student/printers?documentId=${documentId}`)}
                   className="w-full py-3 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition"
                 >
-                  Quay lại
+                  Đổi máy in
                 </button>
               </div>
             </div>
