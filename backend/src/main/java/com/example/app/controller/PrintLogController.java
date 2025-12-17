@@ -279,7 +279,7 @@ public class PrintLogController {
         List<Map<String, String>> statuses = List.of(
             Map.of("value", "Pending", "label", "Đang chờ xử lý", "color", "warning"),
             Map.of("value", "Printing", "label", "Đang in", "color", "info"),
-            Map.of("value", "Completed", "label", "Hoàn thành", "color", "success"),
+            Map.of("value", "Success", "label", "Hoàn thành", "color", "success"),
             Map.of("value", "Failed", "label", "Thất bại", "color", "danger"),
             Map.of("value", "Cancelled", "label", "Đã hủy", "color", "secondary")
         );
