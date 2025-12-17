@@ -29,8 +29,6 @@ CREATE TABLE Users (
     FullName NVARCHAR(100) NOT NULL,                    -- Họ tên
     PhoneNumber NVARCHAR(15),                           -- Số điện thoại
     UserType NVARCHAR(20) NOT NULL CHECK (UserType IN ('Student', 'SPSO', 'Admin')),
-    Faculty NVARCHAR(100),                              -- Khoa (cho sinh viên)
-    Department NVARCHAR(100),                           -- Phòng ban (cho SPSO/Admin)
     Status NVARCHAR(20) DEFAULT 'Active' CHECK (Status IN ('Active', 'Inactive')),
     CreatedAt DATETIME2 DEFAULT GETDATE(),
     LastLogin DATETIME2,
@@ -361,7 +359,7 @@ GO
 CREATE TABLE RefreshTokens (
     TokenID NVARCHAR(100) PRIMARY KEY,                  -- JWT token ID (UUID format)
     UserID NVARCHAR(20) NOT NULL,                       -- User this token belongs to
-    DeviceID NVARCHAR(500),                             -- Device identifier (Base64 encoded User-Agent)
+    DeviceID NVARCHAR(200),                             -- SHA-256 hash of device fingerprint
     DeviceFingerprint NVARCHAR(200),                    -- SHA-256 hash of device signature
     Token NVARCHAR(500) NOT NULL,                       -- JWT token value
     ExpiresAt DATETIME2 NOT NULL,                       -- Token expiration timestamp
@@ -421,7 +419,7 @@ GO
 
 CREATE TABLE TrustedDevices (
     UserID NVARCHAR(20) NOT NULL,
-    DeviceId NVARCHAR(500) NOT NULL,                    -- Base64 User-Agent (same as RefreshTokens)
+    DeviceId NVARCHAR(200) NOT NULL,                    -- SHA-256 hash of device fingerprint
     DeviceName NVARCHAR(100),
     UserAgent NVARCHAR(255),
     IpAddress NVARCHAR(45),
@@ -503,7 +501,6 @@ SELECT
     u.UserID as StudentID,
     u.FullName,
     u.Email,
-    u.Faculty,
     pb.A4Balance,
     pb.A3Balance,
     pb.TotalA4Equivalent,
