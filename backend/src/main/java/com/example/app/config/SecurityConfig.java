@@ -42,6 +42,10 @@ public class SecurityConfig {
                 .requestMatchers("/api/print-jobs/**").hasAnyAuthority("Student", "SPSO")
                 // PageBalance API - Student + SPSO
                 .requestMatchers("/api/page-balance/**").hasAnyAuthority("Student", "SPSO")
+                // Profile API - Student + SPSO
+                .requestMatchers("/api/profile/**").hasAnyAuthority("Student", "SPSO")
+                // Print Logs API - SPSO only
+                .requestMatchers("/api/print-logs/**").hasAuthority("SPSO")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
