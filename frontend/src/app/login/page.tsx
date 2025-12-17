@@ -52,6 +52,13 @@ export default function LoginPage() {
       }
 
       if (result.status === 200) {
+        // Chỉ cho phép role STUDENT đăng nhập
+        const userRole = result.data?.role?.toUpperCase();
+        if (userRole !== 'STUDENT') {
+          authService.logout();
+          setError('Trang này chỉ dành cho sinh viên. Vui lòng sử dụng trang đăng nhập phù hợp.');
+          return;
+        }
         router.push('/student/dashboard');
       }
     } catch (err) {
@@ -78,6 +85,14 @@ export default function LoginPage() {
       });
 
       if (result.status === 200) {
+        // Chỉ cho phép role STUDENT
+        const userRole = result.data?.role?.toUpperCase();
+        if (userRole !== 'STUDENT') {
+          authService.logout();
+          setOtpError('Trang này chỉ dành cho sinh viên.');
+          setShowOtpModal(false);
+          return;
+        }
         setShowOtpModal(false);
         router.push('/student/dashboard');
       }
