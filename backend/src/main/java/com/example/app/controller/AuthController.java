@@ -8,10 +8,15 @@ import com.example.app.dto.InitiateRegistrationRequestDTO;
 import com.example.app.dto.InitiateRegistrationResponseDTO;
 import com.example.app.dto.VerifyRegistrationOtpRequestDTO;
 import com.example.app.dto.VerifyRegistrationOtpResponseDTO;
+import com.example.app.dto.ForgotPasswordRequestDTO;
+import com.example.app.dto.ForgotPasswordResponseDTO;
+import com.example.app.dto.VerifyPasswordResetOtpRequestDTO;
+import com.example.app.dto.VerifyPasswordResetOtpResponseDTO;
 import com.example.app.entity.User;
 import com.example.app.repository.UserRepository;
 import com.example.app.service.interfaces.IAuthService;
 import com.example.app.service.RegistrationService;
+import com.example.app.service.PasswordResetService;
 import com.example.app.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,6 +47,9 @@ public class AuthController {
     
     @Autowired
     private RegistrationService registrationService;
+    
+    @Autowired
+    private PasswordResetService passwordResetService;
     
     @Autowired
     private JwtUtil jwtUtil;
@@ -243,6 +251,62 @@ public class AuthController {
         log.info("Registration completed successfully: {}", request.getEmail());
         
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * POST /api/auth/forgot-password
+     * BƯỚC 1: Khởi tạo đặt lại mật khẩu - Gửi OTP
+     * 
+     * Request: { email }
+     * Response: { message, email (masked), resetToken, otpExpirationMinutes }
+     */
+    @PostMapping("/forgot-password")
+    @Operation(
+        summary = "Bước 1: Quên mật khẩu - Gửi OTP",
+        description = "Người dùng nhập email để nhận OTP đặt lại mật khẩu"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "OTP đã được gửi"),
+        @ApiResponse(responseCode = "400", description = "Email không tồn tại")
+    })
+    public ResponseEntity<ForgotPasswordResponseDTO> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequestDTO request) {
+        
+        log.info("Forgot password request for email: {}", request.getEmail());
+        
+        ForgotPasswordResponseDTO response = passwordResetService.initiatePasswordReset(request);
+        
+        log.info("Password reset initiated successfully: {}", request.getEmail());
+        
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /api/auth/verify-password-reset-otp
+     * BƯỚC 2: Xác thực OTP + Đặt mật khẩu mới
+     * 
+     * Request: { email, otpCode, newPassword, confirmPassword }
+     * Response: { message, email, userId }
+     */
+    @PostMapping("/verify-password-reset-otp")
+    @Operation(
+        summary = "Bước 2: Xác thực OTP - Đặt mật khẩu mới",
+        description = "Verify OTP và cập nhật mật khẩu mới"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Mật khẩu đã được đặt lại"),
+        @ApiResponse(responseCode = "400", description = "OTP không hợp lệ hoặc mật khẩu không khớp")
+    })
+    public ResponseEntity<VerifyPasswordResetOtpResponseDTO> verifyPasswordResetOtp(
+            @Valid @RequestBody VerifyPasswordResetOtpRequestDTO request) {
+        
+        log.info("Verify password reset OTP for email: {}", request.getEmail());
+        
+        VerifyPasswordResetOtpResponseDTO response = passwordResetService.verifyPasswordResetOtp(request);
+        
+        log.info("Password reset completed successfully: {}", request.getEmail());
+        
+        return ResponseEntity.ok(response);
     }
 
     /**
