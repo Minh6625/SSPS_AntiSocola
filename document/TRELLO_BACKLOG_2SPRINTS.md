@@ -349,13 +349,14 @@
 
 - Mô tả:
   - Thiết kế wireframe cho Printer Selection Page
-  - Components: Filters (Campus, Building), Printer cards (grid), Status badges
+  - Components: Filters (Campus, Building), Printer cards (grid) với tên máy in đầy đủ, Status badges
+  - Printer card display: Tên máy in đầy đủ, Brand/Model, Location (Campus, Building, Room), Status badge
   - Empty state: "No printers available"
 - Assignee: UI/UX Designer
 - Time: 4 giờ
 - Checklist:
   - [ ] Filter section
-  - [ ] Printer card design
+  - [ ] Printer card design (hiển thị đầy đủ tên máy in, brand/model, location)
   - [ ] Grid layout
   - [ ] Status badges (Available, Busy, Maintenance)
   - [ ] Clickable prototype
