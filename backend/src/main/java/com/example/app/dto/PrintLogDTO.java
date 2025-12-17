@@ -67,6 +67,7 @@ public class PrintLogDTO {
         switch (status) {
             case "Pending": return "Đang chờ xử lý";
             case "Printing": return "Đang in";
+            case "Success": return "Hoàn thành";
             case "Completed": return "Hoàn thành";
             case "Failed": return "Thất bại";
             case "Cancelled": return "Đã hủy";

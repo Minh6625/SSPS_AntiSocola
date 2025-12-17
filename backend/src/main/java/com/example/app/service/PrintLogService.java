@@ -129,9 +129,9 @@ public class PrintLogService {
             return new PrintLogStatsDTO(0L, 0L, 0L, 0L, 0L, 0L, 0, 0, 0);
         }
         
-        // Tính toán thống kê
+        // Tính toán thống kê (Database dùng 'Success' cho hoàn thành)
         long totalLogs = logs.size();
-        long completedLogs = logs.stream().mapToLong(log -> "Completed".equals(log.getStatus()) ? 1 : 0).sum();
+        long completedLogs = logs.stream().mapToLong(log -> "Success".equals(log.getStatus()) ? 1 : 0).sum();
         long failedLogs = logs.stream().mapToLong(log -> "Failed".equals(log.getStatus()) ? 1 : 0).sum();
         long cancelledLogs = logs.stream().mapToLong(log -> "Cancelled".equals(log.getStatus()) ? 1 : 0).sum();
         long pendingLogs = logs.stream().mapToLong(log -> "Pending".equals(log.getStatus()) ? 1 : 0).sum();
