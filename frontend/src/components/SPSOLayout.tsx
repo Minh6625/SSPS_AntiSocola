@@ -90,7 +90,7 @@ export default function SPSOLayout({ children }: LayoutProps) {
   useEffect(() => {
     const authenticated = authService.isAuthenticated();
     if (!authenticated) {
-      router.push('/spso/login');
+      router.push('/spso-login');
       return;
     }
 
@@ -98,7 +98,7 @@ export default function SPSOLayout({ children }: LayoutProps) {
     // Kiểm tra role SPSO
     if (user?.role?.toUpperCase() !== 'SPSO') {
       authService.logout();
-      router.push('/spso/login');
+      router.push('/spso-login');
       return;
     }
     setUserInfo(user);
@@ -106,7 +106,7 @@ export default function SPSOLayout({ children }: LayoutProps) {
 
   const handleLogout = () => {
     authService.logout();
-    router.push('/spso/login');
+    router.push('/spso-login');
   };
 
   const menuItems: MenuItem[] = [
