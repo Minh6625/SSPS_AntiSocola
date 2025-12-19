@@ -36,6 +36,7 @@ export const printerService = {
       if (filters.brand) params.append('brand', filters.brand);
       if (filters.model) params.append('model', filters.model);
       if (filters.status) params.append('status', filters.status);
+      if (filters.lastMaintenanceDate) params.append('lastMaintenanceDate', filters.lastMaintenanceDate);
       if (filters.keyword) params.append('keyword', filters.keyword);
       if (filters.colorPrinting !== undefined) params.append('colorPrinting', filters.colorPrinting.toString());
       if (filters.duplexPrinting !== undefined) params.append('duplexPrinting', filters.duplexPrinting.toString());

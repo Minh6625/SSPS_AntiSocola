@@ -38,6 +38,7 @@ public class PrinterController {
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) String model,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String lastMaintenanceDate,
             @RequestParam(required = false) Boolean colorPrinting,
             @RequestParam(required = false) Boolean duplexPrinting,
             @RequestParam(required = false) String keyword,
@@ -47,19 +48,20 @@ public class PrinterController {
             @RequestParam(defaultValue = "ASC") String sortDir
     ) {
         Page<PrinterResponseDTO> printersPage = printerService.getPrinters(
-                campus,
-                building,
-                room,
-                brand,
-                model,
-                status,
-                colorPrinting,
-                duplexPrinting,
-                keyword,
-                page,
-                size,
-                sortBy,
-                sortDir
+            campus,
+            building,
+            room,
+            brand,
+            model,
+            status,
+            colorPrinting,
+            duplexPrinting,
+            keyword,
+            lastMaintenanceDate,
+            page,
+            size,
+            sortBy,
+            sortDir
         );
 
         Map<String, Object> response = new HashMap<>();
