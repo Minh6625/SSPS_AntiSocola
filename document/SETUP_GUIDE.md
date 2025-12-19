@@ -13,7 +13,7 @@ backend/
 │   │   └── impl/            # ✨ Service Implementations (UserServiceImpl...)
 │   ├── repository/
 │   │   └── UserRepository.java  # JPA Repository
-│   ├── entity/              # Database Entity
+│   ├── entity/              # Database Entity (includes Reference Tables)
 │   ├── dto/                 # Data Transfer Object (API)
 │   ├── exception/           # Exception Handling
 │   └── config/              # Configuration (CORS, Security...)
@@ -29,7 +29,7 @@ frontend/
 ├── src/
 │   ├── app/            # Pages (Next.js 14 App Router)
 │   ├── components/     # Reusable UI Components
-│   ├── services/       # API Service Layer
+│   ├── services/       # API Service Layer (includes referenceService)
 │   └── types/          # TypeScript Interfaces
 ├── package.json
 └── next.config.js
@@ -37,17 +37,80 @@ frontend/
 
 ---
 
-## 🚀 BƯỚC 1: CÀI ĐẶT BACKEND (Java Spring Boot)
+## 🚀 BƯỚC 1: CÀI ĐẶT DATABASE
 
 ### 1.1. Yêu cầu
 
-- **Java 17+** ([Download](https://www.oracle.com/java/technologies/downloads/))
-- **Maven 3.8+** (hoặc dùng Maven Wrapper có sẵn)
-- **SQL Server** (đã cài đặt và chạy)
+- **SQL Server 2019+** ([Download](https://www.microsoft.com/sql-server))
+- **SSMS** (SQL Server Management Studio) - Optional nhưng recommended
 
-### 1.2. Cấu hình Database
+### 1.2. Tạo Database với Reference Tables
 
-1. Tạo database trong SQL Server:
+**Cấu trúc mới bao gồm:**
+
+- ✅ Reference Tables cho Brands, Models, Campuses, Buildings, Rooms
+- ✅ Foreign Keys để đảm bảo data integrity
+- ✅ Views và Stored Procedures cho cascade loading
+
+**Chạy theo thứ tự:**
+
+```powershell
+# Option A: Chạy trực tiếp từ PowerShell
+cd script/database
+
+# 1. Tạo schema với reference tables
+sqlcmd -S localhost -i database_schema_sqlserver.sql
+
+# 2. Populate reference data + seed data
+sqlcmd -S localhost -d HCMSIU_SSPS -i database_seed_data.sql
+```
+
+```sql
+-- Option B: Chạy trong SSMS (SQL Server Management Studio)
+-- 1. Mở SSMS, connect to localhost
+-- 2. File > Open > File > chọn database_schema_sqlserver.sql
+-- 3. Execute (F5)
+-- 4. File > Open > File > chọn database_seed_data.sql
+-- 5. Execute (F5)
+```
+
+**Kiểm tra kết quả:**
+
+```sql
+USE HCMSIU_SSPS;
+
+-- Kiểm tra reference tables
+SELECT COUNT(*) AS BrandsCount FROM Brands;           -- Should be 8
+SELECT COUNT(*) AS ModelsCount FROM PrinterModels;    -- Should be 23
+SELECT COUNT(*) AS CampusesCount FROM Campuses;       -- Should be 2
+SELECT COUNT(*) AS BuildingsCount FROM Buildings;     -- Should be 6
+SELECT COUNT(*) AS RoomsCount FROM Rooms;             -- Should be 18
+
+-- Xem printers với full location info
+SELECT * FROM vw_PrinterDetails;
+
+-- Test cascade queries
+EXEC sp_GetBuildingsByCampus @CampusID = 1;
+EXEC sp_GetRoomsByBuilding @BuildingID = 1;
+EXEC sp_GetModelsByBrand @BrandID = 1;
+```
+
+### 1.3. Migration từ Database Cũ (Optional)
+
+Nếu bạn đã có database với cấu trúc cũ (text fields):
+
+```powershell
+# 1. Backup dữ liệu cũ
+sqlcmd -S localhost -d HCMSIU_SSPS -i migrate_to_reference_tables.sql
+
+# 2. Làm theo hướng dẫn trong script
+# 3. Run schema mới
+# 4. Uncomment phần restore data trong migrate script
+```
+
+---
+
+## 🚀 BƯỚC 2: CÀI ĐẶT BACKEND (Java Spring Boot)
 
 ```sql
 CREATE DATABASE your_database;

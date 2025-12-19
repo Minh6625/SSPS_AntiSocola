@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import SPSOLayout from '@/components/SPSOLayout';
 import { printLogService, PrintLogDTO, PrintLogFilter, PrintLogStatsDTO, PageResponse } from '@/services/printLogService';
 import { printerService } from '@/services/printerService';
 
@@ -159,8 +158,7 @@ export default function PrintLogsPage() {
   };
 
   return (
-    <SPSOLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -573,6 +571,5 @@ export default function PrintLogsPage() {
           </div>
         )}
       </div>
-    </SPSOLayout>
   );
 }

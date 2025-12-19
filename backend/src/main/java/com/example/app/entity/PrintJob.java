@@ -27,8 +27,8 @@ public class PrintJob {
     @Column(name = "DocumentID", nullable = false)
     private Integer documentId;
     
-    @Column(name = "PrinterID", nullable = false, length = 20)
-    private String printerId;
+    @Column(name = "PrinterID", nullable = false)
+    private Long printerId;
     
     @Column(name = "PaperSize", nullable = false, length = 10)
     private String paperSize = "A4";  // A4, A3, A5

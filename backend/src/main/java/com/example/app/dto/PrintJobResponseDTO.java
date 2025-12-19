@@ -18,7 +18,7 @@ public class PrintJobResponseDTO {
     private Integer jobId;
     private Integer documentId;
     private String documentName;
-    private String printerId;
+    private Long printerId;
     private String printerName;
     private String studentId;
     private String studentName;

@@ -30,7 +30,7 @@ public interface PrintJobRepository extends JpaRepository<PrintJob, Integer> {
     /**
      * Tìm print jobs của printer
      */
-    List<PrintJob> findByPrinterIdOrderBySubmittedAtDesc(String printerId);
+    List<PrintJob> findByPrinterIdOrderBySubmittedAtDesc(Long printerId);
     
     /**
      * Tìm print jobs trong khoảng thời gian

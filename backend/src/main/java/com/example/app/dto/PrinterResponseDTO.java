@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
  * DTO: Printer information for list endpoints.
  */
 public class PrinterResponseDTO {
-    private String printerId;
+    private Long printerId;
     private String printerName;
     private String brand;
     private String model;
@@ -15,6 +15,7 @@ public class PrinterResponseDTO {
     private String campus;
     private String building;
     private String roomNumber;
+    private String ipAddress;
     private String paperSizes;
     private Boolean colorPrinting;
     private Boolean duplexPrinting;
@@ -23,11 +24,11 @@ public class PrinterResponseDTO {
     private LocalDate lastMaintenanceDate;
     private LocalDateTime createdAt;
 
-    public String getPrinterId() {
+    public Long getPrinterId() {
         return printerId;
     }
 
-    public void setPrinterId(String printerId) {
+    public void setPrinterId(Long printerId) {
         this.printerId = printerId;
     }
 
@@ -85,6 +86,14 @@ public class PrinterResponseDTO {
 
     public void setRoomNumber(String roomNumber) {
         this.roomNumber = roomNumber;
+    }
+
+    public String getIpAddress() {
+        return ipAddress;
+    }
+
+    public void setIpAddress(String ipAddress) {
+        this.ipAddress = ipAddress;
     }
 
     public String getPaperSizes() {
