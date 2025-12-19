@@ -14,7 +14,6 @@ export interface UserProfile {
   createdAt: string;
   lastLogin: string | null;
   emailVerifiedAt: string | null;
-  isTwoFactorEnabled: boolean;
 }
 
 export interface UpdateProfileRequest {

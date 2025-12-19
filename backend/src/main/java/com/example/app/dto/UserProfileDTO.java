@@ -22,7 +22,6 @@ public class UserProfileDTO {
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
     private LocalDateTime emailVerifiedAt;
-    private Boolean isTwoFactorEnabled;
     
     // Constructor từ Entity
     public UserProfileDTO(com.example.app.entity.User user) {
@@ -35,6 +34,5 @@ public class UserProfileDTO {
         this.createdAt = user.getCreatedAt();
         this.lastLogin = user.getLastLogin();
         this.emailVerifiedAt = user.getEmailVerifiedAt();
-        this.isTwoFactorEnabled = user.getIsTwoFactorEnabled();
     }
 }
