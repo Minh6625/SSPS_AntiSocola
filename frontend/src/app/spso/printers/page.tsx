@@ -24,7 +24,7 @@ export default function PrinterManagementPage() {
   // Reference data
   const [brands, setBrands] = useState<Array<{ brandId: number; brandName: string }>>([]);
   const [campuses, setCampuses] = useState<Array<{ campusId: number; campusName: string }>>([]);
-  const [buildings, setBuildings] = useState<Array<{ buildingId: number; buildingName: string; campusId: number }>>([]);
+  const [buildings, setBuildings] = useState<Array<{ buildingId: number; buildingName: string; campusId: number; buildingCode: string }>>([]);
   const [models, setModels] = useState<Array<{ modelId: number; modelName: string }>>([]);
   const [rooms, setRooms] = useState<Array<{ roomId: number; roomNumber: string; buildingId: number }>>([]);
   
@@ -40,6 +40,7 @@ export default function PrinterManagementPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showToggleConfirmModal, setShowToggleConfirmModal] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [showBulkToggleModal, setShowBulkToggleModal] = useState(false);
   const [selectedPrinter, setSelectedPrinter] = useState<Printer | null>(null);
@@ -205,7 +206,7 @@ export default function PrinterManagementPage() {
             const details = await printerService.getPrinterById(String(selectedPrinter.printerId));
             console.log('Printer details from API:', details);
             if (details) source = details;
-          } catch (err) {
+          } catch {
             console.warn('Failed to fetch printer details, falling back to list data');
           }
 
@@ -342,10 +343,25 @@ export default function PrinterManagementPage() {
 
   // Handle brand change
   const handleBrandChange = (brandId: string) => {
-    const id = brandId ? Number(brandId) : null;
-    setSelectedBrandId(id);
-    const brand = brands.find(b => b.brandId === id);
-    handleFilterChange('brand', brand?.brandName);
+    (async () => {
+      const id = brandId ? Number(brandId) : null;
+      setSelectedBrandId(id);
+      setSelectedModelId(null);
+      const brand = brands.find(b => b.brandId === id);
+      handleFilterChange('brand', brand?.brandName);
+      if (id) {
+        try {
+          const modelsData = await referenceService.getModelsByBrand(id);
+          setModels(modelsData);
+        } catch (err) {
+          console.error('Failed to load models for filter:', err);
+          setModels([]);
+        }
+      } else {
+        setModels([]);
+      }
+      setCurrentPage(0);
+    })();
   };
 
   // Handle campus change
@@ -377,10 +393,43 @@ export default function PrinterManagementPage() {
 
   // Handle building change
   const handleBuildingChange = (buildingId: string) => {
-    const id = buildingId ? Number(buildingId) : null;
-    setSelectedBuildingId(id);
-    const building = buildings.find(b => b.buildingId === id);
-    handleFilterChange('building', building?.buildingName);
+    (async () => {
+      const id = buildingId ? Number(buildingId) : null;
+      setSelectedBuildingId(id);
+      setSelectedRoomId(null);
+      const building = buildings.find(b => b.buildingId === id);
+      // Backend filters by buildingCode; use code to avoid UTF-8 display issues
+      handleFilterChange('building', building?.buildingCode);
+      if (id) {
+        try {
+          const roomsData = await referenceService.getRoomsByBuilding(id);
+          setRooms(roomsData);
+        } catch (err) {
+          console.error('Failed to load rooms for filter:', err);
+          setRooms([]);
+        }
+      } else {
+        setRooms([]);
+      }
+      setCurrentPage(0);
+    })();
+  };
+
+  const handleModelChange = (modelId: string) => {
+    const id = modelId ? Number(modelId) : null;
+    setSelectedModelId(id);
+    const model = models.find(m => m.modelId === id);
+    handleFilterChange('model', model?.modelName);
+    setCurrentPage(0);
+  };
+
+  const handleRoomChange = (roomId: string) => {
+    const id = roomId ? Number(roomId) : null;
+    setSelectedRoomId(id);
+    const room = rooms.find(r => r.roomId === id);
+    // Backend expects `room` param that matches roomNumber
+    handleFilterChange('room', room?.roomNumber);
+    setCurrentPage(0);
   };
 
   // Handle search
@@ -566,25 +615,25 @@ export default function PrinterManagementPage() {
               <option value="">Tất cả</option>
               {filteredBuildings.map(building => (
                 <option key={building.buildingId} value={building.buildingId}>
-                {building.buildingName}
+                  {building.buildingCode} - {building.buildingName}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Status */}
+          {/* Room (moved) */}
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Trạng thái</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Phòng</label>
             <select
-              value={filters.status || ''}
-              onChange={(e) => handleFilterChange('status', e.target.value || undefined)}
-              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              value={selectedRoomId || ''}
+              onChange={(e) => handleRoomChange(e.target.value)}
+              disabled={!selectedBuildingId}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
             >
               <option value="">Tất cả</option>
-              <option value="Active">Đang hoạt động</option>
-              <option value="Inactive">Không hoạt động</option>
-              <option value="Maintenance">Bảo trì</option>
-              <option value="Error">Lỗi</option>
+              {rooms.map(room => (
+                <option key={room.roomId} value={room.roomId}>{room.roomNumber}</option>
+              ))}
             </select>
           </div>
 
@@ -605,13 +654,47 @@ export default function PrinterManagementPage() {
             </select>
           </div>
 
+          {/* Model */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Mẫu mã</label>
+            <select
+              value={selectedModelId || ''}
+              onChange={(e) => handleModelChange(e.target.value)}
+              disabled={!selectedBrandId}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+            >
+              <option value="">Tất cả</option>
+              {models.map(model => (
+                <option key={model.modelId} value={model.modelId}>{model.modelName}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Maintenance Date */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Ngày bảo trì</label>
             <input
               type="date"
+              value={filters.lastMaintenanceDate || ''}
+              onChange={(e) => handleFilterChange('lastMaintenanceDate', e.target.value || undefined)}
               className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             />
+          </div>
+
+          {/* Status (moved) */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Trạng thái</label>
+            <select
+              value={filters.status || ''}
+              onChange={(e) => handleFilterChange('status', e.target.value || undefined)}
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Tất cả</option>
+              <option value="Active">Đang hoạt động</option>
+              <option value="Inactive">Không hoạt động</option>
+              <option value="Maintenance">Bảo trì</option>
+              <option value="Error">Lỗi</option>
+            </select>
           </div>
         </div>
       </div>
@@ -784,35 +867,31 @@ export default function PrinterManagementPage() {
                           Chỉnh sửa
                         </button>
                         <button
-                          onClick={async () => {
-                            try {
-                              await printerService.togglePrinter(printer.printerId);
-                              loadPrinters();
-                              setOpenMenuId(null);
-                              alert('Thay đổi trạng thái máy in thành công!');
-                            } catch (err) {
-                              alert((err as Error).message || 'Không thể thay đổi trạng thái');
-                            }
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setSelectedPrinter(printer);
+                            setShowToggleConfirmModal(true);
+                            setOpenMenuId(null);
                           }}
                           className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition"
                         >
-                            {printer.status === 'Active' ? (
-                              <>
-                                <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="12" r="9" />
-                                  <path d="M12 7v5" />
-                                </svg>
-                                <span className="ml-2">Tắt</span>
-                              </>
-                            ) : (
-                              <>
-                                <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="12" r="9" />
-                                  <path d="M12 7v5" />
-                                </svg>
-                                <span className="ml-2">Bật</span>
-                              </>
-                            )}
+                          {printer.status === 'Active' ? (
+                            <>
+                              <svg className="w-5 h-5 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="9" />
+                                <path d="M12 7v5" />
+                              </svg>
+                              <span className="ml-2">Tắt</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="9" />
+                                <path d="M12 7v5" />
+                              </svg>
+                              <span className="ml-2">Bật</span>
+                            </>
+                          )}
                         </button>
                         <button
                           onClick={() => {
@@ -1284,6 +1363,53 @@ export default function PrinterManagementPage() {
                         }
                       }}
                       className="px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
+                    >
+                      Xác nhận
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Single Toggle Confirmation Modal */}
+          {showToggleConfirmModal && selectedPrinter && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-md w-full">
+                <div className="p-6">
+                  <div className="flex items-center justify-center w-12 h-12 mx-auto bg-yellow-100 rounded-full mb-4">
+                    <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2v6M20.364 5.636A9 9 0 1112 3v2" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Xác nhận thay đổi trạng thái</h3>
+                  <p className="text-sm text-gray-600 text-center mb-6">
+                    Bạn có chắc chắn muốn {selectedPrinter.status === 'Active' ? 'tắt' : 'bật'} máy in <span className="font-semibold">{selectedPrinter.printerName}</span>?
+                  </p>
+                  <div className="flex justify-center gap-3">
+                    <button
+                      onClick={() => setShowToggleConfirmModal(false)}
+                      className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!selectedPrinter) return;
+                        try {
+                          setLoading(true);
+                          await printerService.togglePrinter(selectedPrinter.printerId);
+                          alert('Thay đổi trạng thái máy in thành công');
+                          setShowToggleConfirmModal(false);
+                          setSelectedPrinter(null);
+                          loadPrinters();
+                        } catch (err) {
+                          alert((err as Error).message || 'Thay đổi trạng thái thất bại');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      className="px-4 py-2 text-sm bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
                     >
                       Xác nhận
                     </button>
