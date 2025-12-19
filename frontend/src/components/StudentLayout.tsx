@@ -251,12 +251,14 @@ export default function StudentLayout({ children }: LayoutProps) {
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                 <Link
                   href="/student/profile"
+                  onClick={() => setDropdownOpen(false)}
                   className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 >
                   Thông tin cá nhân
                 </Link>
                 <Link
                   href="/student/settings"
+                  onClick={() => setDropdownOpen(false)}
                   className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 >
                   Cài đặt
