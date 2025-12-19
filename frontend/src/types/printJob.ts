@@ -4,7 +4,7 @@
 
 export interface PrintJobRequest {
   documentId: number;
-  printerId: string;
+  printerId: number;
   paperSize: 'A4' | 'A3';
   pageRange?: string; // "1-5,10,15-20" or null for all pages
   duplex: boolean; // 2-sided printing
@@ -16,7 +16,7 @@ export interface PrintJobRequest {
 export interface PrintJobResponse {
   jobId: number;
   documentId: number;
-  printerId: string;
+  printerId: number;
   studentId: string;
   paperSize: string;
   pageRange?: string;

@@ -3,7 +3,7 @@
  */
 
 export interface Printer {
-  printerId: string;
+  printerId: number;
   printerName: string;
   brand: string;
   model: string;
@@ -11,6 +11,7 @@ export interface Printer {
   campus: string;
   building: string;
   roomNumber: string;
+  ipAddress?: string;
   paperSizes: string; // "A4,A3"
   colorPrinting: boolean;
   duplexPrinting: boolean;
@@ -31,6 +32,9 @@ export interface PrinterListResponse {
 export interface PrinterFilters {
   campus?: string;
   building?: string;
+  room?: string;
+  brand?: string;
+  model?: string;
   status?: string;
   keyword?: string;
   colorPrinting?: boolean;

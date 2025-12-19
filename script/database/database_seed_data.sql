@@ -228,7 +228,148 @@ SELECT 'SPSO001', RoleID FROM Roles WHERE RoleName = 'SPSO';
 GO
 
 -- ================================================================
--- 4. SEED PAGE BALANCE (Cấp trang cho sinh viên)
+-- 4. SEED REFERENCE DATA: BRANDS
+-- ================================================================
+
+SET IDENTITY_INSERT Brands ON;
+
+INSERT INTO Brands (BrandID, BrandName, BrandDescription, IsActive) VALUES
+(1, 'HP', 'Hewlett-Packard - Thương hiệu máy in hàng đầu thế giới', 1),
+(2, 'Canon', 'Canon - Chuyên về máy in và máy photocopy', 1),
+(3, 'Epson', 'Epson - Máy in phun màu và laser chất lượng cao', 1),
+(4, 'Brother', 'Brother - Máy in văn phòng bền bỉ', 1),
+(5, 'Xerox', 'Xerox - Giải pháp in ấn doanh nghiệp', 1),
+(6, 'Samsung', 'Samsung - Máy in laser và đa năng', 1),
+(7, 'Ricoh', 'Ricoh - Máy photocopy và máy in công suất lớn', 1),
+(8, 'Kyocera', 'Kyocera - Máy in laser chuyên nghiệp', 1);
+
+SET IDENTITY_INSERT Brands OFF;
+GO
+
+-- ================================================================
+-- 5. SEED REFERENCE DATA: PRINTER MODELS
+-- ================================================================
+
+SET IDENTITY_INSERT PrinterModels ON;
+
+INSERT INTO PrinterModels (ModelID, BrandID, ModelName, ModelDescription, DefaultPaperSizes, DefaultColorPrinting, DefaultDuplexPrinting, IsActive) VALUES
+-- HP Models
+(1, 1, 'LaserJet Pro M404dn', 'Máy in laser đen trắng A4 tốc độ cao', 'A4', 0, 1, 1),
+(2, 1, 'LaserJet Pro MFP M428fdw', 'Máy in đa chức năng A4', 'A4', 0, 1, 1),
+(3, 1, 'Color LaserJet Pro M454dw', 'Máy in laser màu A4', 'A4', 1, 1, 1),
+(4, 1, 'LaserJet Enterprise M507dn', 'Máy in doanh nghiệp A4', 'A4', 0, 1, 1),
+(5, 1, 'LaserJet Enterprise M607', 'Máy in doanh nghiệp tốc độ cao', 'A4', 0, 1, 1),
+
+-- Canon Models
+(6, 2, 'imageRUNNER 2425i', 'Máy photocopy đa năng A4', 'A4', 0, 1, 1),
+(7, 2, 'imageRUNNER 2625i', 'Máy photocopy đa năng A4', 'A4', 0, 1, 1),
+(8, 2, 'LBP226dw', 'Máy in laser đen trắng A4', 'A4', 0, 1, 1),
+(9, 2, 'imageCLASS MF644Cdw', 'Máy in màu đa chức năng A4', 'A4', 1, 1, 1),
+
+-- Epson Models
+(10, 3, 'EcoTank L3250', 'Máy in phun liên tục đa năng', 'A4', 1, 0, 1),
+(11, 3, 'WorkForce Pro WF-C5790', 'Máy in phun màu văn phòng', 'A4,A3', 1, 1, 1),
+(12, 3, 'EcoTank L15150', 'Máy in A3 5 màu chuyên nghiệp', 'A4,A3', 1, 1, 1),
+
+-- Brother Models
+(13, 4, 'HL-L2375DW', 'Máy in laser đen trắng A4', 'A4', 0, 1, 1),
+(14, 4, 'MFC-L2750DW', 'Máy in đa chức năng laser A4', 'A4', 0, 1, 1),
+(15, 4, 'HL-L8360CDW', 'Máy in laser màu A4', 'A4', 1, 1, 1),
+
+-- Xerox Models
+(16, 5, 'VersaLink C405', 'Máy in màu đa năng A4', 'A4', 1, 1, 1),
+(17, 5, 'WorkCentre 3335', 'Máy photocopy đa năng A4', 'A4', 0, 1, 1),
+
+-- Samsung Models
+(18, 6, 'ProXpress M3870FW', 'Máy in laser đa năng A4', 'A4', 0, 1, 1),
+(19, 6, 'ProXpress C3060FR', 'Máy in màu đa năng A4', 'A4', 1, 1, 1),
+
+-- Ricoh Models
+(20, 7, 'MP 301SPF', 'Máy photocopy đa năng A4', 'A4', 0, 1, 1),
+(21, 7, 'Aficio MP C3003', 'Máy photocopy màu A3', 'A4,A3', 1, 1, 1),
+
+-- Kyocera Models
+(22, 8, 'ECOSYS M2640idw', 'Máy in đa năng A4', 'A4', 0, 1, 1),
+(23, 8, 'TASKalfa 3252ci', 'Máy photocopy màu A3', 'A4,A3', 1, 1, 1);
+
+SET IDENTITY_INSERT PrinterModels OFF;
+GO
+
+-- ================================================================
+-- 6. SEED REFERENCE DATA: CAMPUSES
+-- ================================================================
+
+SET IDENTITY_INSERT Campuses ON;
+
+INSERT INTO Campuses (CampusID, CampusCode, CampusName, Address, IsActive) VALUES
+(1, 'DA', 'Campus Dĩ An', 'Khu phố 6, P.Linh Trung, Thủ Đức, TP.HCM', 1),
+(2, 'LT', 'Campus Linh Trung', 'Lô E2a-7, Đường D1, P.Long Thạnh Mỹ, Quận 9, TP.HCM', 1);
+
+SET IDENTITY_INSERT Campuses OFF;
+GO
+
+-- ================================================================
+-- 7. SEED REFERENCE DATA: BUILDINGS
+-- ================================================================
+
+SET IDENTITY_INSERT Buildings ON;
+
+INSERT INTO Buildings (BuildingID, CampusID, BuildingCode, BuildingName, FloorCount, IsActive) VALUES
+-- Campus Dĩ An
+(1, 1, 'H6', 'Tòa H6', 8, 1),
+(2, 1, 'H3', 'Tòa H3', 6, 1),
+(3, 1, 'A', 'Tòa A (Hành chính)', 5, 1),
+(4, 1, 'Library', 'Thư viện Trung tâm', 5, 1),
+
+-- Campus Linh Trung
+(5, 2, 'E2a', 'Tòa E2a', 10, 1),
+(6, 2, 'E3', 'Tòa E3', 8, 1);
+
+SET IDENTITY_INSERT Buildings OFF;
+GO
+
+-- ================================================================
+-- 8. SEED REFERENCE DATA: ROOMS
+-- ================================================================
+
+SET IDENTITY_INSERT Rooms ON;
+
+INSERT INTO Rooms (RoomID, BuildingID, RoomNumber, RoomName, RoomType, Capacity, IsActive) VALUES
+-- H6 Building
+(1, 1, '101', 'Phòng máy tính 1', 'Lab', 40, 1),
+(2, 1, '102', 'Phòng máy tính 2', 'Lab', 40, 1),
+(3, 1, '201', 'Phòng máy tính 3', 'Lab', 35, 1),
+(4, 1, '301', 'Phòng họp H6', 'Meeting', 20, 1),
+(5, 1, 'Ground', 'Khu vực in chung H6', 'PrintArea', 100, 1),
+
+-- H3 Building
+(6, 2, '101', 'Phòng máy tính H3-1', 'Lab', 50, 1),
+(7, 2, '201', 'Phòng học H3-201', 'Classroom', 80, 1),
+(8, 2, 'Ground', 'Khu vực in chung H3', 'PrintArea', 80, 1),
+
+-- A Building (Hành chính)
+(9, 3, '101', 'Phòng Hành chính', 'Office', 10, 1),
+(10, 3, '102', 'Phòng Đào tạo', 'Office', 8, 1),
+(11, 3, 'Ground', 'Khu vực in hành chính', 'PrintArea', 30, 1),
+
+-- Library
+(12, 4, 'G01', 'Khu vực in tầng trệt', 'PrintArea', 50, 1),
+(13, 4, '2F-PrintArea', 'Khu vực in tầng 2', 'PrintArea', 30, 1),
+
+-- E2a Building (Campus Linh Trung)
+(14, 5, '101', 'Phòng máy E2a-1', 'Lab', 45, 1),
+(15, 5, '201', 'Phòng máy E2a-2', 'Lab', 45, 1),
+(16, 5, 'Ground', 'Khu vực in chung E2a', 'PrintArea', 60, 1),
+
+-- E3 Building
+(17, 6, '101', 'Phòng máy E3-1', 'Lab', 40, 1),
+(18, 6, '201', 'Phòng họp E3', 'Meeting', 30, 1);
+
+SET IDENTITY_INSERT Rooms OFF;
+GO
+
+-- ================================================================
+-- 9. SEED PAGE BALANCE (Cấp trang cho sinh viên)
 -- ================================================================
 
 INSERT INTO PageBalance (StudentID, A4Balance, A3Balance)
@@ -240,26 +381,37 @@ VALUES
 GO
 
 -- ================================================================
--- 5. SEED PRINTERS
+-- 10. SEED PRINTERS (Updated với Foreign Keys)
 -- ================================================================
 
-INSERT INTO Printers (PrinterID, PrinterName, Brand, Model, Location, Campus, Building, RoomNumber, IPAddress, Status, CreatedBy)
+INSERT INTO Printers (PrinterName, BrandID, ModelID, RoomID, IPAddress, PaperSizes, ColorPrinting, DuplexPrinting, Status, TotalPagesPrinted, CreatedBy)
 VALUES 
-('PR-H6-101', N'Máy in H6 - 101', 'HP', 'LaserJet Pro M428fdw', 
- N'Dĩ An - H6 - P101', N'Dĩ An', 'H6', '101', '192.168.1.101', 'Active', 'SPSO001'),
- 
-('PR-H6-201', N'Máy in H6 - 201', 'Canon', 'imageRUNNER 2625i', 
- N'Dĩ An - H6 - P201', N'Dĩ An', 'H6', '201', '192.168.1.102', 'Active', 'SPSO001'),
- 
-('PR-A-102', N'Máy in A - 102', 'Epson', 'WorkForce Pro WF-C5790', 
- N'Dĩ An - A - P102', N'Dĩ An', 'A', '102', '192.168.2.101', 'Active', 'SPSO001'),
- 
-('PR-LIB-G01', N'Máy in Thư viện', 'HP', 'LaserJet Enterprise M607', 
- N'Dĩ An - Thư viện - G01', N'Dĩ An', N'Thư viện', 'G01', '192.168.3.101', 'Active', 'SPSO001');
+-- H6 Building Printers
+(N'Máy in H6-101 (HP LaserJet)', 1, 1, 1, '192.168.1.101', 'A4', 0, 1, 'Active', 0, 'SPSO001'),
+(N'Máy in H6-102 (Canon)', 2, 6, 2, '192.168.1.102', 'A4', 0, 1, 'Active', 0, 'SPSO001'),
+(N'Máy in H6-201 (HP Color)', 1, 3, 3, '192.168.1.201', 'A4', 1, 1, 'Active', 0, 'SPSO001'),
+
+-- H3 Building Printers
+(N'Máy in H3-101 (Brother)', 4, 13, 6, '192.168.2.101', 'A4', 0, 1, 'Active', 0, 'SPSO001'),
+(N'Máy in chung H3 (Epson)', 3, 11, 8, '192.168.2.150', 'A4,A3', 1, 1, 'Active', 0, 'SPSO001'),
+
+-- A Building Printers (Admin area)
+(N'Máy in Đào tạo (Xerox)', 5, 16, 10, '192.168.3.102', 'A4', 1, 1, 'Active', 0, 'SPSO001'),
+
+-- Library Printers
+(N'Máy in Thư viện tầng trệt', 1, 5, 12, '192.168.4.101', 'A4', 0, 1, 'Active', 0, 'SPSO001'),
+(N'Máy in Thư viện tầng 2', 2, 7, 13, '192.168.4.201', 'A4', 0, 1, 'Active', 0, 'SPSO001'),
+
+-- E2a Building Printers (Campus Linh Trung)
+(N'Máy in E2a-101 (HP)', 1, 2, 14, '192.168.5.101', 'A4', 0, 1, 'Active', 0, 'SPSO001'),
+(N'Máy in chung E2a (Epson A3)', 3, 12, 16, '192.168.5.150', 'A4,A3', 1, 1, 'Active', 0, 'SPSO001'),
+
+-- E3 Building Printers
+(N'Máy in E3-101 (Brother)', 4, 14, 17, '192.168.6.101', 'A4', 0, 1, 'Active', 0, 'SPSO001');
 GO
 
 -- ================================================================
--- 6. SEED PAGE PRICING
+-- 11. SEED PAGE PRICING
 -- ================================================================
 
 INSERT INTO PagePricing (PaperSize, PricePerPage, Currency, EffectiveFrom, IsActive, Notes)
@@ -269,7 +421,7 @@ VALUES
 GO
 
 -- ================================================================
--- 7. SEED ALLOWED FILE TYPES
+-- 12. SEED ALLOWED FILE TYPES
 -- ================================================================
 
 INSERT INTO AllowedFileTypes (FileExtension, MimeType, MaxFileSizeMB, IsAllowed, UpdatedBy)
@@ -285,7 +437,7 @@ VALUES
 GO
 
 -- ================================================================
--- 8. SEED SYSTEM CONFIG
+-- 13. SEED SYSTEM CONFIG
 -- ================================================================
 
 INSERT INTO SystemConfig (ConfigKey, ConfigValue, Description, DataType, UpdatedBy)
@@ -349,6 +501,13 @@ PRINT 'Total Printers: ' + CAST(@PrinterCount AS VARCHAR(10));
 PRINT 'Total Roles: ' + CAST(@RoleCount AS VARCHAR(10));
 PRINT 'Total Permissions: ' + CAST(@PermCount AS VARCHAR(10));
 PRINT 'Total System Configs: ' + CAST(@ConfigCount AS VARCHAR(10));
+PRINT '';
+PRINT 'REFERENCE DATA SUMMARY:';
+PRINT '- Brands: 8 (HP, Canon, Epson, Brother, Xerox, Samsung, Ricoh, Kyocera)';
+PRINT '- Printer Models: 23 models';
+PRINT '- Campuses: 2 (Dĩ An, Linh Trung)';
+PRINT '- Buildings: 6 buildings';
+PRINT '- Rooms: 18 rooms';
 PRINT '';
 PRINT '================================================================';
 GO

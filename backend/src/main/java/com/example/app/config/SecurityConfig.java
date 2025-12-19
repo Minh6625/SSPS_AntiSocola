@@ -32,6 +32,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**").permitAll()
+                // Reference Data API - Temporary: permitAll for debugging
+                .requestMatchers("/api/reference/**").permitAll()
                 // Document API (Print Flow) - chỉ cho Student
                 .requestMatchers("/api/documents/**").hasAuthority("Student")
                    // User API (current user info & balance) - Student + SPSO

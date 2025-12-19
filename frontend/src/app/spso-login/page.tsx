@@ -3,16 +3,21 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
+import OtpVerification from '@/app/login/otp-verification';
 
-export default function SPSOLoginPage() {
+export default function AdminLoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpCode, setOtpCode] = useState<string>();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +41,14 @@ export default function SPSOLoginPage() {
         password: formData.password,
       });
 
+      if (result.status === 202) {
+        setOtpEmail(formData.email);
+        setOtpCode(result.data?.otpCode);
+        setShowOtpModal(true);
+        setError('');
+        return;
+      }
+
       if (result.status === 200) {
         // Chỉ cho phép role SPSO đăng nhập
         const userRole = result.data?.role?.toUpperCase();
@@ -51,6 +64,17 @@ export default function SPSOLoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOtpSuccess = () => {
+    setShowOtpModal(false);
+    router.push('/spso/dashboard');
+  };
+
+  const handleOtpCancel = () => {
+    setShowOtpModal(false);
+    setOtpEmail('');
+    setOtpCode(undefined);
   };
 
   return (
@@ -179,6 +203,16 @@ export default function SPSOLoginPage() {
           </div>
         </div>
       </div>
+
+      {/* OTP Verification Modal */}
+      {showOtpModal && (
+        <OtpVerification
+          email={otpEmail}
+          otpCode={otpCode}
+          onSuccess={handleOtpSuccess}
+          onCancel={handleOtpCancel}
+        />
+      )}
     </div>
   );
 }

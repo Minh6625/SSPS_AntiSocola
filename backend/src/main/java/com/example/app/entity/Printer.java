@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * ENTITY: Printers - Máy in
+ * ENTITY: Printers - Máy in (Updated with Reference Tables)
  */
 @Entity
 @Table(name = "Printers")
@@ -18,33 +18,30 @@ import java.time.LocalDateTime;
 public class Printer {
     
     @Id
-    @Column(name = "PrinterID", length = 20)
-    private String printerId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "PrinterID")
+    private Long printerId;
     
     @Column(name = "PrinterName", nullable = false, length = 100)
     private String printerName;
     
-    @Column(name = "Brand", nullable = false, length = 50)
-    private String brand;
+    // Foreign Keys thay vì text fields
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "BrandID", nullable = false)
+    private Brand brand;
     
-    @Column(name = "Model", nullable = false, length = 100)
-    private String model;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ModelID", nullable = false)
+    private PrinterModel model;
     
-    @Column(name = "Location", nullable = false, length = 200)
-    private String location;
-    
-    @Column(name = "Campus", nullable = false, length = 50)
-    private String campus;
-    
-    @Column(name = "Building", nullable = false, length = 50)
-    private String building;
-    
-    @Column(name = "RoomNumber", nullable = false, length = 20)
-    private String roomNumber;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "RoomID", nullable = false)
+    private Room room;
     
     @Column(name = "IPAddress", length = 50)
-    private String ipAddress;  // IP máy in (VD: 192.168.1.100 hoặc printer.local)
+    private String ipAddress;
     
+    // Cấu hình máy (có thể override defaults từ PrinterModels)
     @Column(name = "PaperSizes", length = 50)
     private String paperSizes = "A4,A3";
     
@@ -69,10 +66,37 @@ public class Printer {
     @Column(name = "CreatedBy", length = 20)
     private String createdBy;
     
+    @Column(name = "UpdatedAt")
+    private LocalDateTime updatedAt;
+    
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
         }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+    
+    /**
+     * Helper method to get formatted location string
+     * @return Location in format "Campus - Building - Room"
+     */
+    @Transient
+    public String getLocation() {
+        if (room != null && room.getBuilding() != null && room.getBuilding().getCampus() != null) {
+            return String.format("%s - %s - %s", 
+                room.getBuilding().getCampus().getCampusName(),
+                room.getBuilding().getBuildingCode(),
+                room.getRoomNumber());
+        }
+        return "";
     }
 }
+

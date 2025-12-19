@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PrintJobSubmitRequestDTO {
     private Integer documentId;
-    private String printerId;
+    private Long printerId;
     private String paperSize;          // A4, A3
     private String pageRange;          // "1-5,10,15-20" hoặc null (all pages)
     private Boolean duplex;            // true: 2 mặt, false: 1 mặt

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { printerService } from '@/services/printerService';
+import { referenceService, Brand, PrinterModel, Campus, Building, Room } from '@/services/referenceService';
 import { Printer, PrinterFilters } from '@/types/printer';
 import StudentLayout from '@/components/StudentLayout';
 
@@ -23,25 +24,114 @@ export default function PrinterSelectionPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  // Filters
-  const [filters, setFilters] = useState<PrinterFilters>({
-    status: 'Active', // Default: chỉ hiện máy khả dụng
-  });
-  const [campus, setCampus] = useState<string>('');
-  const [building, setBuilding] = useState<string>('');
+  // Reference data
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [models, setModels] = useState<PrinterModel[]>([]);
+  const [campuses, setCampuses] = useState<Campus[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+
+  // Selected values (IDs for reference data)
+  const [selectedBrandId, setSelectedBrandId] = useState<number | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<number | null>(null);
+  const [selectedCampusId, setSelectedCampusId] = useState<number | null>(null);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<number | null>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+  
+  // Filter values (names to send to API)
   const [keyword, setKeyword] = useState<string>('');
   const [showAvailableOnly, setShowAvailableOnly] = useState(true);
 
-  // Auto-sync filters when UI controls change
-  useEffect(() => {
-    setCurrentPage(0);
-    setFilters({
-      campus: campus || undefined,
-      building: building || undefined,
+  // Derive filters from selected IDs using useMemo for stability
+  const filters = useMemo<PrinterFilters>(() => {
+    const selectedBrand = selectedBrandId && brands.length > 0
+      ? brands.find(b => b.brandId === selectedBrandId)?.brandName 
+      : undefined;
+    const selectedModel = selectedModelId && models.length > 0
+      ? models.find(m => m.modelId === selectedModelId)?.modelName 
+      : undefined;
+    const selectedCampus = selectedCampusId && campuses.length > 0
+      ? campuses.find(c => c.campusId === selectedCampusId)?.campusName 
+      : undefined;
+    const selectedBuilding = selectedBuildingId && buildings.length > 0
+      ? buildings.find(b => b.buildingId === selectedBuildingId)?.buildingCode 
+      : undefined;
+    const selectedRoom = selectedRoomId && rooms.length > 0
+      ? rooms.find(r => r.roomId === selectedRoomId)?.roomNumber 
+      : undefined;
+    
+    return {
+      brand: selectedBrand,
+      model: selectedModel,
+      campus: selectedCampus,
+      building: selectedBuilding,
+      room: selectedRoom,
       status: showAvailableOnly ? 'Active' : undefined,
       keyword: keyword || undefined,
-    });
-  }, [campus, building, showAvailableOnly, keyword]);
+    };
+  }, [selectedBrandId, selectedModelId, selectedCampusId, selectedBuildingId, selectedRoomId, showAvailableOnly, keyword, brands, models, campuses, buildings, rooms]);
+
+  // Load reference data on mount
+  useEffect(() => {
+    const loadReferenceData = async () => {
+      try {
+        const [brandsData, campusesData] = await Promise.all([
+          referenceService.getBrands(),
+          referenceService.getCampuses(),
+        ]);
+        console.log('Brands loaded:', brandsData);
+        console.log('Campuses loaded:', campusesData);
+        setBrands(brandsData);
+        setCampuses(campusesData);
+      } catch (err) {
+        console.error('Failed to load reference data:', err);
+      }
+    };
+    loadReferenceData();
+  }, []);
+
+  // Load models when brand changes
+  useEffect(() => {
+    if (selectedBrandId) {
+      referenceService.getModelsByBrand(selectedBrandId)
+        .then(setModels)
+        .catch(err => console.error('Failed to load models:', err));
+    } else {
+      setModels([]);
+      setSelectedModelId(null);
+    }
+  }, [selectedBrandId]);
+
+  // Load buildings when campus changes and clear dependent selections
+  useEffect(() => {
+    if (selectedCampusId) {
+      referenceService.getBuildingsByCampus(selectedCampusId)
+        .then(setBuildings)
+        .catch(err => console.error('Failed to load buildings:', err));
+    } else {
+      setBuildings([]);
+      setSelectedBuildingId(null);
+      setRooms([]);
+      setSelectedRoomId(null);
+    }
+  }, [selectedCampusId]);
+
+  // Load rooms when building changes and clear room selection
+  useEffect(() => {
+    if (selectedBuildingId) {
+      referenceService.getRoomsByBuilding(selectedBuildingId)
+        .then(setRooms)
+        .catch(err => console.error('Failed to load rooms:', err));
+    } else {
+      setRooms([]);
+      setSelectedRoomId(null);
+    }
+  }, [selectedBuildingId]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [filters]);
 
   // Fetch printers
   const fetchPrinters = useCallback(async () => {
@@ -98,20 +188,22 @@ export default function PrinterSelectionPage() {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-blue-50 rounded-lg border-2 border-blue-300 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Filters (blue subtle) */}
+        <div className="bg-blue-50 rounded-lg border border-blue-200 p-3">
+          {/* Row 1: Location filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             {/* Campus */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Cơ sở</label>
               <select
-                value={campus}
-                onChange={(e) => setCampus(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={selectedCampusId || ''}
+                onChange={(e) => setSelectedCampusId(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               >
                 <option value="">Tất cả</option>
-                <option value="Dĩ An">Dĩ An</option>
-                <option value="Thành phố">Thành phố</option>
+                {campuses.map(campus => (
+                  <option key={campus.campusId} value={campus.campusId}>{campus.campusName}</option>
+                ))}
               </select>
             </div>
 
@@ -119,14 +211,64 @@ export default function PrinterSelectionPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Tòa nhà</label>
               <select
-                value={building}
-                onChange={(e) => setBuilding(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={!campus}
+                value={selectedBuildingId || ''}
+                onChange={(e) => setSelectedBuildingId(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                disabled={!selectedCampusId}
               >
                 <option value="">Tất cả</option>
-                {printerService.getAvailableBuildings(campus).map(b => (
-                  <option key={b} value={b}>{b}</option>
+                {buildings.map(building => (
+                  <option key={building.buildingId} value={building.buildingId}>{building.buildingCode}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Room */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phòng</label>
+              <select
+                value={selectedRoomId || ''}
+                onChange={(e) => setSelectedRoomId(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                disabled={!selectedBuildingId}
+              >
+                <option value="">Tất cả</option>
+                {rooms.map(room => (
+                  <option key={room.roomId} value={room.roomId}>{room.roomNumber}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Row 2: Printer filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Brand */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Hãng</label>
+              <select
+                value={selectedBrandId || ''}
+                onChange={(e) => setSelectedBrandId(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              >
+                <option value="">Tất cả</option>
+                {brands.map(brand => (
+                  <option key={brand.brandId} value={brand.brandId}>{brand.brandName}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Model */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+              <select
+                value={selectedModelId || ''}
+                onChange={(e) => setSelectedModelId(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                disabled={!selectedBrandId}
+              >
+                <option value="">Tất cả</option>
+                {models.map(model => (
+                  <option key={model.modelId} value={model.modelId}>{model.modelName}</option>
                 ))}
               </select>
             </div>
@@ -139,22 +281,22 @@ export default function PrinterSelectionPage() {
                 placeholder="Tên máy in..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               />
             </div>
+          </div>
 
-            {/* Available Toggle */}
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer hover:bg-gray-50 transition">
-                <input
-                  type="checkbox"
-                  checked={showAvailableOnly}
-                  onChange={(e) => setShowAvailableOnly(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm font-medium text-gray-700 whitespace-nowrap">Chỉ máy khả dụng</span>
-              </label>
-            </div>
+          {/* Available Toggle - Separate row */}
+          <div className="mt-2">
+            <label className="inline-flex items-center gap-2 px-2 py-1 border border-blue-200 rounded-lg bg-blue-50 cursor-pointer hover:bg-blue-100 transition text-sm">
+              <input
+                type="checkbox"
+                checked={showAvailableOnly}
+                onChange={(e) => setShowAvailableOnly(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-700">Chỉ hiển thị máy khả dụng</span>
+            </label>
           </div>
         </div>
 
@@ -189,7 +331,7 @@ export default function PrinterSelectionPage() {
                 {printers.map((printer) => (
                   <div
                     key={printer.printerId}
-                    className="bg-blue-50 rounded-lg border border-blue-300 p-4 shadow-md hover:shadow-lg transition flex flex-col relative"
+                    className="bg-white rounded-lg border border-gray-200 p-4 shadow-md hover:shadow-lg transform hover:-translate-y-1 transition duration-150 ease-out flex flex-col relative"
                     style={{ minHeight: '260px' }}
                   >
                     {/* Status badge - Fixed position top right */}

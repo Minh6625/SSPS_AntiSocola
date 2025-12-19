@@ -32,6 +32,9 @@ export const printerService = {
 
       if (filters.campus) params.append('campus', filters.campus);
       if (filters.building) params.append('building', filters.building);
+      if (filters.room) params.append('room', filters.room);
+      if (filters.brand) params.append('brand', filters.brand);
+      if (filters.model) params.append('model', filters.model);
       if (filters.status) params.append('status', filters.status);
       if (filters.keyword) params.append('keyword', filters.keyword);
       if (filters.colorPrinting !== undefined) params.append('colorPrinting', filters.colorPrinting.toString());
@@ -79,5 +82,114 @@ export const printerService = {
       return ['A', 'B', 'C'];
     }
     return [];
+  },
+
+  /**
+   * POST /api/printers
+   * Thêm máy in mới (SPSO only)
+   */
+  async addPrinter(printerData: {
+    printerName: string;
+    brandId: number;
+    modelId: number;
+    roomId: number;
+    ipAddress?: string;
+    paperSizes: string;
+    colorPrinting: boolean;
+    duplexPrinting: boolean;
+    lastMaintenanceDate?: string;
+  }) {
+    try {
+      const response = await apiClient.post('/printers', printerData);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 'Thêm máy in thất bại';
+      throw new Error(errorMessage);
+    }
+  },
+
+  /**
+   * PUT /api/printers/{id}
+   * Cập nhật máy in (SPSO only)
+   */
+  async updatePrinter(id: number, printerData: {
+    printerName: string;
+    brandId: number;
+    modelId: number;
+    roomId: number;
+    ipAddress?: string;
+    paperSizes: string;
+    colorPrinting: boolean;
+    duplexPrinting: boolean;
+    status: string;
+    lastMaintenanceDate?: string;
+  }) {
+    try {
+      const response = await apiClient.put(`/printers/${id}`, printerData);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 'Cập nhật máy in thất bại';
+      throw new Error(errorMessage);
+    }
+  },
+
+  /**
+   * PATCH /api/printers/{id}/toggle
+   * Bật/Tắt máy in (SPSO only)
+   */
+  async togglePrinter(id: number) {
+    try {
+      const response = await apiClient.patch(`/printers/${id}/toggle`);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 'Thay đổi trạng thái máy in thất bại';
+      throw new Error(errorMessage);
+    }
+  },
+
+  /**
+   * DELETE /api/printers/{id}
+   * Xóa máy in (SPSO only)
+   */
+  async deletePrinter(id: number) {
+    try {
+      const response = await apiClient.delete(`/printers/${id}`);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 'Xóa máy in thất bại';
+      throw new Error(errorMessage);
+    }
+  },
+  
+  /**
+   * Bulk delete printers by calling DELETE for each id (uses existing endpoint).
+   */
+  async deletePrinters(ids: number[]) {
+    try {
+      await Promise.all(ids.map(id => apiClient.delete(`/printers/${id}`)));
+      return { success: true };
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 'Xóa nhóm máy in thất bại';
+      throw new Error(errorMessage);
+    }
+  },
+
+  /**
+   * Bulk toggle printers by calling PATCH toggle for each id.
+   */
+  async togglePrinters(ids: number[]) {
+    try {
+      await Promise.all(ids.map(id => apiClient.patch(`/printers/${id}/toggle`)));
+      return { success: true };
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 'Thay đổi trạng thái nhóm máy in thất bại';
+      throw new Error(errorMessage);
+    }
   },
 };

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import SPSOLayout from '@/components/SPSOLayout';
 import { profileService, UserProfile, UpdateProfileRequest, ChangePasswordRequest } from '@/services/profileService';
 
 export default function SPSOProfilePage() {
@@ -117,17 +116,14 @@ export default function SPSOProfilePage() {
 
   if (isLoading) {
     return (
-      <SPSOLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-        </div>
-      </SPSOLayout>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
     );
   }
 
   return (
-    <SPSOLayout>
-      <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl">
         {/* Header */}
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-md">
@@ -344,6 +340,5 @@ export default function SPSOProfilePage() {
           </div>
         )}
       </div>
-    </SPSOLayout>
   );
 }

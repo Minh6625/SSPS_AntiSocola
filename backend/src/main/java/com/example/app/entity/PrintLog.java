@@ -27,8 +27,8 @@ public class PrintLog {
     @Column(name = "StudentID", nullable = false, length = 20)
     private String studentId;
     
-    @Column(name = "PrinterID", nullable = false, length = 20)
-    private String printerId;
+    @Column(name = "PrinterID", nullable = false)
+    private Long printerId;
     
     @Column(name = "DocumentName", nullable = false, length = 255)
     private String documentName;

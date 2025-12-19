@@ -1,5 +1,6 @@
 package com.example.app.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -15,6 +16,7 @@ import java.util.Map;
  * Global Exception Handler - Xử lý tất cả exception từ Service/Controller
  * Tuân thủ Layered Architecture - Controller KHÔNG xử lý exception
  */
+@Slf4j
 @ControllerAdvice
 public class GlobalExceptionHandler {
     
@@ -74,11 +76,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         
+        // LOG FULL STACK TRACE
+        log.error("========================================");
+        log.error("UNHANDLED EXCEPTION CAUGHT!");
+        log.error("Exception type: {}", ex.getClass().getName());
+        log.error("Exception message: {}", ex.getMessage());
+        log.error("Full stack trace:", ex);
+        log.error("========================================");
+        
         // KHÔNG trả về stack trace ra ngoài (Security)
         ErrorResponse response = new ErrorResponse(
             LocalDateTime.now(),
             HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            "An internal error occurred",
+            "An internal error occurred: " + ex.getMessage(),
             null
         );
         

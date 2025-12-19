@@ -18,7 +18,7 @@ public class PrintLogDTO {
     private String studentId;
     private String studentName;
     private String studentEmail;
-    private String printerId;
+    private Long printerId;
     private String printerName;
     private String printerLocation;
     private String documentName;

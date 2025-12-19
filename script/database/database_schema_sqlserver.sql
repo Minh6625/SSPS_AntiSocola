@@ -85,33 +85,136 @@ CREATE TABLE PageTransactions (
 GO
 
 -- ================================================================
--- BẢNG 4: PRINTERS - Máy in
+-- BẢNG 4A: BRANDS - Thương hiệu máy in (Reference Table)
+-- ================================================================
+CREATE TABLE Brands (
+    BrandID INT IDENTITY(1,1) PRIMARY KEY,
+    BrandName NVARCHAR(50) NOT NULL UNIQUE,
+    BrandDescription NVARCHAR(200),
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE(),
+    
+    INDEX IX_Brands_Name (BrandName),
+    INDEX IX_Brands_Active (IsActive)
+);
+GO
+
+-- ================================================================
+-- BẢNG 4B: PRINTER_MODELS - Model máy in (Reference Table)
+-- ================================================================
+CREATE TABLE PrinterModels (
+    ModelID INT IDENTITY(1,1) PRIMARY KEY,
+    BrandID INT NOT NULL,
+    ModelName NVARCHAR(100) NOT NULL,
+    ModelDescription NVARCHAR(200),
+    DefaultPaperSizes NVARCHAR(50) DEFAULT 'A4,A3',  -- Khổ giấy mặc định
+    DefaultColorPrinting BIT DEFAULT 0,               -- Mặc định có màu?
+    DefaultDuplexPrinting BIT DEFAULT 1,              -- Mặc định in 2 mặt?
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE(),
+    
+    FOREIGN KEY (BrandID) REFERENCES Brands(BrandID) ON DELETE CASCADE,
+    UNIQUE (BrandID, ModelName),
+    INDEX IX_Models_Brand (BrandID, IsActive),
+    INDEX IX_Models_Name (ModelName)
+);
+GO
+
+-- ================================================================
+-- BẢNG 4C: CAMPUSES - Campus (Reference Table)
+-- ================================================================
+CREATE TABLE Campuses (
+    CampusID INT IDENTITY(1,1) PRIMARY KEY,
+    CampusCode NVARCHAR(20) NOT NULL UNIQUE,          -- CS1, CS2, DA (Dĩ An), LT (Linh Trung)
+    CampusName NVARCHAR(100) NOT NULL,                 -- "Campus Dĩ An", "Campus Linh Trung"
+    Address NVARCHAR(200),
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE(),
+    
+    INDEX IX_Campuses_Code (CampusCode),
+    INDEX IX_Campuses_Active (IsActive)
+);
+GO
+
+-- ================================================================
+-- BẢNG 4D: BUILDINGS - Tòa nhà (Reference Table)
+-- ================================================================
+CREATE TABLE Buildings (
+    BuildingID INT IDENTITY(1,1) PRIMARY KEY,
+    CampusID INT NOT NULL,
+    BuildingCode NVARCHAR(20) NOT NULL,                -- H6, A, B, C
+    BuildingName NVARCHAR(100),                         -- "Tòa H6", "Tòa A"
+    FloorCount INT,                                     -- Số tầng
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE(),
+    
+    FOREIGN KEY (CampusID) REFERENCES Campuses(CampusID) ON DELETE CASCADE,
+    UNIQUE (CampusID, BuildingCode),
+    INDEX IX_Buildings_Campus (CampusID, IsActive),
+    INDEX IX_Buildings_Code (BuildingCode)
+);
+GO
+
+-- ================================================================
+-- BẢNG 4E: ROOMS - Phòng (Reference Table)
+-- ================================================================
+CREATE TABLE Rooms (
+    RoomID INT IDENTITY(1,1) PRIMARY KEY,
+    BuildingID INT NOT NULL,
+    RoomNumber NVARCHAR(20) NOT NULL,                  -- 101, 202, P301
+    RoomName NVARCHAR(100),                             -- "Phòng máy 1", "Thư viện"
+    RoomType NVARCHAR(50),                              -- Lab, Library, Office, etc.
+    Capacity INT,                                       -- Sức chứa (số người)
+    IsActive BIT NOT NULL DEFAULT 1,
+    CreatedAt DATETIME2 DEFAULT GETDATE(),
+    UpdatedAt DATETIME2 DEFAULT GETDATE(),
+    
+    FOREIGN KEY (BuildingID) REFERENCES Buildings(BuildingID) ON DELETE CASCADE,
+    UNIQUE (BuildingID, RoomNumber),
+    INDEX IX_Rooms_Building (BuildingID, IsActive),
+    INDEX IX_Rooms_Number (RoomNumber)
+);
+GO
+
+-- ================================================================
+-- BẢNG 4: PRINTERS - Máy in (Updated với Foreign Keys)
 -- ================================================================
 CREATE TABLE Printers (
-    PrinterID NVARCHAR(20) PRIMARY KEY,                 -- PR-CS-01, PR-H6-02...
+    PrinterID BIGINT IDENTITY(1,1) PRIMARY KEY,         -- Auto-increment ID
     PrinterName NVARCHAR(100) NOT NULL,                 -- Tên máy in
-    Brand NVARCHAR(50) NOT NULL,                        -- HP, Canon, Epson
-    Model NVARCHAR(100) NOT NULL,                       -- LaserJet Pro...
-    Location NVARCHAR(200) NOT NULL,                    -- "Dĩ An - H6 - P101"
-    Campus NVARCHAR(50) NOT NULL,                       -- Dĩ An, Linh Trung
-    Building NVARCHAR(50) NOT NULL,                     -- H6, A...
-    RoomNumber NVARCHAR(20) NOT NULL,                   -- 101, 202...
-    IPAddress NVARCHAR(50),                             -- IP máy in (VD: 192.168.1.100 hoặc printer.local)
     
-    -- Cấu hình máy
-    PaperSizes NVARCHAR(50) DEFAULT 'A4,A3',           -- Khổ giấy hỗ trợ
-    ColorPrinting BIT DEFAULT 0,                        -- 1: Có màu, 0: Đen trắng
-    DuplexPrinting BIT DEFAULT 1,                       -- 1: In 2 mặt, 0: 1 mặt
+    -- Foreign Keys thay vì text fields
+    BrandID INT NOT NULL,
+    ModelID INT NOT NULL,
+    RoomID INT NOT NULL,
+    
+    IPAddress NVARCHAR(50),                             -- IP máy in
+    
+    -- Cấu hình máy (có thể override defaults từ PrinterModels)
+    PaperSizes NVARCHAR(50) DEFAULT 'A4,A3',
+    ColorPrinting BIT DEFAULT 0,
+    DuplexPrinting BIT DEFAULT 1,
     
     -- Trạng thái
     Status NVARCHAR(20) DEFAULT 'Active' CHECK (Status IN ('Active', 'Inactive', 'Maintenance', 'Error')),
-    TotalPagesPrinted INT DEFAULT 0,                    -- Tổng số trang đã in
-    LastMaintenanceDate DATE,                           -- Ngày bảo trì gần nhất
+    TotalPagesPrinted INT DEFAULT 0,
+    LastMaintenanceDate DATE,
     
     CreatedAt DATETIME2 DEFAULT GETDATE(),
     CreatedBy NVARCHAR(20),
+    UpdatedAt DATETIME2 DEFAULT GETDATE(),
     
-    INDEX IX_Printer_Location (Campus, Building, Status),
+    FOREIGN KEY (BrandID) REFERENCES Brands(BrandID),
+    FOREIGN KEY (ModelID) REFERENCES PrinterModels(ModelID),
+    FOREIGN KEY (RoomID) REFERENCES Rooms(RoomID),
+    FOREIGN KEY (CreatedBy) REFERENCES Users(UserID),
+    
+    INDEX IX_Printer_Room (RoomID, Status),
+    INDEX IX_Printer_Model (ModelID),
     INDEX IX_Printer_Status (Status)
 );
 GO
@@ -180,7 +283,7 @@ CREATE TABLE ReportsMonthly (
     TotalPagesPurchased INT NOT NULL DEFAULT 0,
     TotalRevenue DECIMAL(12,2) NOT NULL DEFAULT 0,
     
-    MostUsedPrinterID NVARCHAR(20),
+    MostUsedPrinterID BIGINT,
     MostUsedPrinterJobs INT,
     
     TopStudentID NVARCHAR(20),
@@ -254,7 +357,7 @@ CREATE TABLE PrintJobs (
     ColorPageRange NVARCHAR(255) NULL, -- Trang in màu ("1-3,5,10-15"), NULL: theo ColorMode
     StudentID NVARCHAR(20) NOT NULL,
     DocumentID INT NOT NULL,
-    PrinterID NVARCHAR(20) NOT NULL,
+    PrinterID BIGINT NOT NULL,
     
     -- Cấu hình in
     PaperSize NVARCHAR(10) NOT NULL DEFAULT 'A4' CHECK (PaperSize IN ('A4', 'A3', 'A5')),
@@ -299,7 +402,7 @@ CREATE TABLE PrintLogs (
     LogID INT IDENTITY(1,1) PRIMARY KEY,
     JobID INT NOT NULL,
     StudentID NVARCHAR(20) NOT NULL,
-    PrinterID NVARCHAR(20) NOT NULL,
+    PrinterID BIGINT NOT NULL,
     DocumentName NVARCHAR(255) NOT NULL,
     PaperSize NVARCHAR(10) NOT NULL,
     PagesPrinted INT NOT NULL,                          -- Số trang đã in
@@ -476,7 +579,7 @@ GO
 -- ================================================================
 CREATE TABLE PrinterMaintenance (
     MaintenanceID INT IDENTITY(1,1) PRIMARY KEY,
-    PrinterID NVARCHAR(20) NOT NULL,
+    PrinterID BIGINT NOT NULL,
     MaintenanceDate DATE NOT NULL,
     MaintenanceType NVARCHAR(20) NOT NULL CHECK (MaintenanceType IN ('Routine','Repair','Emergency','Upgrade')),
     Description NVARCHAR(500),
@@ -510,7 +613,7 @@ INNER JOIN PageBalance pb ON u.UserID = pb.StudentID
 WHERE u.UserType = 'Student' AND u.Status = 'Active';
 GO
 
--- View 2: Lịch sử in của sinh viên
+-- View 2: Lịch sử in của sinh viên (Updated with Reference Tables)
 CREATE VIEW vw_PrintHistory AS
 SELECT 
     pl.LogID,
@@ -519,7 +622,7 @@ SELECT
     pl.DocumentName,
     pl.PrinterID,
     p.PrinterName,
-    p.Location as PrinterLocation,
+    CONCAT(c.CampusName, ' - ', bld.BuildingCode, ' - ', r.RoomNumber) AS PrinterLocation,
     pl.PaperSize,
     pl.PagesPrinted,
     pl.A4EquivalentUsed,
@@ -527,15 +630,18 @@ SELECT
     pl.Status
 FROM PrintLogs pl
 INNER JOIN Users u ON pl.StudentID = u.UserID
-INNER JOIN Printers p ON pl.PrinterID = p.PrinterID;
+INNER JOIN Printers p ON pl.PrinterID = p.PrinterID
+INNER JOIN Rooms r ON p.RoomID = r.RoomID
+INNER JOIN Buildings bld ON r.BuildingID = bld.BuildingID
+INNER JOIN Campuses c ON bld.CampusID = c.CampusID;
 GO
 
--- View 3: Thống kê máy in
+-- View 3: Thống kê máy in (Updated with Reference Tables)
 CREATE VIEW vw_PrinterStats AS
 SELECT 
     p.PrinterID,
     p.PrinterName,
-    p.Location,
+    CONCAT(c.CampusName, ' - ', bld.BuildingCode, ' - ', r.RoomNumber) AS Location,
     p.Status,
     p.TotalPagesPrinted,
     COUNT(pj.JobID) as TotalJobs,
@@ -543,8 +649,11 @@ SELECT
     SUM(CASE WHEN pj.JobStatus = 'Failed' THEN 1 ELSE 0 END) as FailedJobs,
     SUM(CASE WHEN pj.JobStatus IN ('Pending', 'Printing') THEN 1 ELSE 0 END) as PendingJobs
 FROM Printers p
+INNER JOIN Rooms r ON p.RoomID = r.RoomID
+INNER JOIN Buildings bld ON r.BuildingID = bld.BuildingID
+INNER JOIN Campuses c ON bld.CampusID = c.CampusID
 LEFT JOIN PrintJobs pj ON p.PrinterID = pj.PrinterID
-GROUP BY p.PrinterID, p.PrinterName, p.Location, p.Status, p.TotalPagesPrinted;
+GROUP BY p.PrinterID, p.PrinterName, c.CampusName, bld.BuildingCode, r.RoomNumber, p.Status, p.TotalPagesPrinted;
 GO
 
 -- ================================================================
@@ -903,6 +1012,154 @@ BEGIN
         RETURN;
     END
 END;
+GO
+
+-- ================================================================
+-- VIEW: Printer Details với thông tin đầy đủ (JOIN các bảng reference)
+-- ================================================================
+CREATE OR ALTER VIEW vw_PrinterDetails AS
+SELECT 
+    p.PrinterID,
+    p.PrinterName,
+    
+    -- Brand & Model info
+    b.BrandName,
+    b.BrandID,
+    m.ModelName,
+    m.ModelID,
+    
+    -- Location info (Campus -> Building -> Room)
+    c.CampusCode,
+    c.CampusName,
+    bld.BuildingCode,
+    bld.BuildingName,
+    r.RoomNumber,
+    r.RoomName,
+    r.RoomType,
+    
+    -- Location string (formatted)
+    CONCAT(c.CampusName, ' - ', bld.BuildingCode, ' - ', r.RoomNumber) AS Location,
+    
+    -- Printer config
+    p.IPAddress,
+    p.PaperSizes,
+    p.ColorPrinting,
+    p.DuplexPrinting,
+    
+    -- Status
+    p.Status,
+    p.TotalPagesPrinted,
+    p.LastMaintenanceDate,
+    
+    p.CreatedAt,
+    p.CreatedBy,
+    p.UpdatedAt
+FROM 
+    Printers p
+    INNER JOIN PrinterModels m ON p.ModelID = m.ModelID
+    INNER JOIN Brands b ON m.BrandID = b.BrandID
+    INNER JOIN Rooms r ON p.RoomID = r.RoomID
+    INNER JOIN Buildings bld ON r.BuildingID = bld.BuildingID
+    INNER JOIN Campuses c ON bld.CampusID = c.CampusID;
+GO
+
+-- ================================================================
+-- STORED PROCEDURES: Reference Data Management
+-- ================================================================
+
+-- SP: Lấy danh sách Buildings theo Campus
+CREATE OR ALTER PROCEDURE sp_GetBuildingsByCampus
+    @CampusID INT = NULL,
+    @CampusCode NVARCHAR(20) = NULL,
+    @ActiveOnly BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        b.BuildingID,
+        b.CampusID,
+        b.BuildingCode,
+        b.BuildingName,
+        b.FloorCount,
+        b.IsActive,
+        c.CampusCode,
+        c.CampusName
+    FROM 
+        Buildings b
+        INNER JOIN Campuses c ON b.CampusID = c.CampusID
+    WHERE 
+        (@CampusID IS NULL OR b.CampusID = @CampusID)
+        AND (@CampusCode IS NULL OR c.CampusCode = @CampusCode)
+        AND (@ActiveOnly = 0 OR b.IsActive = 1)
+    ORDER BY 
+        c.CampusCode, b.BuildingCode;
+END
+GO
+
+-- SP: Lấy danh sách Rooms theo Building
+CREATE OR ALTER PROCEDURE sp_GetRoomsByBuilding
+    @BuildingID INT = NULL,
+    @BuildingCode NVARCHAR(20) = NULL,
+    @ActiveOnly BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        r.RoomID,
+        r.BuildingID,
+        r.RoomNumber,
+        r.RoomName,
+        r.RoomType,
+        r.Capacity,
+        r.IsActive,
+        b.BuildingCode,
+        b.BuildingName,
+        c.CampusCode,
+        c.CampusName
+    FROM 
+        Rooms r
+        INNER JOIN Buildings b ON r.BuildingID = b.BuildingID
+        INNER JOIN Campuses c ON b.CampusID = c.CampusID
+    WHERE 
+        (@BuildingID IS NULL OR r.BuildingID = @BuildingID)
+        AND (@BuildingCode IS NULL OR b.BuildingCode = @BuildingCode)
+        AND (@ActiveOnly = 0 OR r.IsActive = 1)
+    ORDER BY 
+        c.CampusCode, b.BuildingCode, r.RoomNumber;
+END
+GO
+
+-- SP: Lấy danh sách Models theo Brand
+CREATE OR ALTER PROCEDURE sp_GetModelsByBrand
+    @BrandID INT = NULL,
+    @BrandName NVARCHAR(50) = NULL,
+    @ActiveOnly BIT = 1
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        m.ModelID,
+        m.BrandID,
+        m.ModelName,
+        m.ModelDescription,
+        m.DefaultPaperSizes,
+        m.DefaultColorPrinting,
+        m.DefaultDuplexPrinting,
+        m.IsActive,
+        b.BrandName
+    FROM 
+        PrinterModels m
+        INNER JOIN Brands b ON m.BrandID = b.BrandID
+    WHERE 
+        (@BrandID IS NULL OR m.BrandID = @BrandID)
+        AND (@BrandName IS NULL OR b.BrandName = @BrandName)
+        AND (@ActiveOnly = 0 OR m.IsActive = 1)
+    ORDER BY 
+        b.BrandName, m.ModelName;
+END
 GO
 
 -- SP8: Đăng ký thiết bị tin cậy (bỏ qua 2FA trong thời hạn)

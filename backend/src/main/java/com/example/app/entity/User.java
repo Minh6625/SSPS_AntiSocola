@@ -35,12 +35,6 @@ public class User {
     @Column(name = "UserType", nullable = false, length = 20)
     private String userType;  // Student, SPSO, Admin
     
-    @Column(name = "Faculty", length = 100)
-    private String faculty;
-    
-    @Column(name = "Department", length = 100)
-    private String department;
-    
     @Column(name = "Status", length = 20)
     private String status = "Active";  // Active, Inactive
     
