@@ -188,17 +188,17 @@ export default function PrinterSelectionPage() {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-blue-50 rounded-lg border-2 border-blue-300 p-4">
+        {/* Filters (blue subtle) */}
+        <div className="bg-blue-50 rounded-lg border border-blue-200 p-3">
           {/* Row 1: Location filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             {/* Campus */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Cơ sở</label>
               <select
                 value={selectedCampusId || ''}
                 onChange={(e) => setSelectedCampusId(e.target.value ? parseInt(e.target.value) : null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               >
                 <option value="">Tất cả</option>
                 {campuses.map(campus => (
@@ -213,7 +213,7 @@ export default function PrinterSelectionPage() {
               <select
                 value={selectedBuildingId || ''}
                 onChange={(e) => setSelectedBuildingId(e.target.value ? parseInt(e.target.value) : null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 disabled={!selectedCampusId}
               >
                 <option value="">Tất cả</option>
@@ -229,7 +229,7 @@ export default function PrinterSelectionPage() {
               <select
                 value={selectedRoomId || ''}
                 onChange={(e) => setSelectedRoomId(e.target.value ? parseInt(e.target.value) : null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 disabled={!selectedBuildingId}
               >
                 <option value="">Tất cả</option>
@@ -241,14 +241,14 @@ export default function PrinterSelectionPage() {
           </div>
 
           {/* Row 2: Printer filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Brand */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Hãng</label>
               <select
                 value={selectedBrandId || ''}
                 onChange={(e) => setSelectedBrandId(e.target.value ? parseInt(e.target.value) : null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               >
                 <option value="">Tất cả</option>
                 {brands.map(brand => (
@@ -263,7 +263,7 @@ export default function PrinterSelectionPage() {
               <select
                 value={selectedModelId || ''}
                 onChange={(e) => setSelectedModelId(e.target.value ? parseInt(e.target.value) : null)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 disabled={!selectedBrandId}
               >
                 <option value="">Tất cả</option>
@@ -281,14 +281,14 @@ export default function PrinterSelectionPage() {
                 placeholder="Tên máy in..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               />
             </div>
           </div>
 
           {/* Available Toggle - Separate row */}
-          <div className="mt-3">
-            <label className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer hover:bg-gray-50 transition">
+          <div className="mt-2">
+            <label className="inline-flex items-center gap-2 px-2 py-1 border border-blue-200 rounded-lg bg-blue-50 cursor-pointer hover:bg-blue-100 transition text-sm">
               <input
                 type="checkbox"
                 checked={showAvailableOnly}
@@ -331,7 +331,7 @@ export default function PrinterSelectionPage() {
                 {printers.map((printer) => (
                   <div
                     key={printer.printerId}
-                    className="bg-blue-50 rounded-lg border border-blue-300 p-4 shadow-md hover:shadow-lg transition flex flex-col relative"
+                    className="bg-white rounded-lg border border-gray-200 p-4 shadow-md hover:shadow-lg transform hover:-translate-y-1 transition duration-150 ease-out flex flex-col relative"
                     style={{ minHeight: '260px' }}
                   >
                     {/* Status badge - Fixed position top right */}

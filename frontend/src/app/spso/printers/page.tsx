@@ -521,9 +521,9 @@ export default function PrinterManagementPage() {
 
       {/* bulk actions moved above the table (see Results Count area) */}
 
-      {/* Filters */}
-      <div className="bg-gray-100 border border-gray-300 rounded-lg shadow-sm p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+      {/* Filters (compact) */}
+      <div className="bg-gray-100 border border-gray-300 rounded-lg shadow-sm p-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
           {/* Search */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Tìm kiếm</label>
@@ -533,7 +533,7 @@ export default function PrinterManagementPage() {
               onChange={(e) => setSearchKeyword(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="Nhập tên, ID, thương hiệu..."
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
@@ -543,7 +543,7 @@ export default function PrinterManagementPage() {
             <select
               value={selectedCampusId || ''}
               onChange={(e) => handleCampusChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Tất cả</option>
               {campuses.map(campus => (
@@ -561,7 +561,7 @@ export default function PrinterManagementPage() {
               value={selectedBuildingId || ''}
               onChange={(e) => handleBuildingChange(e.target.value)}
               disabled={!selectedCampusId}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               <option value="">Tất cả</option>
               {filteredBuildings.map(building => (
@@ -578,7 +578,7 @@ export default function PrinterManagementPage() {
             <select
               value={filters.status || ''}
               onChange={(e) => handleFilterChange('status', e.target.value || undefined)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Tất cả</option>
               <option value="Active">Đang hoạt động</option>
@@ -594,7 +594,7 @@ export default function PrinterManagementPage() {
             <select
               value={selectedBrandId || ''}
               onChange={(e) => handleBrandChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Tất cả</option>
               {brands.map(brand => (
@@ -610,7 +610,7 @@ export default function PrinterManagementPage() {
             <label className="block text-xs font-medium text-gray-700 mb-1">Ngày bảo trì</label>
             <input
               type="date"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
         </div>
@@ -656,7 +656,7 @@ export default function PrinterManagementPage() {
                 <th className="px-4 py-3 text-left">
                 <input
                   type="checkbox"
-                  className="rounded border-gray-300"
+                  className="w-4 h-4 accent-blue-600 border-transparent bg-transparent focus:ring-0"
                   checked={printers.length > 0 && printers.every(p => selectedIds.has(p.printerId))}
                   onChange={(e) => {
                     if (e.target.checked) {
@@ -705,11 +705,11 @@ export default function PrinterManagementPage() {
                 </tr>
               ) : (
                 printers.map((printer) => (
-                <tr key={printer.printerId} className="hover:bg-gray-50">
+                <tr key={printer.printerId} className={"hover:bg-gray-50 " + (selectedIds.has(printer.printerId) ? 'shadow-md' : '')}>
                   <td className="px-4 py-3">
                     <input
                       type="checkbox"
-                      className="rounded border-gray-300"
+                      className="w-4 h-4 accent-blue-600 border-transparent bg-transparent focus:ring-0"
                       checked={selectedIds.has(printer.printerId)}
                       onChange={(e) => {
                         const next = new Set(selectedIds);
