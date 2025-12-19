@@ -155,7 +155,7 @@ export default function PrinterSelectionPage() {
   }, [fetchPrinters]);
 
   // Select printer
-  const handleSelectPrinter = (printerId: string) => {
+  const handleSelectPrinter = (printerId: number) => {
     if (!documentId && !documentIds) {
       alert('Vui lòng chọn tài liệu trước');
       router.push('/student/print-document');

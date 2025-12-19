@@ -36,6 +36,7 @@ export interface PrinterFilters {
   brand?: string;
   model?: string;
   status?: string;
+  lastMaintenanceDate?: string;
   keyword?: string;
   colorPrinting?: boolean;
   duplexPrinting?: boolean;

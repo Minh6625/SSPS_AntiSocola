@@ -5,7 +5,7 @@ import com.example.app.dto.PrinterResponseDTO;
 import org.springframework.data.domain.Page;
 
 public interface IPrinterService {
-    Page<PrinterResponseDTO> getPrinters(
+        Page<PrinterResponseDTO> getPrinters(
             String campus,
             String building,
             String room,
@@ -15,11 +15,12 @@ public interface IPrinterService {
             Boolean colorPrinting,
             Boolean duplexPrinting,
             String keyword,
+            String lastMaintenanceDate,
             int page,
             int size,
             String sortBy,
             String sortDir
-    );
+        );
 
     PrinterResponseDTO getPrinterById(String printerId);
     

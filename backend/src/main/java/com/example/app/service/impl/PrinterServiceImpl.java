@@ -50,6 +50,7 @@ public class PrinterServiceImpl implements IPrinterService {
                                                Boolean colorPrinting,
                                                Boolean duplexPrinting,
                                                String keyword,
+                                               String lastMaintenanceDate,
                                                int page,
                                                int size,
                                                String sortBy,
@@ -74,7 +75,8 @@ public class PrinterServiceImpl implements IPrinterService {
             spec = spec.and((root, query, cb) -> {
                 Join<Object, Object> roomJoin = root.join("room", JoinType.INNER);
                 Join<Object, Object> buildingJoin = roomJoin.join("building", JoinType.INNER);
-                return cb.like(cb.lower(buildingJoin.get("buildingCode")), "%" + building.toLowerCase() + "%");
+                // use exact case-insensitive match for building code to avoid substring matches (e.g., 'A' matching 'Library')
+                return cb.equal(cb.lower(buildingJoin.get("buildingCode")), building.toLowerCase());
             });
         }
 
@@ -104,6 +106,30 @@ public class PrinterServiceImpl implements IPrinterService {
 
         if (StringUtils.hasText(status)) {
             spec = spec.and((root, query, cb) -> cb.equal(cb.lower(root.get("status")), status.toLowerCase()));
+        }
+
+        // Filter by last maintenance date (exact date match)
+        if (StringUtils.hasText(lastMaintenanceDate)) {
+            java.time.LocalDate parsed = null;
+            try {
+                parsed = java.time.LocalDate.parse(lastMaintenanceDate);
+            } catch (Exception ex) {
+                // try common US format variants
+                java.time.format.DateTimeFormatter[] fmts = new java.time.format.DateTimeFormatter[] {
+                    java.time.format.DateTimeFormatter.ofPattern("M/d/yyyy"),
+                    java.time.format.DateTimeFormatter.ofPattern("MM/dd/yyyy")
+                };
+                for (java.time.format.DateTimeFormatter fmt : fmts) {
+                    try {
+                        parsed = java.time.LocalDate.parse(lastMaintenanceDate, fmt);
+                        break;
+                    } catch (Exception ignored) { }
+                }
+            }
+            if (parsed != null) {
+                final java.time.LocalDate filterDate = parsed;
+                spec = spec.and((root, query, cb) -> cb.equal(root.get("lastMaintenanceDate"), filterDate));
+            }
         }
 
         if (colorPrinting != null) {
