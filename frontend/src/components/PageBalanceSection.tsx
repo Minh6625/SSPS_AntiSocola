@@ -14,9 +14,15 @@ const PageBalanceSection: React.FC = () => {
   const [purchaseA4Pages, setPurchaseA4Pages] = useState<number>(0);
   const [purchaseA3Pages, setPurchaseA3Pages] = useState<number>(0);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [purchaseNote, setPurchaseNote] = useState<string>('');
   const [purchasing, setPurchasing] = useState(false);
   const [priceA4, setPriceA4] = useState<number>(500); // Default A4 price
   const [priceA3, setPriceA3] = useState<number>(1000); // Default A3 price
+
+  // QR Payment config
+  const BANK_NAME = 'MBBank';
+  const BANK_ACCOUNT = '0937833154';
 
   // Fetch balance and pricing on mount
   useEffect(() => {
@@ -293,7 +299,7 @@ const PageBalanceSection: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Xác nhận mua trang in</h3>
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
               <div className="flex justify-between mb-2">
                 <span className="text-gray-700">Số trang A4:</span>
                 <span className="font-semibold text-gray-900">{purchaseA4Pages} trang</span>
@@ -322,18 +328,104 @@ const PageBalanceSection: React.FC = () => {
               </div>
             </div>
 
+            {/* Note Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Ghi chú (nội dung chuyển khoản)
+              </label>
+              <input
+                type="text"
+                value={purchaseNote}
+                onChange={(e) => setPurchaseNote(e.target.value)}
+                placeholder="VD: Mua trang in - MSSV 123456"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
             <div className="flex gap-3">
               <button
-                onClick={() => setShowPurchaseModal(false)}
+                onClick={() => {
+                  setShowPurchaseModal(false);
+                  setPurchaseNote('');
+                }}
                 disabled={purchasing}
                 className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50"
               >
                 Hủy
               </button>
               <button
-                onClick={handlePurchase}
+                onClick={() => {
+                  setShowPurchaseModal(false);
+                  setShowQRModal(true);
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+              >
+                Hiển thị mã QR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Payment Modal */}
+      {showQRModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full mx-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Quét mã QR để thanh toán</h3>
+            
+            {/* QR Code Image */}
+            <div className="flex justify-center mb-4">
+              <img
+                src={`https://qr.sepay.vn/img?acc=${BANK_ACCOUNT}&bank=${BANK_NAME}&amount=${totalPrice}&des=${encodeURIComponent(purchaseNote || `Mua ${purchaseA4Pages} trang A4, ${purchaseA3Pages} trang A3`)}`}
+                alt="QR Code thanh toán"
+                className="w-64 h-64 border-2 border-gray-200 rounded-lg"
+              />
+            </div>
+
+            {/* Payment Info */}
+            <div className="bg-blue-50 rounded-lg p-4 mb-4">
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-700">Ngân hàng:</span>
+                <span className="font-semibold text-gray-900">{BANK_NAME}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-700">Số tài khoản:</span>
+                <span className="font-semibold text-gray-900">{BANK_ACCOUNT}</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-700">Số tiền:</span>
+                <span className="font-bold text-blue-600">{totalPrice.toLocaleString('vi-VN')} VND</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Nội dung:</span>
+                <span className="font-semibold text-gray-900 text-right max-w-[200px] truncate">
+                  {purchaseNote || `Mua ${purchaseA4Pages} trang A4, ${purchaseA3Pages} trang A3`}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-sm text-gray-500 text-center mb-4">
+              Sau khi chuyển khoản thành công, vui lòng nhấn "Đã thanh toán" để hoàn tất giao dịch.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowQRModal(false);
+                  setPurchaseNote('');
+                }}
                 disabled={purchasing}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  setShowQRModal(false);
+                  handlePurchase();
+                }}
+                disabled={purchasing}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {purchasing ? (
                   <>
@@ -341,7 +433,7 @@ const PageBalanceSection: React.FC = () => {
                     Đang xử lý...
                   </>
                 ) : (
-                  'Xác nhận thanh toán'
+                  'Đã thanh toán'
                 )}
               </button>
             </div>
