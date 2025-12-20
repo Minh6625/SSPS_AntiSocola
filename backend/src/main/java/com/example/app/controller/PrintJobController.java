@@ -5,6 +5,7 @@ import com.example.app.dto.PrintJobSubmitRequestDTO;
 import com.example.app.service.interfaces.IPrintJobService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,7 +35,7 @@ public class PrintJobController {
     @PostMapping
     @Operation(summary = "Gửi lệnh in", description = "Sinh viên gửi lệnh in tài liệu")
     public ResponseEntity<Map<String, Object>> submitPrintJob(
-            @RequestBody PrintJobSubmitRequestDTO request,
+            @Valid @RequestBody PrintJobSubmitRequestDTO request,
             Authentication authentication) {
         
         String studentId = authentication.getName();
