@@ -22,6 +22,9 @@ public class PageTransaction {
     @Column(name = "TransactionID")
     private Integer transactionId;
     
+    @Column(name = "TransactionCode", nullable = false, unique = true, length = 20)
+    private String transactionCode;  // Mã giao dịch: TXN + 6 số (VD: TXN819201)
+    
     @Column(name = "StudentID", nullable = false, length = 20)
     private String studentId;
     
@@ -71,6 +74,10 @@ public class PageTransaction {
     protected void onCreate() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (transactionCode == null) {
+            // Generate transaction code: TXN + 6 random digits (e.g., TXN819201)
+            transactionCode = "TXN" + String.format("%06d", (int)(Math.random() * 1000000));
         }
     }
 }

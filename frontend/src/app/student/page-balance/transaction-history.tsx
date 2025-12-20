@@ -184,6 +184,9 @@ const TransactionHistory: React.FC = () => {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
+                    Mã GD
+                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                     Ngày giờ
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
@@ -209,6 +212,9 @@ const TransactionHistory: React.FC = () => {
               <tbody className="divide-y divide-gray-200">
                 {transactions.map((transaction) => (
                   <tr key={transaction.transactionId} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 text-sm text-gray-900 font-mono font-medium">
+                      {transaction.transactionCode}
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
                       {formatDate(transaction.createdAt)}
                     </td>

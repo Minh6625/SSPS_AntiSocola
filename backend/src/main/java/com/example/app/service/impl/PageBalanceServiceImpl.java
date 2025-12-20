@@ -126,6 +126,7 @@ public class PageBalanceServiceImpl implements IPageBalanceService {
     private PageTransactionDTO convertTransactionToDTO(PageTransaction transaction) {
         return new PageTransactionDTO(
             transaction.getTransactionId(),
+            transaction.getTransactionCode(),
             transaction.getTransactionType(),
             transaction.getA4Pages(),
             transaction.getA3Pages(),

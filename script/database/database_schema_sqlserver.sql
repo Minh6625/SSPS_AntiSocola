@@ -62,6 +62,7 @@ GO
 -- ================================================================
 CREATE TABLE PageTransactions (
     TransactionID INT IDENTITY(1,1) PRIMARY KEY,
+    TransactionCode NVARCHAR(20) NOT NULL UNIQUE,       -- Mã giao dịch: TXN + 6 số (VD: TXN819201)
     StudentID NVARCHAR(20) NOT NULL,
     TransactionType NVARCHAR(20) NOT NULL CHECK (TransactionType IN ('Allocate', 'Purchase', 'Use')),
     A4Pages INT NOT NULL DEFAULT 0,                     -- Số trang A4 (+/-)

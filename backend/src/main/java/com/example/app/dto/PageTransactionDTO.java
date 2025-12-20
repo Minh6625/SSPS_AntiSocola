@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public class PageTransactionDTO {
     
     private Integer transactionId;
+    private String transactionCode;  // Mã giao dịch: TXN819201
     private String transactionType;  // Allocate, Purchase, Use
     private Integer a4Pages;
     private Integer a3Pages;
@@ -19,9 +20,10 @@ public class PageTransactionDTO {
     // Constructors
     public PageTransactionDTO() {}
     
-    public PageTransactionDTO(Integer transactionId, String transactionType, Integer a4Pages, 
+    public PageTransactionDTO(Integer transactionId, String transactionCode, String transactionType, Integer a4Pages, 
                              Integer a3Pages, Integer balanceAfterA4, Integer balanceAfterA3, String notes, LocalDateTime createdAt) {
         this.transactionId = transactionId;
+        this.transactionCode = transactionCode;
         this.transactionType = transactionType;
         this.a4Pages = a4Pages;
         this.a3Pages = a3Pages;
@@ -34,6 +36,9 @@ public class PageTransactionDTO {
     // Getters & Setters
     public Integer getTransactionId() { return transactionId; }
     public void setTransactionId(Integer transactionId) { this.transactionId = transactionId; }
+    
+    public String getTransactionCode() { return transactionCode; }
+    public void setTransactionCode(String transactionCode) { this.transactionCode = transactionCode; }
     
     public String getTransactionType() { return transactionType; }
     public void setTransactionType(String transactionType) { this.transactionType = transactionType; }
