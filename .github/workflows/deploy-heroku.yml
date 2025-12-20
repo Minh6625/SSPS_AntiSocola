@@ -27,8 +27,8 @@ jobs:
           # Login to Heroku
           echo "$HEROKU_API_KEY" | heroku auth:token
 
-          # Add Heroku remote
-          heroku git:remote -a $HEROKU_APP_NAME || git remote add heroku-backend https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git
+          # Add Heroku remote with custom name
+          git remote add heroku-backend https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git || true
 
           # Deploy using git subtree
           git subtree push --prefix backend heroku-backend develop:main || \
@@ -64,8 +64,8 @@ jobs:
           # Login to Heroku
           echo "$HEROKU_API_KEY" | heroku auth:token
 
-          # Add Heroku remote
-          heroku git:remote -a $HEROKU_APP_NAME || git remote add heroku-frontend https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git
+          # Add Heroku remote with custom name
+          git remote add heroku-frontend https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git || true
 
           # Deploy using git subtree
           git subtree push --prefix frontend heroku-frontend develop:main || \
