@@ -1,6 +1,17 @@
 # CI/CD Pipeline Documentation
 
-## 📊 Pipeline Structure (GitLab-style)
+## 📊 Active Workflows
+
+### 1. **deploy-heroku.yml** ⭐ - Auto Deploy to Heroku
+
+- **Trigger**: Push/merge to `develop` branch
+- **Features**:
+  - ✅ Auto deploy backend to Heroku (spss-be)
+  - ✅ Auto deploy frontend to Heroku (spss-fe)
+  - ✅ Health checks verification
+- **Requirements**: `HEROKU_API_KEY` secret must be configured
+
+### 2. **ci-cd-pipeline.yml** - Full CI/CD Pipeline
 
 Pipeline mới được tổ chức thành **4 stages** rõ ràng:
 
