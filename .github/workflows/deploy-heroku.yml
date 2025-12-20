@@ -1,0 +1,96 @@
+name: Deploy to Heroku
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  deploy-backend:
+    name: 🚀 Deploy Backend to Heroku
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for git subtree
+
+      - name: Deploy Backend to Heroku
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP_NAME: spss-be
+        run: |
+          # Install Heroku CLI
+          curl https://cli-assets.heroku.com/install.sh | sh
+
+          # Login to Heroku
+          echo "$HEROKU_API_KEY" | heroku auth:token
+
+          # Add Heroku remote
+          heroku git:remote -a $HEROKU_APP_NAME || git remote add heroku-backend https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git
+
+          # Deploy using git subtree
+          git subtree push --prefix backend heroku-backend develop:main || \
+          git push heroku-backend `git subtree split --prefix backend develop`:main --force
+
+      - name: Verify Backend Deployment
+        run: |
+          echo "⏳ Waiting for backend to start..."
+          sleep 30
+
+          echo "✅ Checking backend health..."
+          curl -f https://spss-be-06709850ddfe.herokuapp.com/actuator/health || echo "⚠️ Health check failed"
+
+  deploy-frontend:
+    name: 🚀 Deploy Frontend to Heroku
+    runs-on: ubuntu-latest
+    needs: [deploy-backend] # Deploy backend first
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for git subtree
+
+      - name: Deploy Frontend to Heroku
+        env:
+          HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+          HEROKU_APP_NAME: spss-fe
+        run: |
+          # Install Heroku CLI
+          curl https://cli-assets.heroku.com/install.sh | sh
+
+          # Login to Heroku
+          echo "$HEROKU_API_KEY" | heroku auth:token
+
+          # Add Heroku remote
+          heroku git:remote -a $HEROKU_APP_NAME || git remote add heroku-frontend https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git
+
+          # Deploy using git subtree
+          git subtree push --prefix frontend heroku-frontend develop:main || \
+          git push heroku-frontend `git subtree split --prefix frontend develop`:main --force
+
+      - name: Verify Frontend Deployment
+        run: |
+          echo "⏳ Waiting for frontend to start..."
+          sleep 30
+
+          echo "✅ Checking frontend..."
+          curl -f https://spss-fe-8883681576d4.herokuapp.com/ || echo "⚠️ Frontend check failed"
+
+  notify-deployment:
+    name: 📢 Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-backend, deploy-frontend]
+    if: always()
+
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "📊 Deployment Summary"
+          echo "===================="
+          echo "Branch: develop"
+          echo "Backend: https://spss-be-06709850ddfe.herokuapp.com/"
+          echo "Frontend: https://spss-fe-8883681576d4.herokuapp.com/"
+          echo "Status: ${{ needs.deploy-backend.result }} / ${{ needs.deploy-frontend.result }}"

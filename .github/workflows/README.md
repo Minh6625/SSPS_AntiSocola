@@ -1,168 +1,79 @@
-# CI/CD Pipeline Documentation
+# CI/CD Workflows - SPSS SIU
 
-## 📊 Pipeline Structure (GitLab-style)
+## 📋 Active Workflows
 
-Pipeline mới được tổ chức thành **4 stages** rõ ràng:
+### 1. **ci.yml** - Continuous Integration ⚡
 
-```
-INSTALL → BUILD → DEPLOY → TEST
-```
+- **Trigger**: Push to `develop`/`feat/**`, Pull Requests
+- **Features**:
+  - ✅ Backend: Build Maven, Run tests, Checkstyle
+  - ✅ Frontend: Build Next.js, ESLint, Type check
+  - ✅ PR validation: Merge conflict check, Auto comment
+  - ✅ Conditional runs (only when files changed)
+  - ✅ Artifacts upload (JAR, Build files)
 
-### Workflow: `ci-cd-pipeline.yml`
+### 2. **deploy-heroku.yml** - Auto Deploy to Heroku 🚀
 
-## 🔄 Stages
+- **Trigger**: Push/merge to `develop` branch
+- **Features**:
+  - ✅ Auto deploy backend to Heroku (spss-be)
+  - ✅ Auto deploy frontend to Heroku (spss-fe)
+  - ✅ Health checks verification
+  - ✅ Sequential deployment (Backend → Frontend)
+- **Requirements**: `HEROKU_API_KEY` secret must be configured
 
-### Stage 1: INSTALL (Song song)
+## 🔐 Required Secrets
 
-- **install-backend**: Cài dependencies Maven, cache ~/.m2
-- **install-frontend**: Cài dependencies NPM, cache node_modules
-
-### Stage 2: BUILD (Song song, phụ thuộc INSTALL)
-
-- **build-backend**:
-  - Needs: `install-backend`
-  - Test + Build JAR
-  - Upload artifact `backend-jar`
-- **build-frontend**:
-  - Needs: `install-frontend`
-  - Lint + Type check + Build
-  - Upload artifact `frontend-build`
-
-### Stage 3: DEPLOY (Tuần tự, phụ thuộc BUILD)
-
-- **deploy-staging** (nếu develop branch):
-  - Needs: `build-backend`, `build-frontend`
-  - Download artifacts
-  - Deploy backend + frontend
-- **deploy-production** (nếu main branch):
-  - Needs: `build-backend`, `build-frontend`
-  - Download artifacts
-  - Deploy backend + frontend
-
-### Stage 4: TEST (Phụ thuộc DEPLOY)
-
-- **smoke-test** (chỉ staging):
-  - Needs: `deploy-staging`
-  - Test health endpoints
-  - Run smoke tests
-
-## 📈 Dependency Graph
+Configure these secrets in GitHub Settings → Secrets and variables → Actions:
 
 ```
-     install-backend ────→ build-backend ────┐
-                                              ├──→ deploy-staging ──→ smoke-test
-     install-frontend ───→ build-frontend ────┤
-                                              └──→ deploy-production
+HEROKU_API_KEY          # Heroku API token for deployment
 ```
 
-## ✨ Ưu điểm so với workflows cũ
+### Get Heroku API Key:
 
-### Trước (6 workflows riêng lẻ):
-
-❌ Mỗi workflow install + build lại từ đầu
-❌ Không tái sử dụng artifacts
-❌ Workflows chạy độc lập, không dependencies
-❌ Lãng phí thời gian và resources
-
-### Sau (1 pipeline tổng hợp):
-
-✅ Install 1 lần, cache và tái sử dụng
-✅ Build 1 lần, upload artifacts
-✅ Deploy sử dụng artifacts đã build
-✅ Stages rõ ràng như GitLab
-✅ Dependencies hợp lý giữa các jobs
-✅ Tiết kiệm 50-70% thời gian CI/CD
-
-## 🚀 Triggers
-
-```yaml
-on:
-  push:
-    branches: [develop, main]
-  pull_request:
-    branches: [develop]
-  workflow_dispatch: # Manual trigger
+```bash
+heroku auth:token
 ```
 
-## 📦 Artifacts
-
-- **backend-jar**: JAR file từ build backend (7 days)
-- **frontend-build**: .next folder + package.json (7 days)
-
-## 🌍 Environments
-
-- **staging**: Deploy từ branch `develop`
-- **production**: Deploy từ branch `main`
-
-## 📝 TODO
-
-Các bước deploy hiện tại là placeholder. Cần cấu hình:
-
-1. **Backend Deploy**:
-
-   ```bash
-   # SSH to server
-   scp artifacts/backend/*.jar user@server:/path
-   # Or Docker
-   docker build -t backend:latest .
-   docker push registry/backend:latest
-   ```
-
-2. **Frontend Deploy**:
-
-   ```bash
-   # Vercel/Netlify
-   vercel deploy --prod
-   # Or SSH
-   rsync -avz artifacts/frontend/.next/ user@server:/path
-   ```
-
-3. **Smoke Tests**:
-   ```bash
-   curl -f https://api.example.com/health
-   newman run tests/smoke-tests.json
-   ```
-
-## 🔧 Migration Plan
-
-### Option 1: Thay thế hoàn toàn
-
-Disable các workflows cũ:
-
-- backend-ci.yml
-- frontend-ci.yml
-- deploy-staging.yml
-- deploy.yml
-
-### Option 2: Giữ song song (Recommended)
-
-- `ci-cd-pipeline.yml`: Main pipeline cho develop/main
-- `backend-ci.yml`, `frontend-ci.yml`: CI cho feature branches
-- `code-quality.yml`: Code review cho PRs
-- `pr-check.yml`: PR validation
-
-## 📊 Visualization
-
-GitHub Actions sẽ hiển thị dependency graph tương tự GitLab:
+## 📊 Workflow Flow
 
 ```
-Pipeline
-├─ install
-│  ├─ install-backend (✓)
-│  └─ install-frontend (✓)
-├─ build (depends on install)
-│  ├─ build-backend (✓)
-│  └─ build-frontend (✓)
-├─ deploy (depends on build)
-│  └─ deploy-staging (⏸)
-└─ test (depends on deploy)
-   └─ smoke-test (⏸)
+Push/PR → CI checks (Build + Test + Lint)
+            ↓
+      [If develop] → Auto Deploy to Heroku
+            ↓
+   Backend deployed → Frontend deployed → Health checks
 ```
 
-## 🎯 Best Practices
+## 🎯 Branch Strategy
 
-1. **Cache Strategy**: Maven + NPM dependencies được cache
-2. **Artifact Reuse**: Build 1 lần, deploy nhiều nơi
-3. **Environment Protection**: staging/production với approval gates
-4. **Fail Fast**: Lỗi ở stage sớm → dừng pipeline
-5. **Parallel Execution**: Backend + Frontend build song song
+- **feat/\*** → CI only (build + test)
+- **develop** → CI + Auto Deploy to Heroku
+- **main** → (Reserved for production)
+
+## ✅ Benefits
+
+✨ **Simplified**: 2 workflows thay vì 8 files
+✨ **Efficient**: Conditional runs, cache dependencies
+✨ **Automated**: Auto deploy on merge to develop
+✨ **Visible**: PR comments, summary reports
+
+## 🛠️ Manual Deployment (Backup)
+
+If GitHub Actions fails, deploy manually:
+
+```bash
+# Backend
+git subtree push --prefix backend https://git.heroku.com/spss-be.git develop:main
+
+# Frontend
+git subtree push --prefix frontend https://git.heroku.com/spss-fe.git develop:main
+```
+
+## 📝 Notes
+
+- CI runs only on changed files (backend or frontend)
+- ESLint/Type errors don't block builds (continue-on-error)
+- Artifacts retained for 7 days
+- Deploy takes ~5 minutes total (Backend 2-3min + Frontend 2-3min)

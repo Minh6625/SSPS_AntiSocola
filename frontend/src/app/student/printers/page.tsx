@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { printerService } from '@/services/printerService';
 import { referenceService, Brand, PrinterModel, Campus, Building, Room } from '@/services/referenceService';
@@ -9,7 +9,7 @@ import StudentLayout from '@/components/StudentLayout';
 
 export const dynamic = 'force-dynamic';
 
-export default function PrinterSelectionPage() {
+function PrinterSelectionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const documentId = searchParams.get('documentId');
@@ -464,5 +464,13 @@ export default function PrinterSelectionPage() {
         )}
       </div>
     </StudentLayout>
+  );
+}
+
+export default function PrinterSelectionPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Đang tải...</div>}>
+      <PrinterSelectionContent />
+    </Suspense>
   );
 }

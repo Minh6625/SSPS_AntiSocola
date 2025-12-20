@@ -18,8 +18,6 @@ export default function LoginPage() {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpEmail, setOtpEmail] = useState('');
   const [otpCode, setOtpCode] = useState<string>();
-  const [otpError, setOtpError] = useState('');
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,41 +66,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleOtpSubmit = async (otp: string) => {
-    setOtpError('');
-    setIsVerifyingOtp(true);
-
-    try {
-      const deviceId = typeof window !== 'undefined'
-        ? localStorage.getItem('deviceId') || authService.generateDeviceFingerprint()
-        : '';
-
-      const result = await authService.verifyOtp({
-        email: otpEmail,
-        otpCode: otp,
-        deviceId,
-        rememberDevice: formData.rememberMe,
-      });
-
-      if (result.status === 200) {
-        // Chỉ cho phép role STUDENT
-        const userRole = result.data?.role?.toUpperCase();
-        if (userRole !== 'STUDENT') {
-          authService.logout();
-          setOtpError('Trang này chỉ dành cho sinh viên.');
-          setShowOtpModal(false);
-          return;
-        }
-        setShowOtpModal(false);
-        router.push('/student/dashboard');
-      }
-    } catch (err) {
-      setOtpError((err as Error).message || 'Xác thực OTP thất bại. Vui lòng thử lại.');
-    } finally {
-      setIsVerifyingOtp(false);
-    }
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{
       background: 'radial-gradient(circle at top left, rgba(59, 130, 246, 0.4) 0%, transparent 50%), radial-gradient(circle at top right, rgba(96, 165, 250, 0.3) 0%, transparent 50%), radial-gradient(circle at bottom left, rgba(147, 197, 253, 0.3) 0%, transparent 50%), radial-gradient(circle at bottom right, rgba(191, 219, 254, 0.2) 0%, transparent 50%), #ffffff'
@@ -135,7 +98,7 @@ export default function LoginPage() {
               </svg>
             </div>
             <h1 className="text-xl font-bold text-blue-500">
-              ⚡HCMSIU SSPS⚡
+              HCMSIU SSPS
             </h1>
             <div className="w-12 h-0.5 bg-blue-500 mx-auto mt-2"></div>
           </div>
