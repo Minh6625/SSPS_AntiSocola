@@ -24,15 +24,16 @@ jobs:
           # Install Heroku CLI
           curl https://cli-assets.heroku.com/install.sh | sh
 
-          # Login to Heroku
-          echo "$HEROKU_API_KEY" | heroku auth:token
+          # Configure git
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
 
-          # Add Heroku remote
-          heroku git:remote -a $HEROKU_APP_NAME || git remote add heroku-backend https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git
+          # Add Heroku remote using API key in URL
+          git remote add heroku-backend https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git || true
 
           # Deploy using git subtree
-          git subtree push --prefix backend heroku-backend develop:main || \
-          git push heroku-backend `git subtree split --prefix backend develop`:main --force
+          git subtree split --prefix backend develop -b backend-deploy
+          git push heroku-backend backend-deploy:main --force
 
       - name: Verify Backend Deployment
         run: |
@@ -61,15 +62,16 @@ jobs:
           # Install Heroku CLI
           curl https://cli-assets.heroku.com/install.sh | sh
 
-          # Login to Heroku
-          echo "$HEROKU_API_KEY" | heroku auth:token
+          # Configure git
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
 
-          # Add Heroku remote
-          heroku git:remote -a $HEROKU_APP_NAME || git remote add heroku-frontend https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git
+          # Add Heroku remote using API key in URL
+          git remote add heroku-frontend https://heroku:$HEROKU_API_KEY@git.heroku.com/$HEROKU_APP_NAME.git || true
 
           # Deploy using git subtree
-          git subtree push --prefix frontend heroku-frontend develop:main || \
-          git push heroku-frontend `git subtree split --prefix frontend develop`:main --force
+          git subtree split --prefix frontend develop -b frontend-deploy
+          git push heroku-frontend frontend-deploy:main --force
 
       - name: Verify Frontend Deployment
         run: |
