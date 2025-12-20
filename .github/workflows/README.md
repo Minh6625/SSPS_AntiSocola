@@ -1,8 +1,17 @@
 # CI/CD Workflows - SPSS SIU
 
-## 📋 Active Workflows
+## 📊 Active Workflows
 
-### 1. **ci.yml** - Continuous Integration ⚡
+### 1. **deploy-heroku.yml** ⭐ - Auto Deploy to Heroku
+
+- **Trigger**: Push/merge to `develop` branch
+- **Features**:
+  - ✅ Auto deploy backend to Heroku (spss-be)
+  - ✅ Auto deploy frontend to Heroku (spss-fe)
+  - ✅ Health checks verification
+- **Requirements**: `HEROKU_API_KEY` secret must be configured
+
+### 2. **ci.yml** - Continuous Integration ⚡
 
 - **Trigger**: Push to `develop`/`feat/**`, Pull Requests
 - **Features**:
