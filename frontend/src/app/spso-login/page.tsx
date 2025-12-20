@@ -108,12 +108,12 @@ export default function SPSOLoginPage() {
 
           {/* Title */}
           <h1 className="text-4xl font-bold mb-4 leading-tight">
-            HCMIU Smart Printing
-            <span className="block text-emerald-400">Service System</span>
+            SPSS SIU
+            <span className="block text-emerald-400">Smart Printing Service System</span>
           </h1>
           
           <p className="text-slate-400 text-lg mb-8 max-w-md leading-relaxed">
-            Hệ thống quản lý in ấn thông minh dành cho Đại học Quốc tế - ĐHQG TP.HCM
+            Hệ thống in ấn thông minh - Đại học Quốc tế TP.HCM
           </p>
 
           {/* Features */}

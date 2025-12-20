@@ -135,7 +135,7 @@ export default function LoginPage() {
               </svg>
             </div>
             <h1 className="text-xl font-bold text-blue-500">
-              ⚡HCMSIU SSPS⚡
+              SPSS SIU
             </h1>
             <div className="w-12 h-0.5 bg-blue-500 mx-auto mt-2"></div>
           </div>

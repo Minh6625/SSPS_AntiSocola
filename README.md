@@ -1,4 +1,4 @@
-# HCMSIU_SSPS - Hệ thống quản lý in ấn thông minh
+# SPSS SIU - Smart Printing Service System
 
 ## 📂 NỘI DUNG CÁC FILE
 

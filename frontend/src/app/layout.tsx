@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Layered Architecture - User Management',
-  description: 'Full-stack application with Next.js & Java Spring Boot',
+  title: 'SPSS SIU - Smart Printing Service System',
+  description: 'Hệ thống in ấn thông minh - Đại học Quốc tế TP.HCM',
 };
 
 export default function RootLayout({

@@ -136,8 +136,8 @@ export default function SPSOLayout({ children }: LayoutProps) {
                   </svg>
                 </div>
                 <div>
-                  <span className="font-bold text-sm">SPSO Admin</span>
-                  <p className="text-xs text-slate-400">Quản trị hệ thống</p>
+                  <span className="font-bold text-sm">SPSS SIU Admin</span>
+                  <p className="text-xs text-slate-400">Smart Printing Service</p>
                 </div>
               </div>
               <button
