@@ -97,10 +97,10 @@ public class JwtUtil {
      * Generate Registration Token (15 minutes)
      * Chứa thông tin đăng ký tạm thời để verify OTP
      */
-    public String generateRegistrationToken(String email, String studentId, String fullName, String password) {
+    public String generateRegistrationToken(String email, String phone, String fullName, String password) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("email", email);
-        claims.put("studentId", studentId);
+        claims.put("phone", phone);
         claims.put("fullName", fullName);
         claims.put("password", password);
         claims.put("tokenType", "REGISTRATION");
@@ -115,7 +115,14 @@ public class JwtUtil {
     }
     
     /**
-     * Extract StudentId từ token
+     * Extract Phone từ token
+     */
+    public String extractPhone(String token) {
+        return extractClaims(token).get("phone", String.class);
+    }
+    
+    /**
+     * Extract StudentId từ token (deprecated - kept for backward compatibility)
      */
     public String extractStudentId(String token) {
         return extractClaims(token).get("studentId", String.class);

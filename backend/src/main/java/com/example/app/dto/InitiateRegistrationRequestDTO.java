@@ -22,13 +22,13 @@ public class InitiateRegistrationRequestDTO {
     @Pattern(regexp = ".*@siu\\.edu\\.vn$", message = "Email phải là địa chỉ @siu.edu.vn")
     private String email;
     
-    @NotBlank(message = "MSSV không được để trống")
-    @Pattern(regexp = "^[0-9]{11}$", message = "MSSV phải là 11 chữ số")
-    private String studentId;
-    
     @NotBlank(message = "Họ và tên không được để trống")
     @Size(min = 2, max = 100, message = "Họ và tên phải từ 2 đến 100 ký tự")
     private String fullName;
+    
+    @NotBlank(message = "Số điện thoại không được để trống")
+    @Pattern(regexp = "^(0[3|5|7|8|9])+([0-9]{8})$", message = "Số điện thoại không hợp lệ (VD: 0912345678)")
+    private String phone;
     
     @NotBlank(message = "Mật khẩu không được để trống")
     @Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự")

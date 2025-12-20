@@ -62,7 +62,7 @@ public class RegistrationService {
      * Business Rules:
      * 1. Email phải @siu.edu.vn
      * 2. Email không được trùng
-     * 3. MSSV không được trùng
+     * 3. Phone không được trùng
      * 4. Password phải khớp
      * 5. Password phải đủ mạnh (min 8, số + chữ)
      * 
@@ -72,7 +72,7 @@ public class RegistrationService {
      * Nếu dùng @Transactional, exception từ OTP service sẽ rollback transaction
      */
     public InitiateRegistrationResponseDTO initiateRegistration(InitiateRegistrationRequestDTO request) {
-        log.info("Initiating registration for email: {} - MSSV: {}", request.getEmail(), request.getStudentId());
+        log.info("Initiating registration for email: {} - Phone: {}", request.getEmail(), request.getPhone());
         
         // Rule 1: Validate email domain
         if (!request.getEmail().endsWith("@siu.edu.vn")) {
@@ -84,9 +84,9 @@ public class RegistrationService {
             throw new BusinessException("Email đã được sử dụng");
         }
         
-        // Rule 3: Check MSSV exists
-        if (userRepository.existsByUserId(request.getStudentId())) {
-            throw new BusinessException("MSSV đã được sử dụng");
+        // Rule 3: Check phone exists
+        if (userRepository.existsByPhoneNumber(request.getPhone())) {
+            throw new BusinessException("Số điện thoại đã được sử dụng");
         }
         
         // Rule 4: Password match
@@ -106,7 +106,7 @@ public class RegistrationService {
         // Create registration token (JWT) - valid 15 minutes
         String registrationToken = jwtUtil.generateRegistrationToken(
             request.getEmail(),
-            request.getStudentId(),
+            request.getPhone(),
             request.getFullName(),
             request.getPassword()
         );
@@ -127,7 +127,7 @@ public class RegistrationService {
      * Business Rules:
      * 1. Validate registration token (JWT)
      * 2. Validate OTP (hợp lệ, chưa hết hạn, < 5 attempts)
-     * 3. Tạo User entity
+     * 3. Tạo User entity (auto-generate studentId)
      * 4. Tạo PageBalance (cấp phát trang mặc định)
      * 5. Mark OTP as consumed
      * 
@@ -144,7 +144,7 @@ public class RegistrationService {
         
         // Extract data từ token
         String tokenEmail = jwtUtil.extractEmail(request.getRegistrationToken());
-        String studentId = jwtUtil.extractStudentId(request.getRegistrationToken());
+        String phone = jwtUtil.extractPhone(request.getRegistrationToken());
         String fullName = jwtUtil.extractFullName(request.getRegistrationToken());
         String password = jwtUtil.extractPassword(request.getRegistrationToken());
         
@@ -158,12 +158,16 @@ public class RegistrationService {
             throw new BusinessException("OTP không hợp lệ hoặc đã hết hạn");
         }
         
-        // Step 3: Create User entity
+        // Step 3: Auto-generate studentId (format: STU + timestamp + random)
+        String studentId = generateStudentId();
+        
+        // Step 4: Create User entity
         User user = new User();
         user.setUserId(studentId);
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setFullName(fullName);
+        user.setPhoneNumber(phone);
         user.setUserType("Student");
         user.setStatus("Active");
         user.setIsTwoFactorEnabled(false);
@@ -173,7 +177,7 @@ public class RegistrationService {
         User savedUser = userRepository.save(user);
         log.info("User created: {} - {}", savedUser.getUserId(), savedUser.getEmail());
         
-        // Step 4: Create PageBalance (allocate default pages)
+        // Step 5: Create PageBalance (allocate default pages)
         PageBalance pageBalance = new PageBalance();
         pageBalance.setStudentId(studentId);
         pageBalance.setA4Balance(defaultA4Pages);
@@ -184,7 +188,7 @@ public class RegistrationService {
         log.info("PageBalance created for student: {} (A4: {}, A3: {})", 
             studentId, defaultA4Pages, defaultA3Pages);
         
-        // Step 5: Mark OTP as consumed (dùng email vì user chưa tồn tại)
+        // Step 6: Mark OTP as consumed (dùng email vì user chưa tồn tại)
         otpService.deleteOtpByEmail(request.getEmail(), "Register2FA");
         log.info("OTP consumed for registration: {}", request.getEmail());
         
@@ -196,5 +200,24 @@ public class RegistrationService {
             savedUser.getUserType(),
             true
         );
+    }
+    
+    /**
+     * Generate unique student ID
+     * Format: STU + YY + random 8 digits
+     * Example: STU2412345678
+     */
+    private String generateStudentId() {
+        String year = String.valueOf(LocalDateTime.now().getYear()).substring(2);
+        String random = String.format("%08d", (int)(Math.random() * 100000000));
+        String studentId = "STU" + year + random;
+        
+        // Ensure uniqueness
+        while (userRepository.existsByUserId(studentId)) {
+            random = String.format("%08d", (int)(Math.random() * 100000000));
+            studentId = "STU" + year + random;
+        }
+        
+        return studentId;
     }
 }

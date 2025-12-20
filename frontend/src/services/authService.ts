@@ -40,8 +40,8 @@ export interface AuthError {
 
 export interface InitiateRegistrationRequest {
   email: string;
-  studentId: string;
   fullName: string;
+  phone: string;
   password: string;
   confirmPassword: string;
 }
