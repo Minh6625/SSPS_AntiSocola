@@ -12,11 +12,13 @@ import com.example.app.dto.ForgotPasswordRequestDTO;
 import com.example.app.dto.ForgotPasswordResponseDTO;
 import com.example.app.dto.VerifyPasswordResetOtpRequestDTO;
 import com.example.app.dto.VerifyPasswordResetOtpResponseDTO;
+import com.example.app.dto.GoogleAuthRequestDTO;
 import com.example.app.entity.User;
 import com.example.app.repository.UserRepository;
 import com.example.app.service.interfaces.IAuthService;
 import com.example.app.service.RegistrationService;
 import com.example.app.service.PasswordResetService;
+import com.example.app.service.GoogleOAuthService;
 import com.example.app.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -50,6 +52,9 @@ public class AuthController {
     
     @Autowired
     private PasswordResetService passwordResetService;
+    
+    @Autowired
+    private GoogleOAuthService googleOAuthService;
     
     @Autowired
     private JwtUtil jwtUtil;
@@ -205,13 +210,13 @@ public class AuthController {
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "OTP đã được gửi"),
-        @ApiResponse(responseCode = "400", description = "Validation error hoặc email/MSSV đã tồn tại")
+        @ApiResponse(responseCode = "400", description = "Validation error hoặc email/phone đã tồn tại")
     })
     public ResponseEntity<InitiateRegistrationResponseDTO> initiateRegistration(
             @Valid @RequestBody InitiateRegistrationRequestDTO request) {
         
-        log.info("Initiate registration for email: {} - MSSV: {}", 
-            request.getEmail(), request.getStudentId());
+        log.info("Initiate registration for email: {} - Phone: {}", 
+            request.getEmail(), request.getPhone());
         
         InitiateRegistrationResponseDTO response = registrationService.initiateRegistration(request);
         
@@ -307,6 +312,54 @@ public class AuthController {
         log.info("Password reset completed successfully: {}", request.getEmail());
         
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * POST /api/auth/google
+     * Đăng ký/Đăng nhập bằng Google OAuth
+     * 
+     * Request: { idToken, action }
+     * Response: LoginResponseDTO
+     * 
+     * Flow:
+     * 1. Frontend gọi Google Sign-In, nhận ID token
+     * 2. Frontend gửi ID token về backend
+     * 3. Backend verify token với Google
+     * 4. Nếu email @siu.edu.vn → tạo/đăng nhập user
+     */
+    @PostMapping("/google")
+    @Operation(
+        summary = "Google OAuth - Đăng ký/Đăng nhập",
+        description = "Xác thực với Google ID token. Email phải là @siu.edu.vn"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Đăng nhập/Đăng ký thành công"),
+        @ApiResponse(responseCode = "400", description = "Token không hợp lệ hoặc email không phải @siu.edu.vn")
+    })
+    public ResponseEntity<?> googleAuth(
+            @Valid @RequestBody GoogleAuthRequestDTO request,
+            HttpServletResponse response) {
+        try {
+            log.info("Google OAuth request - action: {}", request.getAction());
+            
+            LoginResponseDTO loginResponse = googleOAuthService.authenticateWithGoogle(
+                    request.getIdToken(),
+                    request.getAction() != null ? request.getAction() : "register"
+            );
+            
+            // Set refresh token as HttpOnly Cookie
+            setRefreshTokenCookie(response, loginResponse.getRefreshToken());
+            
+            log.info("Google OAuth successful for user: {}", loginResponse.getEmail());
+            return ResponseEntity.ok(loginResponse);
+            
+        } catch (Exception e) {
+            log.error("Google OAuth failed: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("timestamp", String.valueOf(System.currentTimeMillis()));
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 
     /**
