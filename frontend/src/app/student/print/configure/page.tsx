@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import StudentLayout from '@/components/StudentLayout';
 import { documentService } from '@/services/documentService';
@@ -12,7 +12,7 @@ import { PageBalance } from '@/types/printJob';
 
 export const dynamic = 'force-dynamic';
 
-export default function PrintConfigurePage() {
+function PrintConfigureContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const documentId = searchParams.get('documentId');
@@ -717,5 +717,13 @@ export default function PrintConfigurePage() {
         </div>
       </div>
     </StudentLayout>
+  );
+}
+
+export default function PrintConfigurePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Đang tải...</div>}>
+      <PrintConfigureContent />
+    </Suspense>
   );
 }
