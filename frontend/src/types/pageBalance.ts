@@ -6,6 +6,7 @@ export type TransactionType = 'Allocate' | 'Purchase' | 'Use' | 'ALLOCATED' | 'P
 
 export interface PageTransaction {
   transactionId: number;
+  transactionCode: string;  // Mã giao dịch: TXN819201
   transactionType: string;
   a4Pages: number;
   a3Pages: number;
