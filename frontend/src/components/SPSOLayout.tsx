@@ -113,7 +113,7 @@ export default function SPSOLayout({ children }: LayoutProps) {
     { name: 'Dashboard', icon: <DashboardIcon />, href: '/spso/dashboard' },
     { name: 'Nhật ký in', icon: <PrintLogIcon />, href: '/spso/print-logs' },
     { name: 'Quản lý máy in', icon: <PrinterIcon />, href: '/spso/printers' },
-    { name: 'Quản lý sinh viên', icon: <UsersIcon />, href: '/spso/students' },
+    { name: 'Quản lý tài khoản', icon: <UsersIcon />, href: '/spso/accounts' },
     { name: 'Báo cáo', icon: <ReportIcon />, href: '/spso/reports' },
     { name: 'Cài đặt hệ thống', icon: <SettingsIcon />, href: '/spso/settings' },
   ];
