@@ -34,29 +34,44 @@ public class PrintJobServiceImpl implements IPrintJobService {
     
     @Override
     public PrintJobResponseDTO submitPrintJob(String studentId, PrintJobSubmitRequestDTO request) {
-        log.info("Student {} submitting print job for document {}", studentId, request.getDocumentId());
-        
-        // 1. Validate document
-        Document document = documentRepository.findById(request.getDocumentId())
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu"));
+        try {
+            log.info("========== SUBMIT PRINT JOB START ==========");
+            log.info("Student {} submitting print job for document {}", studentId, request.getDocumentId());
+            log.info("Request: printerId={}, paperSize={}, pageRange={}, duplex={}, copies={}", 
+                    request.getPrinterId(), request.getPaperSize(), request.getPageRange(), 
+                    request.getDuplex(), request.getCopies());
+            
+            // 1. Validate document
+            log.info("Step 1: Validating document {}", request.getDocumentId());
+            Document document = documentRepository.findById(request.getDocumentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu"));
         
         if (!document.getStudentId().equals(studentId)) {
+            log.warn("Student {} tried to print document {} owned by {}", studentId, document.getDocumentId(), document.getStudentId());
             throw new BusinessException("Bạn không có quyền in tài liệu này");
         }
         
         if (document.getIsDeleted()) {
+            log.warn("Document {} is deleted", document.getDocumentId());
             throw new BusinessException("Tài liệu đã bị xóa");
         }
         
+        log.info("Document validated: {} pages", document.getTotalPages());
+        
         // 2. Validate printer
+        log.info("Step 2: Validating printer {}", request.getPrinterId());
         Printer printer = printerRepository.findById(request.getPrinterId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy máy in"));
         
         if (!"Active".equals(printer.getStatus())) {
+            log.warn("Printer {} is not active. Status: {}", printer.getPrinterId(), printer.getStatus());
             throw new BusinessException("Máy in không khả dụng");
         }
         
+        log.info("Printer validated: {}", printer.getPrinterName());
+        
         // 3. Calculate pages
+        log.info("Step 3: Calculating pages");
         int totalPagesToPrint = calculateTotalPages(document.getTotalPages(), request.getPageRange());
         int totalSheetsUsed = calculateSheetsUsed(totalPagesToPrint, request.getDuplex());
         int a4EquivalentPages = calculateA4Equivalent(
@@ -65,13 +80,19 @@ public class PrintJobServiceImpl implements IPrintJobService {
             request.getCopies()
         );
         
+        log.info("Calculated: totalPages={}, sheets={}, a4Equivalent={}", totalPagesToPrint, totalSheetsUsed, a4EquivalentPages);
+        
         // 4. Check page balance
+        log.info("Step 4: Checking page balance for student {}", studentId);
         PageBalance pageBalance = pageBalanceRepository.findById(studentId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy số dư trang in"));
         
         int currentBalance = pageBalance.getA4Balance() + (pageBalance.getA3Balance() * 2);
         
+        log.info("Current balance: {} (A4={}, A3={}), Required: {}", currentBalance, pageBalance.getA4Balance(), pageBalance.getA3Balance(), a4EquivalentPages);
+        
         if (currentBalance < a4EquivalentPages) {
+            log.warn("Insufficient balance. Need: {}, Have: {}", a4EquivalentPages, currentBalance);
             throw new BusinessException(
                 String.format("Số dư không đủ. Cần %d trang, hiện có %d trang", 
                     a4EquivalentPages, currentBalance)
@@ -79,6 +100,7 @@ public class PrintJobServiceImpl implements IPrintJobService {
         }
         
         // 5. Create print job
+        log.info("Step 5: Creating print job");
         PrintJob printJob = new PrintJob();
         printJob.setStudentId(studentId);
         printJob.setDocumentId(request.getDocumentId());
@@ -95,12 +117,16 @@ public class PrintJobServiceImpl implements IPrintJobService {
         printJob.setJobStatus("Pending");
         printJob.setSubmittedAt(LocalDateTime.now());
         
+        log.info("Step 6: Saving print job to database");
         PrintJob savedJob = printJobRepository.save(printJob);
+        log.info("Print job saved with ID: {}", savedJob.getJobId());
         
         // 6. Deduct pages from balance
+        log.info("Step 7: Deducting pages from balance");
         deductPages(pageBalance, a4EquivalentPages, request.getPaperSize());
         
         // 7. Create page transaction (Use)
+        log.info("Step 8: Creating page transaction");
         PageTransaction transaction = new PageTransaction();
         transaction.setStudentId(studentId);
         transaction.setTransactionType("Use");
@@ -111,8 +137,16 @@ public class PrintJobServiceImpl implements IPrintJobService {
         pageTransactionRepository.save(transaction);
         
         log.info("Print job {} created successfully for student {}", savedJob.getJobId(), studentId);
+        log.info("========== SUBMIT PRINT JOB END ==========");
         
         return convertToDTO(savedJob);
+        } catch (ResourceNotFoundException | BusinessException e) {
+            log.error("Business error in submitPrintJob: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error in submitPrintJob", e);
+            throw new BusinessException("Lỗi hệ thống khi tạo lệnh in: " + e.getMessage());
+        }
     }
     
     @Override
@@ -280,16 +314,39 @@ public class PrintJobServiceImpl implements IPrintJobService {
     
     /**
      * Convert Entity to DTO
+     * Safely handles lazy-loaded relationships to avoid LazyInitializationException
      */
     private PrintJobResponseDTO convertToDTO(PrintJob job) {
+        // Safely get document name
+        String documentName = null;
+        try {
+            Document doc = documentRepository.findById(job.getDocumentId()).orElse(null);
+            if (doc != null) {
+                documentName = doc.getOriginalFileName();
+            }
+        } catch (Exception e) {
+            log.warn("Could not load document for job {}: {}", job.getJobId(), e.getMessage());
+        }
+        
+        // Safely get printer name
+        String printerName = null;
+        try {
+            Printer printer = printerRepository.findById(job.getPrinterId()).orElse(null);
+            if (printer != null) {
+                printerName = printer.getPrinterName();
+            }
+        } catch (Exception e) {
+            log.warn("Could not load printer for job {}: {}", job.getJobId(), e.getMessage());
+        }
+        
         return PrintJobResponseDTO.builder()
                 .jobId(job.getJobId())
                 .documentId(job.getDocumentId())
-                .documentName(job.getDocument() != null ? job.getDocument().getOriginalFileName() : null)
+                .documentName(documentName)
                 .printerId(job.getPrinterId())
-                .printerName(job.getPrinter() != null ? job.getPrinter().getPrinterName() : null)
+                .printerName(printerName)
                 .studentId(job.getStudentId())
-                .studentName(job.getStudent() != null ? job.getStudent().getFullName() : null)
+                .studentName(null)  // Not needed for student viewing their own jobs
                 .paperSize(job.getPaperSize())
                 .pageRange(job.getPagesToPrint())
                 .duplex(!job.getIsSingleSided())
