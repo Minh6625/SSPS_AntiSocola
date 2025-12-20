@@ -55,6 +55,7 @@ CREATE TABLE PageBalance (
 -- ================================================================
 CREATE TABLE PageTransactions (
     TransactionID SERIAL PRIMARY KEY,
+    TransactionCode VARCHAR(20) NOT NULL UNIQUE,
     StudentID VARCHAR(20) NOT NULL,
     TransactionType VARCHAR(20) NOT NULL CHECK (TransactionType IN ('Allocate', 'Purchase', 'Use')),
     A4Pages INT NOT NULL DEFAULT 0,
