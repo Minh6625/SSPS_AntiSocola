@@ -93,6 +93,12 @@ public interface PrintLogRepository extends JpaRepository<PrintLog, Integer> {
     Page<PrintLog> findByStudentIdOrderByPrintTimeDesc(String studentId, Pageable pageable);
     
     /**
+     * Tìm logs theo student ID (alias)
+     */
+    @Query("SELECT pl FROM PrintLog pl WHERE pl.studentId = :studentId ORDER BY pl.printTime DESC")
+    Page<PrintLog> findByStudentId(@Param("studentId") String studentId, Pageable pageable);
+    
+    /**
      * Tìm logs theo printer ID
      */
     Page<PrintLog> findByPrinterIdOrderByPrintTimeDesc(String printerId, Pageable pageable);
@@ -110,4 +116,22 @@ public interface PrintLogRepository extends JpaRepository<PrintLog, Integer> {
         LocalDateTime endDate, 
         Pageable pageable
     );
+    
+    /**
+     * Đếm số lần in của sinh viên
+     */
+    @Query("SELECT COUNT(pl) FROM PrintLog pl WHERE pl.studentId = :studentId")
+    Long countByStudentId(@Param("studentId") String studentId);
+    
+    /**
+     * Tính tổng trang A4 quy đổi của sinh viên
+     */
+    @Query("SELECT SUM(pl.a4EquivalentUsed) FROM PrintLog pl WHERE pl.studentId = :studentId")
+    Integer sumA4EquivalentByStudentId(@Param("studentId") String studentId);
+    
+    /**
+     * Lấy lần in gần nhất của sinh viên
+     */
+    @Query("SELECT MAX(pl.printTime) FROM PrintLog pl WHERE pl.studentId = :studentId")
+    LocalDateTime findLastPrintTimeByStudentId(@Param("studentId") String studentId);
 }
