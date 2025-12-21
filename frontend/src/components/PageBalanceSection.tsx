@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { pageBalanceService } from '@/services/pageBalanceService';
 import { pagePricingService } from '@/services/pagePricingService';
+import { paymentService, CreatePaymentResponse, PaymentNotification } from '@/services/paymentService';
 import { PageBalanceResponse } from '@/types/pageBalance';
-import { PagePricing } from '@/types/pagePricing';
 import TransactionHistory from '@/app/student/page-balance/transaction-history';
+import SockJS from 'sockjs-client';
+import { Client, IMessage } from '@stomp/stompjs';
 
 const PageBalanceSection: React.FC = () => {
   const [balance, setBalance] = useState<PageBalanceResponse | null>(null);
@@ -15,20 +17,68 @@ const PageBalanceSection: React.FC = () => {
   const [purchaseA3Pages, setPurchaseA3Pages] = useState<number>(0);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
-  const [purchaseNote, setPurchaseNote] = useState<string>('');
   const [purchasing, setPurchasing] = useState(false);
-  const [priceA4, setPriceA4] = useState<number>(500); // Default A4 price
-  const [priceA3, setPriceA3] = useState<number>(1000); // Default A3 price
+  const [priceA4, setPriceA4] = useState<number>(500);
+  const [priceA3, setPriceA3] = useState<number>(1000);
+  
+  // Payment state
+  const [currentPayment, setCurrentPayment] = useState<CreatePaymentResponse | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'pending' | 'success' | 'failed'>('idle');
+  const [countdown, setCountdown] = useState<number>(0);
+  const [successMessage, setSuccessMessage] = useState<string>('');
+  
+  // WebSocket
+  const stompClientRef = useRef<Client | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // QR Payment config
-  const BANK_NAME = 'MBBank';
-  const BANK_ACCOUNT = '0937833154';
+  // Get student ID from token
+  const getStudentId = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    const token = localStorage.getItem('accessToken');
+    if (!token) return null;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.sub || payload.userId || payload.studentId;
+    } catch {
+      return null;
+    }
+  }, []);
 
   // Fetch balance and pricing on mount
   useEffect(() => {
     fetchBalance();
     fetchPricing();
+    
+    return () => {
+      disconnectWebSocket();
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
   }, []);
+
+  // Countdown timer for QR modal
+  useEffect(() => {
+    if (showQRModal && currentPayment && paymentStatus === 'pending') {
+      const expiresAt = new Date(currentPayment.expiresAt).getTime();
+      
+      const updateCountdown = () => {
+        const now = Date.now();
+        const remaining = Math.max(0, Math.floor((expiresAt - now) / 1000));
+        setCountdown(remaining);
+        
+        if (remaining <= 0) {
+          setPaymentStatus('failed');
+          setError('Giao dịch đã hết hạn. Vui lòng tạo giao dịch mới.');
+        }
+      };
+      
+      updateCountdown();
+      const timer = setInterval(updateCountdown, 1000);
+      
+      return () => clearInterval(timer);
+    }
+  }, [showQRModal, currentPayment, paymentStatus]);
 
   const fetchBalance = async () => {
     try {
@@ -52,36 +102,121 @@ const PageBalanceSection: React.FC = () => {
   const fetchPricing = async () => {
     try {
       const pricings = await pagePricingService.getAllPricing();
-      
-      // Set prices for A4 and A3
       const a4Price = pricings.find(p => p.paperSize === 'A4');
       const a3Price = pricings.find(p => p.paperSize === 'A3');
-      
-      if (a4Price) {
-        setPriceA4(a4Price.pricePerPage);
-      }
-      if (a3Price) {
-        setPriceA3(a3Price.pricePerPage);
-      }
+      if (a4Price) setPriceA4(a4Price.pricePerPage);
+      if (a3Price) setPriceA3(a3Price.pricePerPage);
     } catch (err) {
       console.error('Failed to fetch pricing:', err);
     }
   };
 
-  const handlePurchase = async () => {
-    // Validate input - phải mua ít nhất 1 trang (A4 hoặc A3)
-    if ((purchaseA4Pages < 0 || purchaseA4Pages > 1000) && (purchaseA3Pages < 0 || purchaseA3Pages > 500)) {
-      setError('Vui lòng nhập số trang hợp lệ');
-      return;
+  // Connect to WebSocket for real-time payment notifications
+  const connectWebSocket = useCallback((studentId: string) => {
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 
+                  (process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api', '') || 'http://localhost:8080') + '/ws';
+    
+    console.log('Connecting to WebSocket:', wsUrl);
+    
+    const client = new Client({
+      webSocketFactory: () => new SockJS(wsUrl),
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      debug: (str) => console.log('STOMP:', str),
+    });
+
+    client.onConnect = () => {
+      console.log('WebSocket connected');
+      
+      // Subscribe to payment notifications for this student
+      client.subscribe(`/topic/payment/${studentId}`, (message: IMessage) => {
+        console.log('Received payment notification:', message.body);
+        try {
+          const notification: PaymentNotification = JSON.parse(message.body);
+          handlePaymentNotification(notification);
+        } catch (e) {
+          console.error('Error parsing notification:', e);
+        }
+      });
+    };
+
+    client.onStompError = (frame) => {
+      console.error('STOMP error:', frame);
+    };
+
+    client.activate();
+    stompClientRef.current = client;
+  }, []);
+
+  const disconnectWebSocket = useCallback(() => {
+    if (stompClientRef.current) {
+      stompClientRef.current.deactivate();
+      stompClientRef.current = null;
     }
-    if (purchaseA4Pages < 0 || purchaseA4Pages > 1000) {
-      setError('Số trang A4 phải từ 0 đến 1000');
-      return;
+  }, []);
+
+  // Handle payment notification from WebSocket
+  const handlePaymentNotification = useCallback((notification: PaymentNotification) => {
+    console.log('Processing payment notification:', notification);
+    
+    if (notification.status === 'SUCCESS') {
+      setPaymentStatus('success');
+      setSuccessMessage(notification.message);
+      
+      // Update balance immediately
+      setBalance(prev => prev ? {
+        ...prev,
+        pagesA4: notification.newA4Balance,
+        pagesA3: notification.newA3Balance,
+        totalA4Equivalent: notification.newA4Balance + (notification.newA3Balance * 2),
+      } : null);
+      
+      // Stop polling
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
     }
-    if (purchaseA3Pages < 0 || purchaseA3Pages > 500) {
-      setError('Số trang A3 phải từ 0 đến 500');
-      return;
+  }, []);
+
+  // Start polling for payment status (fallback if WebSocket fails)
+  const startPolling = useCallback((paymentCode: string) => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
     }
+    
+    pollingIntervalRef.current = setInterval(async () => {
+      try {
+        const status = await paymentService.getPaymentStatus(paymentCode);
+        console.log('Polling payment status:', status);
+        
+        if (status.status === 'COMPLETED') {
+          setPaymentStatus('success');
+          setSuccessMessage('Thanh toán thành công! Số dư đã được cập nhật.');
+          await fetchBalance();
+          
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+        } else if (status.status === 'EXPIRED' || status.status === 'CANCELLED') {
+          setPaymentStatus('failed');
+          setError('Giao dịch đã hết hạn hoặc bị hủy.');
+          
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+        }
+      } catch (err) {
+        console.error('Error polling payment status:', err);
+      }
+    }, 3000); // Poll every 3 seconds
+  }, []);
+
+  // Create payment and show QR
+  const handleCreatePayment = async () => {
     if (purchaseA4Pages === 0 && purchaseA3Pages === 0) {
       setError('Vui lòng nhập ít nhất 1 trang');
       return;
@@ -90,29 +225,63 @@ const PageBalanceSection: React.FC = () => {
     try {
       setPurchasing(true);
       setError(null);
-      const response = await pageBalanceService.purchasePages(purchaseA4Pages, purchaseA3Pages);
-
-      // Refresh balance
-      await fetchBalance();
-      setShowPurchaseModal(false);
-      setPurchaseA4Pages(0);
-      setPurchaseA3Pages(0);
+      setPaymentStatus('pending');
       
-      // Show success message
-      alert(response.message || 'Mua trang in thành công!');
+      // Create payment
+      const payment = await paymentService.createPayment(purchaseA4Pages, purchaseA3Pages);
+      console.log('Payment created:', payment);
+      
+      setCurrentPayment(payment);
+      setShowPurchaseModal(false);
+      setShowQRModal(true);
+      
+      // Connect WebSocket
+      const studentId = getStudentId();
+      if (studentId) {
+        connectWebSocket(studentId);
+      }
+      
+      // Start polling as fallback
+      startPolling(payment.paymentCode);
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Mua trang thất bại');
+      setError(err instanceof Error ? err.message : 'Tạo giao dịch thất bại');
+      setPaymentStatus('failed');
     } finally {
       setPurchasing(false);
     }
   };
 
+  // Close QR modal and cleanup
+  const handleCloseQRModal = () => {
+    setShowQRModal(false);
+    setCurrentPayment(null);
+    setPaymentStatus('idle');
+    setSuccessMessage('');
+    setPurchaseA4Pages(0);
+    setPurchaseA3Pages(0);
+    disconnectWebSocket();
+    
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    
+    // Refresh balance
+    fetchBalance();
+  };
+
   const totalPrice = (purchaseA4Pages * priceA4) + (purchaseA3Pages * priceA3);
-  // Form hợp lệ: phải mua ít nhất 1 trang, và số lượng trong range
   const isValidForm = 
     (purchaseA4Pages >= 0 && purchaseA4Pages <= 1000) &&
     (purchaseA3Pages >= 0 && purchaseA3Pages <= 500) &&
     (purchaseA4Pages > 0 || purchaseA3Pages > 0);
+
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   if (loading) {
     return (
@@ -154,17 +323,10 @@ const PageBalanceSection: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900">Trang A4</h3>
                 <div className="text-3xl">📄</div>
               </div>
-              <div className="text-4xl font-bold text-blue-600 mb-2">
-                {balance.pagesA4}
-              </div>
+              <div className="text-4xl font-bold text-blue-600 mb-2">{balance.pagesA4}</div>
               <p className="text-gray-600 text-sm mb-4">trang</p>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-500 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min((balance.pagesA4 / 100) * 100, 100)}%`,
-                  }}
-                ></div>
+                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min((balance.pagesA4 / 100) * 100, 100)}%` }}></div>
               </div>
             </div>
 
@@ -174,17 +336,10 @@ const PageBalanceSection: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900">Trang A3</h3>
                 <div className="text-3xl">📋</div>
               </div>
-              <div className="text-4xl font-bold text-green-600 mb-2">
-                {balance.pagesA3}
-              </div>
+              <div className="text-4xl font-bold text-green-600 mb-2">{balance.pagesA3}</div>
               <p className="text-gray-600 text-sm mb-4">trang</p>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-green-500 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min((balance.pagesA3 / 100) * 100, 100)}%`,
-                  }}
-                ></div>
+                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min((balance.pagesA3 / 100) * 100, 100)}%` }}></div>
               </div>
             </div>
 
@@ -194,17 +349,10 @@ const PageBalanceSection: React.FC = () => {
                 <h3 className="text-lg font-semibold text-gray-900">Tổng A4 tương đương</h3>
                 <div className="text-3xl">📊</div>
               </div>
-              <div className="text-4xl font-bold text-purple-600 mb-2">
-                {balance.totalA4Equivalent}
-              </div>
+              <div className="text-4xl font-bold text-purple-600 mb-2">{balance.totalA4Equivalent}</div>
               <p className="text-gray-600 text-sm mb-4">trang</p>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-purple-500 h-2 rounded-full"
-                  style={{
-                    width: `${Math.min((balance.totalA4Equivalent / 100) * 100, 100)}%`,
-                  }}
-                ></div>
+                <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${Math.min((balance.totalA4Equivalent / 100) * 100, 100)}%` }}></div>
               </div>
             </div>
           </div>
@@ -213,11 +361,8 @@ const PageBalanceSection: React.FC = () => {
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Mua thêm trang in</h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-              {/* A4 Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số trang A4 (0-1000)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Số trang A4 (0-1000)</label>
                 <input
                   type="number"
                   min="0"
@@ -225,21 +370,12 @@ const PageBalanceSection: React.FC = () => {
                   value={purchaseA4Pages}
                   onChange={(e) => setPurchaseA4Pages(Math.max(0, parseInt(e.target.value) || 0))}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    purchaseA4Pages >= 0 && purchaseA4Pages <= 1000
-                      ? 'border-gray-300 focus:ring-blue-500'
-                      : 'border-red-300 focus:ring-red-500'
+                    purchaseA4Pages >= 0 && purchaseA4Pages <= 1000 ? 'border-gray-300 focus:ring-blue-500' : 'border-red-300 focus:ring-red-500'
                   }`}
                 />
-                {purchaseA4Pages > 1000 && (
-                  <p className="text-xs text-red-600 mt-1">Tối đa 1000 trang</p>
-                )}
               </div>
-
-              {/* A3 Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Số trang A3 (0-500)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Số trang A3 (0-500)</label>
                 <input
                   type="number"
                   min="0"
@@ -247,41 +383,24 @@ const PageBalanceSection: React.FC = () => {
                   value={purchaseA3Pages}
                   onChange={(e) => setPurchaseA3Pages(Math.max(0, parseInt(e.target.value) || 0))}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    purchaseA3Pages >= 0 && purchaseA3Pages <= 500
-                      ? 'border-gray-300 focus:ring-blue-500'
-                      : 'border-red-300 focus:ring-red-500'
+                    purchaseA3Pages >= 0 && purchaseA3Pages <= 500 ? 'border-gray-300 focus:ring-blue-500' : 'border-red-300 focus:ring-red-500'
                   }`}
                 />
-                {purchaseA3Pages > 500 && (
-                  <p className="text-xs text-red-600 mt-1">Tối đa 500 trang</p>
-                )}
               </div>
-
-              {/* Price Display */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tổng tiền
-                </label>
-                <div className="text-2xl font-bold text-blue-600">
-                  {totalPrice.toLocaleString('vi-VN')} VND
-                </div>
-                <p className="text-xs text-gray-600 mt-1">
-                  A4: {priceA4.toLocaleString('vi-VN')} | A3: {priceA3.toLocaleString('vi-VN')}
-                </p>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tổng tiền</label>
+                <div className="text-2xl font-bold text-blue-600">{totalPrice.toLocaleString('vi-VN')} VND</div>
+                <p className="text-xs text-gray-600 mt-1">A4: {priceA4.toLocaleString('vi-VN')} | A3: {priceA3.toLocaleString('vi-VN')}</p>
               </div>
-
-              {/* Button */}
               <div className="flex items-end">
                 <button
                   onClick={() => setShowPurchaseModal(true)}
                   disabled={!isValidForm}
                   className={`w-full px-6 py-2 rounded-lg transition-colors font-medium ${
-                    isValidForm
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    isValidForm ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  Thanh toán qua SIUPay
+                  Thanh toán qua SePay
                 </button>
               </div>
             </div>
@@ -308,59 +427,37 @@ const PageBalanceSection: React.FC = () => {
                 <span className="text-gray-700">Số trang A3:</span>
                 <span className="font-semibold text-gray-900">{purchaseA3Pages} trang</span>
               </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700">Giá A4:</span>
-                <span className="font-semibold text-gray-900">
-                  {(purchaseA4Pages * priceA4).toLocaleString('vi-VN')} VND
-                </span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700">Giá A3:</span>
-                <span className="font-semibold text-gray-900">
-                  {(purchaseA3Pages * priceA3).toLocaleString('vi-VN')} VND
-                </span>
-              </div>
               <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
                 <span className="text-gray-900 font-semibold">Tổng cộng:</span>
-                <span className="text-lg font-bold text-blue-600">
-                  {totalPrice.toLocaleString('vi-VN')} VND
-                </span>
+                <span className="text-lg font-bold text-blue-600">{totalPrice.toLocaleString('vi-VN')} VND</span>
               </div>
             </div>
-
-            {/* Note Input */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ghi chú (nội dung chuyển khoản)
-              </label>
-              <input
-                type="text"
-                value={purchaseNote}
-                onChange={(e) => setPurchaseNote(e.target.value)}
-                placeholder="VD: Mua trang in - MSSV 123456"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-yellow-800">
+                ⚠️ Sau khi nhấn "Tạo mã QR", hệ thống sẽ tự động xác nhận khi bạn chuyển khoản thành công.
+              </p>
             </div>
-
             <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setShowPurchaseModal(false);
-                  setPurchaseNote('');
-                }}
+                onClick={() => setShowPurchaseModal(false)}
                 disabled={purchasing}
                 className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50"
               >
                 Hủy
               </button>
               <button
-                onClick={() => {
-                  setShowPurchaseModal(false);
-                  setShowQRModal(true);
-                }}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+                onClick={handleCreatePayment}
+                disabled={purchasing}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                Hiển thị mã QR
+                {purchasing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Đang tạo...
+                  </>
+                ) : (
+                  'Tạo mã QR'
+                )}
               </button>
             </div>
           </div>
@@ -368,75 +465,115 @@ const PageBalanceSection: React.FC = () => {
       )}
 
       {/* QR Code Payment Modal */}
-      {showQRModal && (
+      {showQRModal && currentPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full mx-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">Quét mã QR để thanh toán</h3>
-            
-            {/* QR Code Image */}
-            <div className="flex justify-center mb-4">
-              <img
-                src={`https://qr.sepay.vn/img?acc=${BANK_ACCOUNT}&bank=${BANK_NAME}&amount=${totalPrice}&des=${encodeURIComponent(purchaseNote || `Mua ${purchaseA4Pages} trang A4, ${purchaseA3Pages} trang A3`)}`}
-                alt="QR Code thanh toán"
-                className="w-64 h-64 border-2 border-gray-200 rounded-lg"
-              />
-            </div>
+            {paymentStatus === 'success' ? (
+              // Success State
+              <div className="text-center py-8">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-green-600 mb-2">Thanh toán thành công!</h3>
+                <p className="text-gray-600 mb-6">{successMessage}</p>
+                <button
+                  onClick={handleCloseQRModal}
+                  className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                >
+                  Đóng
+                </button>
+              </div>
+            ) : paymentStatus === 'failed' ? (
+              // Failed State
+              <div className="text-center py-8">
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-red-600 mb-2">Giao dịch thất bại</h3>
+                <p className="text-gray-600 mb-6">{error || 'Giao dịch đã hết hạn hoặc bị hủy.'}</p>
+                <button
+                  onClick={handleCloseQRModal}
+                  className="px-8 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                >
+                  Đóng
+                </button>
+              </div>
+            ) : (
+              // Pending State - Show QR
+              <>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-bold text-gray-900">Quét mã QR để thanh toán</h3>
+                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    countdown > 60 ? 'bg-green-100 text-green-700' : 
+                    countdown > 30 ? 'bg-yellow-100 text-yellow-700' : 
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    ⏱️ {formatCountdown(countdown)}
+                  </div>
+                </div>
+                
+                {/* QR Code */}
+                <div className="flex justify-center mb-4">
+                  <div className="relative">
+                    <img
+                      src={currentPayment.qrUrl}
+                      alt="QR Code thanh toán"
+                      className="w-64 h-64 border-2 border-gray-200 rounded-lg"
+                    />
+                    <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white px-2 py-1 rounded text-xs">
+                      SePay
+                    </div>
+                  </div>
+                </div>
 
-            {/* Payment Info */}
-            <div className="bg-blue-50 rounded-lg p-4 mb-4">
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700">Ngân hàng:</span>
-                <span className="font-semibold text-gray-900">{BANK_NAME}</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700">Số tài khoản:</span>
-                <span className="font-semibold text-gray-900">{BANK_ACCOUNT}</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-700">Số tiền:</span>
-                <span className="font-bold text-blue-600">{totalPrice.toLocaleString('vi-VN')} VND</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-700">Nội dung:</span>
-                <span className="font-semibold text-gray-900 text-right max-w-[200px] truncate">
-                  {purchaseNote || `Mua ${purchaseA4Pages} trang A4, ${purchaseA3Pages} trang A3`}
-                </span>
-              </div>
-            </div>
+                {/* Payment Info */}
+                <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-gray-700">Ngân hàng:</span>
+                    <span className="font-semibold text-gray-900">{currentPayment.bankName}</span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-gray-700">Số tài khoản:</span>
+                    <span className="font-semibold text-gray-900">{currentPayment.bankAccount}</span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-gray-700">Chủ tài khoản:</span>
+                    <span className="font-semibold text-gray-900">{currentPayment.accountName}</span>
+                  </div>
+                  <div className="flex justify-between mb-2">
+                    <span className="text-gray-700">Số tiền:</span>
+                    <span className="font-bold text-blue-600">{currentPayment.amount.toLocaleString('vi-VN')} VND</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-700">Nội dung CK:</span>
+                    <span className="font-semibold text-orange-600">{currentPayment.paymentCode}</span>
+                  </div>
+                </div>
 
-            <p className="text-sm text-gray-500 text-center mb-4">
-              Sau khi chuyển khoản thành công, vui lòng nhấn "Đã thanh toán" để hoàn tất giao dịch.
-            </p>
+                {/* Status indicator */}
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="animate-pulse w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <p className="text-sm text-yellow-800">
+                      Đang chờ thanh toán... Hệ thống sẽ tự động xác nhận khi nhận được tiền.
+                    </p>
+                  </div>
+                </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowQRModal(false);
-                  setPurchaseNote('');
-                }}
-                disabled={purchasing}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium disabled:opacity-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={() => {
-                  setShowQRModal(false);
-                  handlePurchase();
-                }}
-                disabled={purchasing}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {purchasing ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Đang xử lý...
-                  </>
-                ) : (
-                  'Đã thanh toán'
-                )}
-              </button>
-            </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCloseQRModal}
+                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                  >
+                    Hủy giao dịch
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

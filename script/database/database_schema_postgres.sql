@@ -79,6 +79,32 @@ CREATE INDEX IX_Trans_Student ON PageTransactions(StudentID, CreatedAt DESC);
 CREATE INDEX IX_Trans_Type ON PageTransactions(TransactionType, TransactionStatus);
 
 -- ================================================================
+-- BẢNG 3A: PENDING_PAYMENTS - Thanh toán chờ xử lý (SePay Integration)
+-- ================================================================
+CREATE TABLE PendingPayments (
+    PaymentID SERIAL PRIMARY KEY,
+    PaymentCode VARCHAR(50) NOT NULL UNIQUE,
+    StudentID VARCHAR(20) NOT NULL,
+    A4Pages INTEGER NOT NULL DEFAULT 0,
+    A3Pages INTEGER NOT NULL DEFAULT 0,
+    Amount BIGINT NOT NULL,
+    Status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ExpiresAt TIMESTAMP,
+    CompletedAt TIMESTAMP,
+    BankTransactionId VARCHAR(100),
+    
+    CONSTRAINT fk_pending_payment_student FOREIGN KEY (StudentID) REFERENCES Users(UserID) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_pending_payments_code ON PendingPayments(PaymentCode);
+CREATE INDEX idx_pending_payments_student ON PendingPayments(StudentID);
+CREATE INDEX idx_pending_payments_status ON PendingPayments(Status);
+CREATE INDEX idx_pending_payments_amount ON PendingPayments(Amount);
+
+COMMENT ON TABLE PendingPayments IS 'Stores pending payment transactions for SePay QR payment integration';
+
+-- ================================================================
 -- BẢNG 4A: BRANDS - Thương hiệu máy in
 -- ================================================================
 CREATE TABLE Brands (
