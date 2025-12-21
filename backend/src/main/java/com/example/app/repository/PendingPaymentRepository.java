@@ -19,9 +19,11 @@ public interface PendingPaymentRepository extends JpaRepository<PendingPayment, 
     
     List<PendingPayment> findByStudentIdAndStatus(String studentId, String status);
     
+    List<PendingPayment> findByStatus(String status);
+    
     List<PendingPayment> findByStatusAndExpiresAtBefore(String status, LocalDateTime dateTime);
     
-    @Query("SELECT p FROM PendingPayment p WHERE p.status = 'PENDING' AND p.amount = :amount AND p.expiresAt > :now")
+    @Query("SELECT p FROM PendingPayment p WHERE p.status = 'PENDING' AND p.amount = :amount AND p.expiresAt > :now ORDER BY p.createdAt DESC")
     List<PendingPayment> findPendingByAmount(@Param("amount") Long amount, @Param("now") LocalDateTime now);
     
     @Query("SELECT p FROM PendingPayment p WHERE p.status = 'PENDING' AND p.studentId = :studentId AND p.expiresAt > :now ORDER BY p.createdAt DESC")

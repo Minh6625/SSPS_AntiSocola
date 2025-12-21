@@ -227,9 +227,16 @@ const PageBalanceSection: React.FC = () => {
       setError(null);
       setPaymentStatus('pending');
       
+      console.log('Creating payment request:', { a4Pages: purchaseA4Pages, a3Pages: purchaseA3Pages });
+      
       // Create payment
       const payment = await paymentService.createPayment(purchaseA4Pages, purchaseA3Pages);
-      console.log('Payment created:', payment);
+      console.log('Payment created successfully:', payment);
+      
+      // Validate payment response
+      if (!payment.success || !payment.qrUrl || !payment.paymentCode) {
+        throw new Error('Phản hồi từ server không hợp lệ: ' + JSON.stringify(payment));
+      }
       
       setCurrentPayment(payment);
       setShowPurchaseModal(false);
@@ -245,7 +252,9 @@ const PageBalanceSection: React.FC = () => {
       startPolling(payment.paymentCode);
       
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Tạo giao dịch thất bại');
+      console.error('Error creating payment:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Tạo giao dịch thất bại';
+      setError(errorMessage);
       setPaymentStatus('failed');
     } finally {
       setPurchasing(false);
@@ -532,6 +541,10 @@ const PageBalanceSection: React.FC = () => {
 
                 {/* Payment Info */}
                 <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                  <div className="flex justify-between mb-2">
+                    <span className="text-gray-700">Mã giao dịch:</span>
+                    <span className="font-bold text-blue-600">{currentPayment.paymentCode}</span>
+                  </div>
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-700">Ngân hàng:</span>
                     <span className="font-semibold text-gray-900">{currentPayment.bankName}</span>

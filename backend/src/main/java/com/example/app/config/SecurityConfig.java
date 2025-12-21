@@ -93,6 +93,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/print-jobs/**").hasAnyAuthority("Student", "SPSO")
                 // PageBalance API - Student + SPSO
                 .requestMatchers("/api/page-balance/**").hasAnyAuthority("Student", "SPSO")
+                // Payment API - Student + SPSO
+                .requestMatchers("/api/payment/**").hasAnyAuthority("Student", "SPSO")
                 // Profile API - Student + SPSO
                 .requestMatchers("/api/profile/**").hasAnyAuthority("Student", "SPSO")
                 // Print Logs API - SPSO only
