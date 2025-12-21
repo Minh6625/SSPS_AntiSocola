@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -77,6 +78,25 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 
                 // Tất cả endpoint khác cần JWT
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/", "/error", "/actuator/**", "/actuator/health", "/health").permitAll()
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/api-docs/**").permitAll()
+                // Reference Data API - Temporary: permitAll for debugging
+                .requestMatchers("/api/reference/**").permitAll()
+                // Document API (Print Flow) - chỉ cho Student
+                .requestMatchers("/api/documents/**").hasAuthority("Student")
+                   // User API (current user info & balance) - Student + SPSO
+                   .requestMatchers("/api/users/me/**").hasAnyAuthority("Student", "SPSO")
+                // Printer API - cho SPSO và Student (chọn máy in)
+                .requestMatchers("/api/printers/**").hasAnyAuthority("SPSO", "Student")
+                // PrintJob API - Student + SPSO
+                .requestMatchers("/api/print-jobs/**").hasAnyAuthority("Student", "SPSO")
+                // PageBalance API - Student + SPSO
+                .requestMatchers("/api/page-balance/**").hasAnyAuthority("Student", "SPSO")
+                // Profile API - Student + SPSO
+                .requestMatchers("/api/profile/**").hasAnyAuthority("Student", "SPSO")
+                // Print Logs API - SPSO only
+                .requestMatchers("/api/print-logs/**").hasAuthority("SPSO")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
