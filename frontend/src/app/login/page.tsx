@@ -57,7 +57,6 @@ export default function LoginPage() {
           text: 'continue_with',
           shape: 'rectangular',
           logo_alignment: 'left',
-          width: '100%',
         });
       }
     }

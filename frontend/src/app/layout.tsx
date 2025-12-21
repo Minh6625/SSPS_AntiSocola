@@ -7,10 +7,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico' },
-      { url: '/icon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon.svg', sizes: '32x32', type: 'image/svg+xml' },
     ],
     apple: [
-      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/favicon.ico', sizes: '180x180', type: 'image/x-icon' },
     ],
   },
 };
@@ -23,8 +23,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" type="image/png" sizes="32x32" href="/icon.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon.png" />
+        <link rel="icon" type="image/svg+xml" sizes="32x32" href="/icon.svg" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/favicon.ico" />
       </head>
       <body>{children}</body>
     </html>
