@@ -92,7 +92,7 @@ public class PaymentService {
                 .a3Pages(a3Pages)
                 .amount(amount)
                 .status("PENDING")
-                .expiresAt(LocalDateTime.now().plusMinutes(15))
+                .expiresAt(LocalDateTime.now().plusMinutes(30)) // Tăng từ 15 lên 30 phút
                 .build();
 
         payment = pendingPaymentRepository.save(payment);
@@ -159,23 +159,24 @@ public class PaymentService {
         // Extract payment code from content (format: SPSS + 4 chars + 4 digits)
         String upperContent = content.toUpperCase();
         
-        // Try to find SPSS code in content
+        // Try to find SPSS code in content - look for any SPSS pattern
         int spssIndex = upperContent.indexOf("SPSS");
-        if (spssIndex >= 0 && spssIndex + 12 <= upperContent.length()) {
-            String potentialCode = upperContent.substring(spssIndex, spssIndex + 12);
-            // Remove any spaces
-            potentialCode = potentialCode.replaceAll("\\s+", "");
-            if (potentialCode.length() >= 8) {
-                potentialCode = potentialCode.substring(0, Math.min(12, potentialCode.length()));
+        if (spssIndex >= 0) {
+            // Extract everything after SPSS until space or end
+            String afterSpss = upperContent.substring(spssIndex);
+            String[] parts = afterSpss.split("\\s+");
+            if (parts.length > 0) {
+                String potentialCode = parts[0]; // Take first part (SPSS + code)
                 
                 log.info("Extracted potential code: {}", potentialCode);
                 
+                // Try to find exact match first
                 Optional<PendingPayment> payment = pendingPaymentRepository
                         .findByPaymentCodeAndStatus(potentialCode, "PENDING");
                 
                 if (payment.isPresent()) {
                     PendingPayment p = payment.get();
-                    log.info("Found payment: code={}, amount={}, expected={}", potentialCode, p.getAmount(), amount);
+                    log.info("Found exact payment: code={}, amount={}, expected={}", potentialCode, p.getAmount(), amount);
                     // Verify amount matches
                     if (p.getAmount().equals(amount)) {
                         log.info("Amount matches! Returning payment");
@@ -185,7 +186,20 @@ public class PaymentService {
                                 potentialCode, p.getAmount(), amount);
                     }
                 } else {
-                    log.warn("No pending payment found for code: {}", potentialCode);
+                    log.warn("No pending payment found for exact code: {}", potentialCode);
+                    
+                    // Try partial match - find any pending payment with code containing this pattern
+                    List<PendingPayment> allPending = pendingPaymentRepository.findByStatus("PENDING");
+                    for (PendingPayment p : allPending) {
+                        if (p.getPaymentCode().toUpperCase().contains(potentialCode) || 
+                            potentialCode.contains(p.getPaymentCode().toUpperCase())) {
+                            log.info("Found partial match: {} vs {}", p.getPaymentCode(), potentialCode);
+                            if (p.getAmount().equals(amount)) {
+                                log.info("Partial match with correct amount! Returning payment");
+                                return p;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -196,6 +210,10 @@ public class PaymentService {
         
         if (pendingByAmount.size() == 1) {
             log.info("Found single pending payment matching amount: {}", amount);
+            return pendingByAmount.get(0);
+        } else if (pendingByAmount.size() > 1) {
+            log.warn("Multiple pending payments found for amount: {}, count: {}", amount, pendingByAmount.size());
+            // Return the most recent one
             return pendingByAmount.get(0);
         }
 

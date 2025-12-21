@@ -25,12 +25,43 @@ apiClient.interceptors.request.use((config) => {
 
 // Error Handler
 const handleApiError = (error: unknown): string => {
+  console.error('API Error:', error);
+  
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<any>;
+    
+    // Log full error details
+    console.error('Axios error details:', {
+      status: axiosError.response?.status,
+      statusText: axiosError.response?.statusText,
+      data: axiosError.response?.data,
+      url: axiosError.config?.url,
+      method: axiosError.config?.method
+    });
+    
     if (axiosError.response?.data?.message) {
       return axiosError.response.data.message;
     }
+    
+    if (axiosError.response?.status === 401) {
+      return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+    }
+    
+    if (axiosError.response?.status === 403) {
+      return 'Không có quyền truy cập. Vui lòng kiểm tra lại.';
+    }
+    
+    if (axiosError.response?.status === 500) {
+      return 'Lỗi server. Vui lòng thử lại sau.';
+    }
+    
+    if (axiosError.code === 'NETWORK_ERROR') {
+      return 'Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet.';
+    }
+    
+    return `Lỗi API: ${axiosError.response?.status || 'Unknown'} - ${axiosError.message}`;
   }
+  
   return 'Có lỗi xảy ra. Vui lòng thử lại.';
 };
 
@@ -79,9 +110,20 @@ export const paymentService = {
    */
   async createPayment(a4Pages: number, a3Pages: number): Promise<CreatePaymentResponse> {
     try {
+      console.log('Creating payment request:', { a4Pages, a3Pages });
+      console.log('API Base URL:', API_BASE_URL);
+      
       const response = await apiClient.post<CreatePaymentResponse>('/create', { a4Pages, a3Pages });
+      
+      console.log('Payment response:', response.data);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Tạo giao dịch thất bại');
+      }
+      
       return response.data;
     } catch (error) {
+      console.error('Create payment error:', error);
       throw new Error(handleApiError(error));
     }
   },

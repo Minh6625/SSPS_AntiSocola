@@ -237,6 +237,68 @@ public class PaymentController {
     }
 
     /**
+     * GET /api/payment/test-create
+     * Test endpoint to create a sample payment (for debugging)
+     */
+    @GetMapping("/api/payment/test-create")
+    @Operation(summary = "Test tạo giao dịch", description = "Endpoint test để tạo giao dịch mẫu")
+    public ResponseEntity<?> testCreatePayment(HttpServletRequest request) {
+        log.info("=== Test Create Payment ===");
+        
+        try {
+            // Extract and validate token
+            String token = extractTokenFromRequest(request);
+            if (token == null || jwtUtil.isTokenExpired(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Token không hợp lệ hoặc đã hết hạn"));
+            }
+
+            String studentId = jwtUtil.extractUserId(token);
+            if (studentId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Không thể lấy studentId từ token"));
+            }
+
+            log.info("Test creating payment for student: {}", studentId);
+
+            // Create test pending payment (3 A4 pages = 1500 VND)
+            PendingPayment payment = paymentService.createPendingPayment(studentId, 3, 0);
+
+            // Build QR URL
+            String qrContent = payment.getPaymentCode();
+            String qrUrl = String.format(
+                    "https://qr.sepay.vn/img?acc=%s&bank=%s&amount=%d&des=%s",
+                    bankAccount, bankName, payment.getAmount(), qrContent
+            );
+
+            // Build response
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("paymentCode", payment.getPaymentCode());
+            response.put("amount", payment.getAmount());
+            response.put("a4Pages", payment.getA4Pages());
+            response.put("a3Pages", payment.getA3Pages());
+            response.put("qrUrl", qrUrl);
+            response.put("bankName", bankName);
+            response.put("bankAccount", bankAccount);
+            response.put("accountName", accountName);
+            response.put("expiresAt", payment.getExpiresAt().toString());
+            response.put("message", "Test payment created. Nội dung CK: " + payment.getPaymentCode());
+
+            log.info("Test payment created successfully: {}", payment.getPaymentCode());
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error creating test payment: ", e);
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", e.getMessage());
+            error.put("error", e.getClass().getSimpleName());
+            return ResponseEntity.badRequest().body(error);
+        }
+    }
+
+    /**
      * Extract JWT token from request
      */
     private String extractTokenFromRequest(HttpServletRequest request) {
