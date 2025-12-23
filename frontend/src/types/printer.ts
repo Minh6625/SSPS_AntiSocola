@@ -15,10 +15,24 @@ export interface Printer {
   paperSizes: string; // "A4,A3"
   colorPrinting: boolean;
   duplexPrinting: boolean;
-  status: 'Active' | 'Inactive' | 'Maintenance' | 'Error';
+  status: 'Active' | 'Inactive' | 'Maintenance' | 'Error' | 'OutOfPaper' | 'OutOfToner' | 'OutOfBoth';
+  statusMessage?: string;
   totalPagesPrinted: number;
   lastMaintenanceDate?: string;
   createdAt: string;
+  
+  // Paper supplies
+  a4PaperRemaining?: number;
+  a3PaperRemaining?: number;
+  a4PaperCapacity?: number;
+  a3PaperCapacity?: number;
+  
+  // Toner supplies
+  tonerBlackRemaining?: number;
+  tonerCyanRemaining?: number;
+  tonerMagentaRemaining?: number;
+  tonerYellowRemaining?: number;
+  tonerLastReplaced?: string;
 }
 
 export interface PrinterListResponse {

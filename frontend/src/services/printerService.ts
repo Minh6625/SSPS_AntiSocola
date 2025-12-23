@@ -193,4 +193,47 @@ export const printerService = {
       throw new Error(errorMessage);
     }
   },
+
+  /**
+   * GET /api/printers/{id}/supplies
+   * Lấy thông tin giấy/mực của máy in
+   */
+  async getPrinterSupplies(id: number) {
+    try {
+      const response = await apiClient.get(`/printers/${id}/supplies`);
+      return response.data.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 'Không thể tải thông tin giấy/mực';
+      throw new Error(errorMessage);
+    }
+  },
+
+  /**
+   * POST /api/printers/{id}/refill
+   * Nạp giấy/mực cho máy in (SPSO only)
+   */
+  async refillSupplies(id: number, data: {
+    a4PaperToAdd?: number;
+    a3PaperToAdd?: number;
+    tonerBlackToAdd?: number;
+    tonerCyanToAdd?: number;
+    tonerMagentaToAdd?: number;
+    tonerYellowToAdd?: number;
+  }) {
+    try {
+      const response = await apiClient.post(`/printers/${id}/refill`, data);
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError<ErrorResponse>;
+      // Extract message from backend response (message field, not error field)
+      const errorMessage = axiosError.response?.data?.message 
+        || axiosError.response?.data?.error 
+        || 'Nạp giấy/mực thất bại';
+      // Throw error with message but preserve the original axios error
+      const err = new Error(errorMessage);
+      (err as any).response = axiosError.response; // Preserve response for debugging
+      throw err;
+    }
+  },
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { printJobService } from '@/services/printJobService';
 import { documentService } from '@/services/documentService';
 import { PrintJob } from '@/types/printJob';
@@ -141,14 +141,59 @@ export default function PrintHistoryPage() {
   const [printerFilter, setPrinterFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Ref để track interval
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadPrintHistory();
+    
+    // Cleanup interval khi unmount
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
     applyFilters();
   }, [jobs, dateFilter, printerFilter, statusFilter, searchQuery]);
+
+  // Auto-refresh khi có jobs Pending hoặc Printing
+  useEffect(() => {
+    // Clear interval cũ nếu có
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+    
+    const hasActiveJobs = jobs.some(
+      job => job.jobStatus === 'Pending' || job.jobStatus === 'Printing'
+    );
+
+    if (!hasActiveJobs) {
+      console.log('No active jobs, auto-refresh stopped');
+      return;
+    }
+
+    console.log('Active jobs detected, starting auto-refresh every 5 seconds');
+    
+    // Tạo interval mới
+    refreshIntervalRef.current = setInterval(() => {
+      console.log('Auto-refreshing print history...');
+      loadPrintHistory();
+    }, 5000);
+
+    // Cleanup
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [jobs]);
 
   const loadPrintHistory = async () => {
     try {

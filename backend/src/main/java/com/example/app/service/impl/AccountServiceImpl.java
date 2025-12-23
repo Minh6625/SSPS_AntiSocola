@@ -114,8 +114,8 @@ public class AccountServiceImpl implements IAccountService {
                 .orElse(new PageBalance(userId, 0, LocalDateTime.now(), user));
             
             dto.setA4Balance(pageBalance.getA4Balance());
-            dto.setA3Balance(0); // No A3 support
-            dto.setTotalA4Equivalent(pageBalance.getA4Balance()); // Only A4
+            dto.setA3Balance(0); // System stores only A4 equivalent (A3 = 2×A4)
+            dto.setTotalA4Equivalent(pageBalance.getA4Balance()); // Total A4 equivalent
             
             Long totalJobs = printLogRepository.countByStudentId(userId);
             Integer totalPages = printLogRepository.sumA4EquivalentByStudentId(userId);

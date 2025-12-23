@@ -46,8 +46,6 @@ CREATE TABLE PageBalance (
     LastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     FOREIGN KEY (StudentID) REFERENCES Users(UserID) ON DELETE CASCADE
-);  
-    FOREIGN KEY (StudentID) REFERENCES Users(UserID) ON DELETE CASCADE
 );
 
 -- ================================================================
@@ -209,7 +207,29 @@ CREATE TABLE Printers (
     PaperSizes VARCHAR(50) DEFAULT 'A4,A3',
     ColorPrinting BOOLEAN DEFAULT FALSE,
     DuplexPrinting BOOLEAN DEFAULT TRUE,
-    Status VARCHAR(20) DEFAULT 'Active' CHECK (Status IN ('Active', 'Inactive', 'Maintenance', 'Error')),
+    Status VARCHAR(20) DEFAULT 'Active' CHECK (Status IN ('Active', 'Inactive', 'Maintenance', 'Error', 'OutOfPaper', 'OutOfToner', 'OutOfBoth')),
+    
+    -- Paper management
+    A4PaperRemaining INT DEFAULT 500,
+    A3PaperRemaining INT DEFAULT 250,
+    A4PaperCapacity INT DEFAULT 500,
+    A3PaperCapacity INT DEFAULT 250,
+    
+    -- Toner management
+    TonerBlackRemaining INT DEFAULT 100,
+    TonerCyanRemaining INT DEFAULT 100,
+    TonerMagentaRemaining INT DEFAULT 100,
+    TonerYellowRemaining INT DEFAULT 100,
+    TonerLastReplaced TIMESTAMP,
+    
+    -- Reserved resources (for pending print jobs to prevent race conditions)
+    A4PaperReserved INT DEFAULT 0,
+    A3PaperReserved INT DEFAULT 0,
+    TonerBlackReserved INT DEFAULT 0,
+    TonerCyanReserved INT DEFAULT 0,
+    TonerMagentaReserved INT DEFAULT 0,
+    TonerYellowReserved INT DEFAULT 0,
+    
     TotalPagesPrinted INT DEFAULT 0,
     LastMaintenanceDate DATE,
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -225,6 +245,24 @@ CREATE TABLE Printers (
 CREATE INDEX IX_Printer_Room ON Printers(RoomID, Status);
 CREATE INDEX IX_Printer_Model ON Printers(ModelID);
 CREATE INDEX IX_Printer_Status ON Printers(Status);
+
+-- Comments for paper and toner columns
+COMMENT ON COLUMN Printers.A4PaperRemaining IS 'Số tờ giấy A4 còn lại trong khay';
+COMMENT ON COLUMN Printers.A3PaperRemaining IS 'Số tờ giấy A3 còn lại trong khay';
+COMMENT ON COLUMN Printers.A4PaperCapacity IS 'Dung lượng tối đa khay giấy A4';
+COMMENT ON COLUMN Printers.A3PaperCapacity IS 'Dung lượng tối đa khay giấy A3';
+COMMENT ON COLUMN Printers.TonerBlackRemaining IS 'Phần trăm mực đen còn lại (0-100)';
+COMMENT ON COLUMN Printers.TonerCyanRemaining IS 'Phần trăm mực xanh còn lại (0-100)';
+COMMENT ON COLUMN Printers.TonerMagentaRemaining IS 'Phần trăm mực đỏ còn lại (0-100)';
+COMMENT ON COLUMN Printers.TonerYellowRemaining IS 'Phần trăm mực vàng còn lại (0-100)';
+COMMENT ON COLUMN Printers.TonerLastReplaced IS 'Thời điểm thay mực lần cuối';
+COMMENT ON COLUMN Printers.Status IS 'Trạng thái: Active, Inactive, Maintenance, Error, OutOfPaper, OutOfToner, OutOfBoth';
+COMMENT ON COLUMN Printers.A4PaperReserved IS 'Số tờ A4 đã được reserve cho các job pending';
+COMMENT ON COLUMN Printers.A3PaperReserved IS 'Số tờ A3 đã được reserve cho các job pending';
+COMMENT ON COLUMN Printers.TonerBlackReserved IS 'Phần trăm mực đen đã được reserve';
+COMMENT ON COLUMN Printers.TonerCyanReserved IS 'Phần trăm mực xanh đã được reserve';
+COMMENT ON COLUMN Printers.TonerMagentaReserved IS 'Phần trăm mực đỏ đã được reserve';
+COMMENT ON COLUMN Printers.TonerYellowReserved IS 'Phần trăm mực vàng đã được reserve';
 
 -- ================================================================
 -- BẢNG 10: ROLES - Vai trò
@@ -591,3 +629,5 @@ CREATE INDEX IX_PM_PrinterDate ON PrinterMaintenance(PrinterID, MaintenanceDate 
 -- Now run both Part 1 and Part 2 in pgAdmin
 -- ================================================================
 
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO friend1;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO friend1;

@@ -43,6 +43,7 @@ export default function PrinterManagementPage() {
   const [showToggleConfirmModal, setShowToggleConfirmModal] = useState(false);
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
   const [showBulkToggleModal, setShowBulkToggleModal] = useState(false);
+  const [showRefillModal, setShowRefillModal] = useState(false);
   const [selectedPrinter, setSelectedPrinter] = useState<Printer | null>(null);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -50,6 +51,16 @@ export default function PrinterManagementPage() {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   // Selection for bulk actions
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  
+  // Refill form state
+  const [refillData, setRefillData] = useState({
+    a4Paper: false,
+    a3Paper: false,
+    tonerBlack: false,
+    tonerCyan: false,
+    tonerMagenta: false,
+    tonerYellow: false,
+  });
   
   // Form state
   const [formData, setFormData] = useState({
@@ -533,6 +544,9 @@ export default function PrinterManagementPage() {
       Inactive: 'bg-gray-100 text-gray-800',
       Maintenance: 'bg-yellow-100 text-yellow-800',
       Error: 'bg-red-100 text-red-800',
+      OutOfPaper: 'bg-orange-100 text-orange-800',
+      OutOfToner: 'bg-orange-100 text-orange-800',
+      OutOfBoth: 'bg-red-100 text-red-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -544,6 +558,9 @@ export default function PrinterManagementPage() {
       Inactive: 'Không hoạt động',
       Maintenance: 'Bảo trì',
       Error: 'Lỗi',
+      OutOfPaper: 'Hết giấy',
+      OutOfToner: 'Hết mực',
+      OutOfBoth: 'Hết giấy và mực',
     };
     return labels[status] || status;
   };
@@ -694,6 +711,9 @@ export default function PrinterManagementPage() {
               <option value="Inactive">Không hoạt động</option>
               <option value="Maintenance">Bảo trì</option>
               <option value="Error">Lỗi</option>
+              <option value="OutOfPaper">Hết giấy</option>
+              <option value="OutOfToner">Hết mực</option>
+              <option value="OutOfBoth">Hết giấy và mực</option>
             </select>
           </div>
         </div>
@@ -766,6 +786,12 @@ export default function PrinterManagementPage() {
                 Trạng thái
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                Giấy A4
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
+                Mực đen
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
                 Bảo trì lần cuối
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">
@@ -776,13 +802,13 @@ export default function PrinterManagementPage() {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                   Đang tải...
                 </td>
                 </tr>
               ) : printers.length === 0 ? (
                 <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
                   Không tìm thấy máy in nào
                 </td>
                 </tr>
@@ -808,8 +834,44 @@ export default function PrinterManagementPage() {
                   <td className="px-4 py-3 text-gray-700">{printer.building} - {printer.roomNumber}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(printer.status)}`}>
-                      {getStatusLabel(printer.status)}
+                      {printer.statusMessage || getStatusLabel(printer.status)}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700">
+                        {printer.a4PaperRemaining ?? 0}/{printer.a4PaperCapacity ?? 500}
+                      </span>
+                      {(printer.a4PaperRemaining ?? 0) <= 50 && (
+                        <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                      <div 
+                        className={`h-1.5 rounded-full ${(printer.a4PaperRemaining ?? 0) <= 50 ? 'bg-red-500' : 'bg-blue-500'}`}
+                        style={{ width: `${Math.min(100, ((printer.a4PaperRemaining ?? 0) / (printer.a4PaperCapacity ?? 500)) * 100)}%` }}
+                      ></div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700">
+                        {printer.tonerBlackRemaining ?? 0}%
+                      </span>
+                      {(printer.tonerBlackRemaining ?? 0) <= 20 && (
+                        <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                      <div 
+                        className={`h-1.5 rounded-full ${(printer.tonerBlackRemaining ?? 0) <= 20 ? 'bg-red-500' : 'bg-gray-700'}`}
+                        style={{ width: `${printer.tonerBlackRemaining ?? 0}%` }}
+                      ></div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-gray-700 text-sm">
                     {printer.lastMaintenanceDate ? new Date(printer.lastMaintenanceDate).toLocaleDateString('vi-VN') : '-'}
@@ -892,6 +954,27 @@ export default function PrinterManagementPage() {
                               <span className="ml-2">Bật</span>
                             </>
                           )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedPrinter(printer);
+                            setRefillData({
+                              a4Paper: false,
+                              a3Paper: false,
+                              tonerBlack: false,
+                              tonerCyan: false,
+                              tonerMagenta: false,
+                              tonerYellow: false,
+                            });
+                            setShowRefillModal(true);
+                            setOpenMenuId(null);
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 transition"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          Nạp giấy/mực
                         </button>
                         <button
                           onClick={() => {
@@ -1880,6 +1963,125 @@ export default function PrinterManagementPage() {
                   </div>
                 </div>
 
+                {/* Giấy và Mực */}
+                <div className="mb-3">
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">Giấy và Mực</h3>
+                  <div className="grid grid-cols-2 gap-4 pl-2 md:pl-4">
+                    {/* Giấy A4 */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-semibold text-gray-700">Giấy A4</label>
+                        <span className="text-sm font-bold text-gray-900">
+                          {selectedPrinter.a4PaperRemaining ?? 0}/{selectedPrinter.a4PaperCapacity ?? 500} tờ
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div 
+                          className={`h-2.5 rounded-full ${(selectedPrinter.a4PaperRemaining ?? 0) <= 50 ? 'bg-red-500' : 'bg-blue-500'}`}
+                          style={{ width: `${Math.min(100, ((selectedPrinter.a4PaperRemaining ?? 0) / (selectedPrinter.a4PaperCapacity ?? 500)) * 100)}%` }}
+                        ></div>
+                      </div>
+                      {(selectedPrinter.a4PaperRemaining ?? 0) <= 50 && (
+                        <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          Sắp hết giấy
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Giấy A3 */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-semibold text-gray-700">Giấy A3</label>
+                        <span className="text-sm font-bold text-gray-900">
+                          {selectedPrinter.a3PaperRemaining ?? 0}/{selectedPrinter.a3PaperCapacity ?? 250} tờ
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div 
+                          className={`h-2.5 rounded-full ${(selectedPrinter.a3PaperRemaining ?? 0) <= 25 ? 'bg-red-500' : 'bg-green-500'}`}
+                          style={{ width: `${Math.min(100, ((selectedPrinter.a3PaperRemaining ?? 0) / (selectedPrinter.a3PaperCapacity ?? 250)) * 100)}%` }}
+                        ></div>
+                      </div>
+                      {(selectedPrinter.a3PaperRemaining ?? 0) <= 25 && (
+                        <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          Sắp hết giấy
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Mực đen */}
+                    <div className="bg-gray-50 border border-gray-300 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-semibold text-gray-700">Mực đen</label>
+                        <span className="text-sm font-bold text-gray-900">
+                          {selectedPrinter.tonerBlackRemaining ?? 0}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div 
+                          className={`h-2.5 rounded-full ${(selectedPrinter.tonerBlackRemaining ?? 0) <= 20 ? 'bg-red-500' : 'bg-gray-700'}`}
+                          style={{ width: `${selectedPrinter.tonerBlackRemaining ?? 0}%` }}
+                        ></div>
+                      </div>
+                      {(selectedPrinter.tonerBlackRemaining ?? 0) <= 20 && (
+                        <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          Sắp hết mực
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Mực màu (nếu có) */}
+                    {selectedPrinter.colorPrinting && (
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                        <label className="text-sm font-semibold text-gray-700 mb-2 block">Mực màu</label>
+                        <div className="space-y-2">
+                          <div>
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-cyan-600">Xanh</span>
+                              <span className="font-semibold">{selectedPrinter.tonerCyanRemaining ?? 0}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                              <div className="h-1.5 rounded-full bg-cyan-500" style={{ width: `${selectedPrinter.tonerCyanRemaining ?? 0}%` }}></div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-pink-600">Đỏ</span>
+                              <span className="font-semibold">{selectedPrinter.tonerMagentaRemaining ?? 0}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                              <div className="h-1.5 rounded-full bg-pink-500" style={{ width: `${selectedPrinter.tonerMagentaRemaining ?? 0}%` }}></div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-yellow-600">Vàng</span>
+                              <span className="font-semibold">{selectedPrinter.tonerYellowRemaining ?? 0}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-1.5">
+                              <div className="h-1.5 rounded-full bg-yellow-500" style={{ width: `${selectedPrinter.tonerYellowRemaining ?? 0}%` }}></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {selectedPrinter.tonerLastReplaced && (
+                    <p className="text-xs text-gray-500 mt-2 pl-2 md:pl-4">
+                      Thay mực lần cuối: {new Date(selectedPrinter.tonerLastReplaced).toLocaleDateString('vi-VN')}
+                    </p>
+                  )}
+                </div>
+
                 {/* Thông tin bổ sung */}
                 <div className="mb-3">
                   <h3 className="text-base font-semibold text-gray-900 mb-2">Thông tin bổ sung</h3>
@@ -1955,8 +2157,253 @@ export default function PrinterManagementPage() {
             </div>
           </div>
         )}
+
+      {/* Refill Modal */}
+      {showRefillModal && selectedPrinter && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Nạp giấy và mực</h2>
+                  <p className="text-sm text-gray-600 mt-1">{selectedPrinter.printerName}</p>
+                </div>
+                <button
+                  onClick={() => setShowRefillModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Current Status */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Trạng thái hiện tại</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-600">Giấy A4</label>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {selectedPrinter.a4PaperRemaining ?? 0}/{selectedPrinter.a4PaperCapacity ?? 500} tờ
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600">Giấy A3</label>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {selectedPrinter.a3PaperRemaining ?? 0}/{selectedPrinter.a3PaperCapacity ?? 250} tờ
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600">Mực đen</label>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {selectedPrinter.tonerBlackRemaining ?? 0}%
+                    </p>
+                  </div>
+                  {selectedPrinter.colorPrinting && (
+                    <>
+                      <div>
+                        <label className="text-xs text-gray-600">Mực xanh</label>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {selectedPrinter.tonerCyanRemaining ?? 0}%
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600">Mực đỏ</label>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {selectedPrinter.tonerMagentaRemaining ?? 0}%
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600">Mực vàng</label>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {selectedPrinter.tonerYellowRemaining ?? 0}%
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Refill Options */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Chọn mục cần nạp</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  ⚠️ Lưu ý: Khi nạp, giấy và mực sẽ được reset về đầy (100%)
+                </p>
+                
+                <div className="space-y-3">
+                  {/* Giấy A4 */}
+                  <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={refillData.a4Paper}
+                      onChange={(e) => setRefillData({ ...refillData, a4Paper: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <div className="ml-3 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900">Giấy A4</span>
+                        <span className="text-xs text-gray-500">
+                          Hiện có: {selectedPrinter.a4PaperRemaining ?? 0} → Sau nạp: {selectedPrinter.a4PaperCapacity ?? 500} tờ
+                        </span>
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Giấy A3 */}
+                  <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={refillData.a3Paper}
+                      onChange={(e) => setRefillData({ ...refillData, a3Paper: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <div className="ml-3 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900">Giấy A3</span>
+                        <span className="text-xs text-gray-500">
+                          Hiện có: {selectedPrinter.a3PaperRemaining ?? 0} → Sau nạp: {selectedPrinter.a3PaperCapacity ?? 250} tờ
+                        </span>
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Mực đen */}
+                  <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={refillData.tonerBlack}
+                      onChange={(e) => setRefillData({ ...refillData, tonerBlack: e.target.checked })}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <div className="ml-3 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900">Mực đen</span>
+                        <span className="text-xs text-gray-500">
+                          Hiện có: {selectedPrinter.tonerBlackRemaining ?? 0}% → Sau nạp: 100%
+                        </span>
+                      </div>
+                    </div>
+                  </label>
+
+                  {/* Mực màu (chỉ hiển thị nếu máy in màu) */}
+                  {selectedPrinter.colorPrinting && (
+                    <>
+                      <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={refillData.tonerCyan}
+                          onChange={(e) => setRefillData({ ...refillData, tonerCyan: e.target.checked })}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <div className="ml-3 flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-900">Mực xanh (Cyan)</span>
+                            <span className="text-xs text-gray-500">
+                              Hiện có: {selectedPrinter.tonerCyanRemaining ?? 0}% → Sau nạp: 100%
+                            </span>
+                          </div>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={refillData.tonerMagenta}
+                          onChange={(e) => setRefillData({ ...refillData, tonerMagenta: e.target.checked })}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <div className="ml-3 flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-900">Mực đỏ (Magenta)</span>
+                            <span className="text-xs text-gray-500">
+                              Hiện có: {selectedPrinter.tonerMagentaRemaining ?? 0}% → Sau nạp: 100%
+                            </span>
+                          </div>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center p-3 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={refillData.tonerYellow}
+                          onChange={(e) => setRefillData({ ...refillData, tonerYellow: e.target.checked })}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <div className="ml-3 flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-900">Mực vàng (Yellow)</span>
+                            <span className="text-xs text-gray-500">
+                              Hiện có: {selectedPrinter.tonerYellowRemaining ?? 0}% → Sau nạp: 100%
+                            </span>
+                          </div>
+                        </div>
+                      </label>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <button
+                  onClick={() => setShowRefillModal(false)}
+                  className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={async () => {
+                    // Kiểm tra có chọn ít nhất 1 mục
+                    const hasSelection = Object.values(refillData).some(v => v);
+                    if (!hasSelection) {
+                      alert('Vui lòng chọn ít nhất 1 mục cần nạp');
+                      return;
+                    }
+
+                    try {
+                      setLoading(true);
+                      await printerService.refillSupplies(selectedPrinter.printerId, {
+                        a4PaperToAdd: refillData.a4Paper ? 1 : 0,
+                        a3PaperToAdd: refillData.a3Paper ? 1 : 0,
+                        tonerBlackToAdd: refillData.tonerBlack ? 1 : 0,
+                        tonerCyanToAdd: refillData.tonerCyan ? 1 : 0,
+                        tonerMagentaToAdd: refillData.tonerMagenta ? 1 : 0,
+                        tonerYellowToAdd: refillData.tonerYellow ? 1 : 0,
+                      });
+                      
+                      alert('Nạp giấy/mực thành công!');
+                      setShowRefillModal(false);
+                      setSelectedPrinter(null);
+                      loadPrinters();
+                    } catch (err: any) {
+                      // Extract error message from API response
+                      const errorMessage = err?.response?.data?.message 
+                        || err?.response?.data?.error
+                        || err?.message 
+                        || 'Nạp giấy/mực thất bại';
+                      
+                      alert(errorMessage);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  disabled={loading}
+                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {loading ? 'Đang nạp...' : 'Xác nhận nạp'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
-
-

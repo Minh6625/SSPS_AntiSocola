@@ -1,5 +1,6 @@
 package com.example.app.service.interfaces;
 
+import com.example.app.dto.PrinterRefillRequestDTO;
 import com.example.app.dto.PrinterRequestDTO;
 import com.example.app.dto.PrinterResponseDTO;
 import org.springframework.data.domain.Page;
@@ -31,4 +32,6 @@ public interface IPrinterService {
     PrinterResponseDTO togglePrinterStatus(Long printerId);
     
     void deletePrinter(Long printerId);
+    
+    PrinterResponseDTO refillSupplies(Long printerId, PrinterRefillRequestDTO request);
 }
