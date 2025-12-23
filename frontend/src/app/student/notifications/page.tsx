@@ -225,26 +225,22 @@ export default function NotificationsPage() {
                     className={`p-5 transition cursor-pointer relative ${
                       isUnread 
                         ? 'bg-gradient-to-r from-blue-50 to-white border-l-4 border-l-blue-500 hover:from-blue-100 hover:to-blue-50' 
-                        : 'bg-gray-50/50 hover:bg-gray-100/50 opacity-70'
+                        : 'bg-white hover:bg-gray-50'
                     }`}
                   >
                     <div className="flex gap-4">
                       {/* Icon */}
-                      <div className={isUnread ? '' : 'opacity-50'}>
-                        {getNotificationIcon(notification.notificationType)}
-                      </div>
+                      {getNotificationIcon(notification.notificationType)}
                       
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1.5">
-                              <h3 className={`font-semibold ${isUnread ? 'text-gray-900' : 'text-gray-500'}`}>
+                              <h3 className={`font-semibold ${isUnread ? 'text-gray-900' : 'text-gray-700'}`}>
                                 {notification.title}
                               </h3>
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                isUnread ? typeLabel.color : 'bg-gray-200 text-gray-500'
-                              }`}>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeLabel.color}`}>
                                 {typeLabel.text}
                               </span>
                               {isUnread && (
@@ -254,7 +250,7 @@ export default function NotificationsPage() {
                                 </span>
                               )}
                               {!isUnread && (
-                                <span className="text-xs text-gray-400 flex items-center gap-1">
+                                <span className="text-xs text-green-600 flex items-center gap-1">
                                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                                   </svg>
@@ -262,7 +258,7 @@ export default function NotificationsPage() {
                                 </span>
                               )}
                             </div>
-                            <p className={`text-sm leading-relaxed ${isUnread ? 'text-gray-700' : 'text-gray-400'}`}>
+                            <p className={`text-sm leading-relaxed ${isUnread ? 'text-gray-700' : 'text-gray-600'}`}>
                               {notification.message}
                             </p>
                           </div>
