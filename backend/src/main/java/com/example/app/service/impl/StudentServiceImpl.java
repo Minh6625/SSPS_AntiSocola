@@ -123,8 +123,8 @@ public class StudentServiceImpl implements IStudentService {
         dto.setCreatedAt(student.getCreatedAt());
         dto.setLastLogin(student.getLastLogin());
         dto.setA4Balance(pageBalance.getA4Balance());
-        dto.setA3Balance(0); // No A3 support
-        dto.setTotalA4Equivalent(pageBalance.getA4Balance()); // Only A4
+        dto.setA3Balance(0); // System stores only A4 equivalent (A3 = 2×A4)
+        dto.setTotalA4Equivalent(pageBalance.getA4Balance()); // Total A4 equivalent
         dto.setTotalPrintJobs(totalJobs != null ? totalJobs : 0L);
         dto.setTotalPagesPrinted(totalPages != null ? totalPages.longValue() : 0L);
         dto.setLastPrintTime(lastPrint);

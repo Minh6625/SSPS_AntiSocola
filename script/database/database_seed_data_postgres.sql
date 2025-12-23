@@ -333,33 +333,53 @@ VALUES
 ('IELSIU21001', 50);
 
 -- ================================================================
--- 10. SEED PRINTERS (Updated với Foreign Keys)
+-- 10. SEED PRINTERS (Updated với Foreign Keys và Paper/Toner Management)
 -- ================================================================
 
-INSERT INTO Printers (PrinterName, BrandID, ModelID, RoomID, IPAddress, PaperSizes, ColorPrinting, DuplexPrinting, Status, TotalPagesPrinted, CreatedBy)
+INSERT INTO Printers (PrinterName, BrandID, ModelID, RoomID, IPAddress, PaperSizes, ColorPrinting, DuplexPrinting, Status, 
+                      A4PaperRemaining, A3PaperRemaining, A4PaperCapacity, A3PaperCapacity,
+                      TonerBlackRemaining, TonerCyanRemaining, TonerMagentaRemaining, TonerYellowRemaining,
+                      A4PaperReserved, A3PaperReserved, TonerBlackReserved, TonerCyanReserved, TonerMagentaReserved, TonerYellowReserved,
+                      TotalPagesPrinted, CreatedBy)
 VALUES 
 -- H6 Building Printers
-('Máy in H6-101 (HP LaserJet)', 1, 1, 1, '192.168.1.101', 'A4', FALSE, TRUE, 'Active', 0, 'SPSO001'),
-('Máy in H6-102 (Canon)', 2, 6, 2, '192.168.1.102', 'A4', FALSE, TRUE, 'Active', 0, 'SPSO001'),
-('Máy in H6-201 (HP Color)', 1, 3, 3, '192.168.1.201', 'A4', TRUE, TRUE, 'Active', 0, 'SPSO001'),
+('Máy in H6-101 (HP LaserJet)', 1, 1, 1, '192.168.1.101', 'A4', FALSE, TRUE, 'Active', 
+ 500, 0, 500, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'SPSO001'),
+ 
+('Máy in H6-102 (Canon)', 2, 6, 2, '192.168.1.102', 'A4', FALSE, TRUE, 'Active', 
+ 450, 0, 500, 0, 85, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'SPSO001'),
+ 
+('Máy in H6-201 (HP Color)', 1, 3, 3, '192.168.1.201', 'A4', TRUE, TRUE, 'Active', 
+ 480, 0, 500, 0, 90, 95, 92, 88, 0, 0, 0, 0, 0, 0, 0, 'SPSO001'),
 
 -- H3 Building Printers
-('Máy in H3-101 (Brother)', 4, 13, 6, '192.168.2.101', 'A4', FALSE, TRUE, 'Active', 0, 'SPSO001'),
-('Máy in chung H3 (Epson)', 3, 11, 8, '192.168.2.150', 'A4,A3', TRUE, TRUE, 'Active', 0, 'SPSO001'),
+('Máy in H3-101 (Brother)', 4, 13, 6, '192.168.2.101', 'A4', FALSE, TRUE, 'Active', 
+ 500, 0, 500, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'SPSO001'),
+ 
+('Máy in chung H3 (Epson)', 3, 11, 8, '192.168.2.150', 'A4,A3', TRUE, TRUE, 'Active', 
+ 400, 200, 500, 250, 75, 80, 78, 82, 0, 0, 0, 0, 0, 0, 0, 'SPSO001'),
 
 -- A Building Printers (Admin area)
-('Máy in Đào tạo (Xerox)', 5, 16, 10, '192.168.3.102', 'A4', TRUE, TRUE, 'Active', 0, 'SPSO001'),
+('Máy in Đào tạo (Xerox)', 5, 16, 10, '192.168.3.102', 'A4', TRUE, TRUE, 'Active', 
+ 300, 0, 500, 0, 60, 65, 62, 68, 0, 0, 0, 0, 0, 0, 0, 'SPSO001'),
 
 -- Library Printers
-('Máy in Thư viện tầng trệt', 1, 5, 12, '192.168.4.101', 'A4', FALSE, TRUE, 'Active', 0, 'SPSO001'),
-('Máy in Thư viện tầng 2', 2, 7, 13, '192.168.4.201', 'A4', FALSE, TRUE, 'Active', 0, 'SPSO001'),
+('Máy in Thư viện tầng trệt', 1, 5, 12, '192.168.4.101', 'A4', FALSE, TRUE, 'Active', 
+ 500, 0, 500, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'SPSO001'),
+ 
+('Máy in Thư viện tầng 2', 2, 7, 13, '192.168.4.201', 'A4', FALSE, TRUE, 'Active', 
+ 450, 0, 500, 0, 95, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'SPSO001'),
 
 -- E2a Building Printers (Campus Linh Trung)
-('Máy in E2a-101 (HP)', 1, 2, 14, '192.168.5.101', 'A4', FALSE, TRUE, 'Active', 0, 'SPSO001'),
-('Máy in chung E2a (Epson A3)', 3, 12, 16, '192.168.5.150', 'A4,A3', TRUE, TRUE, 'Active', 0, 'SPSO001'),
+('Máy in E2a-101 (HP)', 1, 2, 14, '192.168.5.101', 'A4', FALSE, TRUE, 'Active', 
+ 500, 0, 500, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'SPSO001'),
+ 
+('Máy in chung E2a (Epson A3)', 3, 12, 16, '192.168.5.150', 'A4,A3', TRUE, TRUE, 'Active', 
+ 450, 220, 500, 250, 88, 90, 85, 92, 0, 0, 0, 0, 0, 0, 0, 'SPSO001'),
 
 -- E3 Building Printers
-('Máy in E3-101 (Brother)', 4, 14, 17, '192.168.6.101', 'A4', FALSE, TRUE, 'Active', 0, 'SPSO001');
+('Máy in E3-101 (Brother)', 4, 14, 17, '192.168.6.101', 'A4', FALSE, TRUE, 'Active', 
+ 500, 0, 500, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'SPSO001');
 
 -- ================================================================
 -- 11. SEED PAGE PRICING (chỉ A4)

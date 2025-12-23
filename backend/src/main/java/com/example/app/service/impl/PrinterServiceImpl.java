@@ -1,5 +1,6 @@
 package com.example.app.service.impl;
 
+import com.example.app.dto.PrinterRefillRequestDTO;
 import com.example.app.dto.PrinterRequestDTO;
 import com.example.app.dto.PrinterResponseDTO;
 import com.example.app.entity.Brand;
@@ -9,6 +10,7 @@ import com.example.app.entity.Room;
 import com.example.app.repository.BrandRepository;
 import com.example.app.repository.PrinterModelRepository;
 import com.example.app.repository.PrinterRepository;
+import com.example.app.repository.PrintJobRepository;
 import com.example.app.repository.RoomRepository;
 import com.example.app.service.interfaces.IPrinterService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,9 @@ public class PrinterServiceImpl implements IPrinterService {
     
     @Autowired
     private RoomRepository roomRepository;
+    
+    @Autowired
+    private PrintJobRepository printJobRepository;
 
     @Override
     public Page<PrinterResponseDTO> getPrinters(String campus,
@@ -59,6 +64,13 @@ public class PrinterServiceImpl implements IPrinterService {
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.max(size, 1), Sort.by(direction, sortBy));
 
         Specification<Printer> spec = Specification.where(null);
+        
+        // Lọc bỏ máy in không khả dụng (OutOfPaper, OutOfToner, OutOfBoth) nếu không filter status cụ thể
+        if (!StringUtils.hasText(status)) {
+            spec = spec.and((root, query, cb) -> 
+                cb.not(root.get("status").in("OutOfPaper", "OutOfToner", "OutOfBoth"))
+            );
+        }
 
         // Filter by campus (JOIN through room -> building -> campus)
         if (StringUtils.hasText(campus)) {
@@ -196,10 +208,58 @@ public class PrinterServiceImpl implements IPrinterService {
         dto.setColorPrinting(entity.getColorPrinting());
         dto.setDuplexPrinting(entity.getDuplexPrinting());
         dto.setStatus(entity.getStatus());
+        dto.setStatusMessage(generateStatusMessage(entity));
         dto.setTotalPagesPrinted(entity.getTotalPagesPrinted());
         dto.setLastMaintenanceDate(entity.getLastMaintenanceDate());
         dto.setCreatedAt(entity.getCreatedAt());
+        
+        // Paper supplies
+        dto.setA4PaperRemaining(entity.getA4PaperRemaining());
+        dto.setA3PaperRemaining(entity.getA3PaperRemaining());
+        dto.setA4PaperCapacity(entity.getA4PaperCapacity());
+        dto.setA3PaperCapacity(entity.getA3PaperCapacity());
+        
+        // Toner supplies
+        dto.setTonerBlackRemaining(entity.getTonerBlackRemaining());
+        dto.setTonerCyanRemaining(entity.getTonerCyanRemaining());
+        dto.setTonerMagentaRemaining(entity.getTonerMagentaRemaining());
+        dto.setTonerYellowRemaining(entity.getTonerYellowRemaining());
+        dto.setTonerLastReplaced(entity.getTonerLastReplaced());
+        
         return dto;
+    }
+    
+    /**
+     * Generate human-readable status message
+     */
+    private String generateStatusMessage(Printer printer) {
+        switch (printer.getStatus()) {
+            case "Active":
+                return "Sẵn sàng";
+            case "Inactive":
+                return "Không hoạt động";
+            case "Maintenance":
+                return "Đang bảo trì";
+            case "Error":
+                return "Lỗi";
+            case "OutOfPaper":
+                boolean a4Empty = printer.getA4PaperRemaining() <= 0;
+                boolean a3Empty = printer.getA3PaperRemaining() <= 0;
+                if (a4Empty && a3Empty) {
+                    return "Hết giấy A4 và A3";
+                } else if (a4Empty) {
+                    return "Hết giấy A4";
+                } else if (a3Empty) {
+                    return "Hết giấy A3";
+                }
+                return "Hết giấy";
+            case "OutOfToner":
+                return "Hết mực";
+            case "OutOfBoth":
+                return "Hết giấy và mực";
+            default:
+                return printer.getStatus();
+        }
     }
     
     @Override
@@ -296,5 +356,76 @@ public class PrinterServiceImpl implements IPrinterService {
             .orElseThrow(() -> new NoSuchElementException("Không tìm thấy máy in"));
         
         printerRepository.delete(printer);
+    }
+    
+    @Override
+    @Transactional
+    public PrinterResponseDTO refillSupplies(Long printerId, PrinterRefillRequestDTO request) {
+        Printer printer = printerRepository.findById(printerId)
+            .orElseThrow(() -> new NoSuchElementException("Không tìm thấy máy in"));
+        
+        // Kiểm tra xem có jobs đang Pending hoặc Printing không
+        long activeJobsCount = printJobRepository.countByPrinterIdAndJobStatusIn(
+            printerId, 
+            java.util.Arrays.asList("Pending", "Printing")
+        );
+        
+        if (activeJobsCount > 0) {
+            String message;
+            if (activeJobsCount == 1) {
+                message = "Không thể nạp giấy/mực vì máy in đang có 1 lệnh in đang xử lý. " +
+                         "Vui lòng đợi lệnh in hoàn tất rồi thử lại.";
+            } else {
+                message = String.format(
+                    "Không thể nạp giấy/mực vì máy in đang có %d lệnh in đang xử lý. " +
+                    "Vui lòng đợi tất cả lệnh in hoàn tất rồi thử lại.", 
+                    activeJobsCount
+                );
+            }
+            throw new IllegalStateException(message);
+        }
+        
+        // Nạp giấy A4 - Reset về đầy nếu có yêu cầu nạp
+        if (request.getA4PaperToAdd() != null && request.getA4PaperToAdd() > 0) {
+            printer.setA4PaperRemaining(printer.getA4PaperCapacity());
+            // Không reset reserves vì đã check không có jobs active
+        }
+        
+        // Nạp giấy A3 - Reset về đầy nếu có yêu cầu nạp
+        if (request.getA3PaperToAdd() != null && request.getA3PaperToAdd() > 0) {
+            printer.setA3PaperRemaining(printer.getA3PaperCapacity());
+            // Không reset reserves vì đã check không có jobs active
+        }
+        
+        // Nạp mực đen - Reset về 100% nếu có yêu cầu nạp
+        if (request.getTonerBlackToAdd() != null && request.getTonerBlackToAdd() > 0) {
+            printer.setTonerBlackRemaining(100);
+            // Không reset reserves vì đã check không có jobs active
+            printer.setTonerLastReplaced(java.time.LocalDateTime.now());
+        }
+        
+        // Nạp mực xanh - Reset về 100% nếu có yêu cầu nạp
+        if (request.getTonerCyanToAdd() != null && request.getTonerCyanToAdd() > 0) {
+            printer.setTonerCyanRemaining(100);
+            // Không reset reserves vì đã check không có jobs active
+        }
+        
+        // Nạp mực đỏ - Reset về 100% nếu có yêu cầu nạp
+        if (request.getTonerMagentaToAdd() != null && request.getTonerMagentaToAdd() > 0) {
+            printer.setTonerMagentaRemaining(100);
+            // Không reset reserves vì đã check không có jobs active
+        }
+        
+        // Nạp mực vàng - Reset về 100% nếu có yêu cầu nạp
+        if (request.getTonerYellowToAdd() != null && request.getTonerYellowToAdd() > 0) {
+            printer.setTonerYellowRemaining(100);
+            // Không reset reserves vì đã check không có jobs active
+        }
+        
+        // Cập nhật trạng thái dựa trên supplies
+        printer.updateStatusBasedOnSupplies();
+        
+        Printer updated = printerRepository.save(printer);
+        return toDto(updated);
     }
 }

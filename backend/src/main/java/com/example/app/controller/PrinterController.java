@@ -1,5 +1,6 @@
 package com.example.app.controller;
 
+import com.example.app.dto.PrinterRefillRequestDTO;
 import com.example.app.dto.PrinterRequestDTO;
 import com.example.app.dto.PrinterResponseDTO;
 import com.example.app.service.interfaces.IPrinterService;
@@ -163,6 +164,52 @@ public class PrinterController {
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("message", "Xóa máy in thành công");
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * POST /api/printers/{id}/refill
+     * Nạp giấy/mực cho máy in (SPSO only)
+     */
+    @PostMapping("/{id}/refill")
+    @PreAuthorize("hasAuthority('SPSO')")
+    public ResponseEntity<Map<String, Object>> refillSupplies(
+            @PathVariable Long id,
+            @Valid @RequestBody PrinterRefillRequestDTO request) {
+        PrinterResponseDTO printer = printerService.refillSupplies(id, request);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Nạp giấy/mực thành công");
+        response.put("data", printer);
+        
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * GET /api/printers/{id}/supplies
+     * Lấy thông tin giấy/mực của máy in
+     */
+    @GetMapping("/{id}/supplies")
+    public ResponseEntity<Map<String, Object>> getPrinterSupplies(@PathVariable Long id) {
+        PrinterResponseDTO printer = printerService.getPrinterById(String.valueOf(id));
+        
+        Map<String, Object> supplies = new HashMap<>();
+        supplies.put("a4PaperRemaining", printer.getA4PaperRemaining());
+        supplies.put("a3PaperRemaining", printer.getA3PaperRemaining());
+        supplies.put("a4PaperCapacity", printer.getA4PaperCapacity());
+        supplies.put("a3PaperCapacity", printer.getA3PaperCapacity());
+        supplies.put("tonerBlackRemaining", printer.getTonerBlackRemaining());
+        supplies.put("tonerCyanRemaining", printer.getTonerCyanRemaining());
+        supplies.put("tonerMagentaRemaining", printer.getTonerMagentaRemaining());
+        supplies.put("tonerYellowRemaining", printer.getTonerYellowRemaining());
+        supplies.put("tonerLastReplaced", printer.getTonerLastReplaced());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Lấy thông tin giấy/mực thành công");
+        response.put("data", supplies);
         
         return ResponseEntity.ok(response);
     }

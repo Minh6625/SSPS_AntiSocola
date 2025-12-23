@@ -5,6 +5,7 @@ import com.example.app.entity.Printer;
 import com.example.app.repository.PrintJobRepository;
 import com.example.app.repository.PrinterRepository;
 import com.example.app.service.interfaces.IPrintQueueService;
+import com.example.app.service.PrintJobStatusService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +34,7 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
 
     private final PrintJobRepository printJobRepository;
     private final PrinterRepository printerRepository;
+    private final PrintJobStatusService statusService; // Inject service mới
 
     @Value("${print.queue.enabled:false}")
     private boolean printQueueEnabled;
@@ -43,8 +45,16 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
     @Value("${print.queue.connection-timeout-seconds:10}")
     private int connectionTimeout;
 
+    @Value("${print.queue.mock-mode:false}")
+    private boolean mockMode;
+
+    @Value("${print.queue.mock-print-duration-seconds:30}")
+    private int mockPrintDuration;
+
     /**
-     * Scheduled job - chạy mỗi 30 giây để quét job pending
+     * Scheduled job - chạy mỗi 5 giây để quét job pending
+     * Xử lý jobs theo thứ tự FIFO (First In First Out)
+     * CHỈ xử lý khi KHÔNG CÓ job nào đang Printing
      */
     @Scheduled(fixedDelayString = "${print.queue.scan-interval-seconds:30}000")
     @Transactional
@@ -56,6 +66,13 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
 
         log.info("Scanning for pending print jobs...");
         
+        // Kiểm tra xem có job nào đang Printing không
+        List<PrintJob> printingJobs = printJobRepository.findByJobStatus("Printing");
+        if (!printingJobs.isEmpty()) {
+            log.info("Found {} jobs currently printing. Waiting for them to complete...", printingJobs.size());
+            return; // Đợi jobs đang Printing hoàn tất
+        }
+        
         List<PrintJob> pendingJobs = printJobRepository.findByJobStatus("Pending");
         
         if (pendingJobs.isEmpty()) {
@@ -63,14 +80,18 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
             return;
         }
 
-        log.info("Found {} pending print jobs. Processing...", pendingJobs.size());
+        log.info("Found {} pending print jobs. Processing first job...", pendingJobs.size());
 
-        for (PrintJob job : pendingJobs) {
-            try {
-                sendJobToPrinter(job.getJobId());
-            } catch (Exception e) {
-                log.error("Error processing job {}: {}", job.getJobId(), e.getMessage());
-            }
+        // Chỉ xử lý job đầu tiên (FIFO - First In First Out)
+        // Các jobs khác sẽ được xử lý ở lần scan tiếp theo
+        PrintJob firstJob = pendingJobs.get(0);
+        
+        try {
+            log.info("Processing job {} (Printer: {}, Status: {})", 
+                firstJob.getJobId(), firstJob.getPrinterId(), firstJob.getJobStatus());
+            sendJobToPrinter(firstJob.getJobId());
+        } catch (Exception e) {
+            log.error("Error processing job {}: {}", firstJob.getJobId(), e.getMessage(), e);
         }
     }
 
@@ -105,8 +126,10 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
             return false;
         }
 
-        // Cập nhật status sang Printing
-        updateJobStatus(job, "Printing", null);
+        // Cập nhật status sang Printing và commit ngay lập tức
+        log.info("Calling statusService.updateStatusAndCommit for job {}", jobId);
+        statusService.updateStatusAndCommit(job, "Printing", null);
+        log.info("After statusService.updateStatusAndCommit for job {}", jobId);
 
         try {
             // Gửi đến máy in
@@ -120,6 +143,24 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
                 printer.setTotalPagesPrinted(
                     printer.getTotalPagesPrinted() + job.getTotalPagesToPrint()
                 );
+                
+                // Release reserves first
+                int sheetsUsed = job.getTotalSheetsUsed() * job.getNumCopies();
+                int pagesUsed = job.getTotalPagesToPrint() * job.getNumCopies();
+                
+                printer.releasePaperReserve(job.getPaperSize(), sheetsUsed);
+                printer.releaseTonerReserve(pagesUsed, job.getColorMode());
+                
+                log.info("Released {} sheets of {} and toner for {} pages from reserves", 
+                    sheetsUsed, job.getPaperSize(), pagesUsed);
+                
+                // Then deduct actual paper and toner
+                deductPaper(printer, job.getPaperSize(), sheetsUsed);
+                deductToner(printer, pagesUsed, job.getColorMode());
+                
+                // Cập nhật trạng thái máy in dựa trên giấy/mực
+                printer.updateStatusBasedOnSupplies();
+                
                 printerRepository.save(printer);
                 
                 log.info("Job {} completed successfully on printer {}", jobId, printer.getPrinterId());
@@ -132,15 +173,36 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
                 if (currentRetry < maxRetryAttempts) {
                     updateJobStatus(job, "Pending", "Retry: " + (currentRetry + 1));
                     log.warn("Job {} failed, will retry ({}/{})", jobId, currentRetry + 1, maxRetryAttempts);
+                    // Keep reserves for retry
                 } else {
                     updateJobStatus(job, "Failed", "Đã thử " + maxRetryAttempts + " lần nhưng thất bại");
-                    log.error("Job {} failed after {} attempts", jobId, maxRetryAttempts);
+                    
+                    // Release reserves on final failure
+                    int sheetsUsed = job.getTotalSheetsUsed() * job.getNumCopies();
+                    int pagesUsed = job.getTotalPagesToPrint() * job.getNumCopies();
+                    
+                    printer.releasePaperReserve(job.getPaperSize(), sheetsUsed);
+                    printer.releaseTonerReserve(pagesUsed, job.getColorMode());
+                    printerRepository.save(printer);
+                    
+                    log.error("Job {} failed after {} attempts. Released reserves.", jobId, maxRetryAttempts);
                 }
                 return false;
             }
         } catch (Exception e) {
             log.error("Error sending job {} to printer: {}", jobId, e.getMessage(), e);
             updateJobStatus(job, "Failed", "Lỗi: " + e.getMessage());
+            
+            // Release reserves on error (printer variable already declared at method start)
+            int sheetsUsed = job.getTotalSheetsUsed() * job.getNumCopies();
+            int pagesUsed = job.getTotalPagesToPrint() * job.getNumCopies();
+            
+            printer.releasePaperReserve(job.getPaperSize(), sheetsUsed);
+            printer.releaseTonerReserve(pagesUsed, job.getColorMode());
+            printerRepository.save(printer);
+            
+            log.info("Released reserves for failed job {}", jobId);
+            
             return false;
         }
     }
@@ -148,8 +210,30 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
     /**
      * Gửi job đến máy in qua mạng (IPP hoặc JetDirect)
      * Đây là implementation cơ bản sử dụng Java Print API
+     * 
+     * MOCK MODE: Nếu mock-mode=true, sẽ giả lập in thành công sau X giây
      */
     private boolean sendToPrinterViaNetwork(PrintJob job, Printer printer) {
+        // MOCK MODE: Giả lập in thành công
+        if (mockMode) {
+            log.info("========== MOCK PRINTING MODE ==========");
+            log.info("Job {} will complete after {} seconds", job.getJobId(), mockPrintDuration);
+            
+            try {
+                // Giả lập thời gian in
+                Thread.sleep(mockPrintDuration * 1000L);
+                
+                log.info("Job {} mock printing completed successfully!", job.getJobId());
+                return true; // Giả lập in thành công
+                
+            } catch (InterruptedException e) {
+                log.error("Mock printing interrupted for job {}", job.getJobId());
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+        
+        // REAL MODE: In thật qua máy in
         try {
             // Kiểm tra kết nối đến máy in
             if (!testPrinterConnection(printer.getIpAddress())) {
@@ -310,5 +394,41 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
             log.debug("Cannot extract retry count from notes: {}", notes);
         }
         return 0;
+    }
+    
+    /**
+     * Trừ giấy sau khi in
+     */
+    private void deductPaper(Printer printer, String paperSize, int sheets) {
+        if ("A3".equalsIgnoreCase(paperSize)) {
+            int remaining = printer.getA3PaperRemaining() - sheets;
+            printer.setA3PaperRemaining(Math.max(0, remaining));
+            log.info("Deducted {} sheets of A3. Remaining: {}", sheets, printer.getA3PaperRemaining());
+        } else {
+            int remaining = printer.getA4PaperRemaining() - sheets;
+            printer.setA4PaperRemaining(Math.max(0, remaining));
+            log.info("Deducted {} sheets of A4. Remaining: {}", sheets, printer.getA4PaperRemaining());
+        }
+    }
+    
+    /**
+     * Trừ mực sau khi in
+     * Ước tính: 1 trang = 0.01% mực (1000 trang = 10% mực)
+     */
+    private void deductToner(Printer printer, int pages, String colorMode) {
+        double tonerUsedPercent = pages * 0.01; // 1 trang = 0.01%
+        
+        if ("Color".equalsIgnoreCase(colorMode)) {
+            // In màu: trừ cả 4 màu
+            printer.setTonerBlackRemaining(Math.max(0, (int)(printer.getTonerBlackRemaining() - tonerUsedPercent)));
+            printer.setTonerCyanRemaining(Math.max(0, (int)(printer.getTonerCyanRemaining() - tonerUsedPercent)));
+            printer.setTonerMagentaRemaining(Math.max(0, (int)(printer.getTonerMagentaRemaining() - tonerUsedPercent)));
+            printer.setTonerYellowRemaining(Math.max(0, (int)(printer.getTonerYellowRemaining() - tonerUsedPercent)));
+            log.info("Deducted {:.2f}% toner (Color). Black remaining: {}%", tonerUsedPercent, printer.getTonerBlackRemaining());
+        } else {
+            // In đen trắng: chỉ trừ mực đen
+            printer.setTonerBlackRemaining(Math.max(0, (int)(printer.getTonerBlackRemaining() - tonerUsedPercent)));
+            log.info("Deducted {:.2f}% toner (Black). Remaining: {}%", tonerUsedPercent, printer.getTonerBlackRemaining());
+        }
     }
 }

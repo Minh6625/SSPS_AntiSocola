@@ -72,6 +72,23 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
     
+    // Xử lý IllegalStateException (ví dụ: không thể refill khi có jobs active)
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalStateException(
+            IllegalStateException ex) {
+        
+        log.warn("IllegalStateException: {}", ex.getMessage());
+        
+        ErrorResponse response = new ErrorResponse(
+            LocalDateTime.now(),
+            HttpStatus.CONFLICT.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+    
     // Xử lý Generic Exception
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {

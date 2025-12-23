@@ -22,8 +22,14 @@ export const printJobService = {
       return response.data.data as PrintJobResponse;
     } catch (error) {
       const axiosError = error as AxiosError<ErrorResponse>;
-      const errorMessage = axiosError.response?.data?.error || 'Gửi lệnh in thất bại';
-      throw new Error(errorMessage);
+      // Extract message from backend response (message field, not error field)
+      const errorMessage = axiosError.response?.data?.message 
+        || axiosError.response?.data?.error 
+        || 'Gửi lệnh in thất bại';
+      // Throw error with message but preserve the original axios error
+      const err = new Error(errorMessage);
+      (err as any).response = axiosError.response; // Preserve response for debugging
+      throw err;
     }
   },
 

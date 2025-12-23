@@ -67,7 +67,15 @@ public class PrintJobServiceImpl implements IPrintJobService {
         
         if (!"Active".equals(printer.getStatus())) {
             log.warn("Printer {} is not active. Status: {}", printer.getPrinterId(), printer.getStatus());
-            throw new BusinessException("Máy in không khả dụng");
+            String errorMsg = "Máy in không khả dụng";
+            if ("OutOfPaper".equals(printer.getStatus())) {
+                errorMsg = "Máy in đã hết giấy";
+            } else if ("OutOfToner".equals(printer.getStatus())) {
+                errorMsg = "Máy in đã hết mực";
+            } else if ("OutOfBoth".equals(printer.getStatus())) {
+                errorMsg = "Máy in đã hết giấy và mực";
+            }
+            throw new BusinessException(errorMsg);
         }
         
         log.info("Printer validated: {}", printer.getPrinterName());
@@ -84,14 +92,52 @@ public class PrintJobServiceImpl implements IPrintJobService {
         
         log.info("Calculated: totalPages={}, sheets={}, a4Equivalent={}", totalPagesToPrint, totalSheetsUsed, a4EquivalentPages);
         
-        // 4. Check page balance
-        log.info("Step 4: Checking page balance for student {}", studentId);
+        // 4. Check printer supplies (paper and toner) - Check AVAILABLE (remaining - reserved)
+        log.info("Step 4: Checking printer supplies (available = remaining - reserved)");
+        
+        int sheetsNeeded = totalSheetsUsed * request.getCopies();
+        
+        // Kiểm tra giấy AVAILABLE
+        if (!printer.hasEnoughPaper(request.getPaperSize(), sheetsNeeded)) {
+            int available = "A3".equalsIgnoreCase(request.getPaperSize()) 
+                ? printer.getA3PaperAvailable() 
+                : printer.getA4PaperAvailable();
+            
+            log.warn("Printer {} does not have enough {} paper. Required: {}, Available: {}", 
+                printer.getPrinterId(), request.getPaperSize(), sheetsNeeded, available);
+            
+            // Cập nhật trạng thái máy in ngay lập tức
+            printer.updateStatusBasedOnSupplies();
+            printerRepository.save(printer);
+            
+            throw new BusinessException(
+                String.format("Máy in không đủ giấy %s. Cần %d tờ, còn %d tờ khả dụng. Vui lòng chọn máy in khác.", 
+                    request.getPaperSize(), sheetsNeeded, available)
+            );
+        }
+        
+        // Kiểm tra mực AVAILABLE
+        if (!printer.hasEnoughToner()) {
+            log.warn("Printer {} does not have enough toner. Available: {}%", 
+                printer.getPrinterId(), printer.getTonerBlackAvailable());
+            
+            // Cập nhật trạng thái máy in ngay lập tức
+            printer.updateStatusBasedOnSupplies();
+            printerRepository.save(printer);
+            
+            throw new BusinessException("Máy in sắp hết mực, vui lòng chọn máy in khác");
+        }
+        
+        log.info("Printer supplies validated (available resources checked)");
+        
+        // 5. Check page balance
+        log.info("Step 5: Checking page balance for student {}", studentId);
         PageBalance pageBalance = pageBalanceRepository.findById(studentId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy số dư trang in"));
         
-        int currentBalance = pageBalance.getA4Balance(); // Only A4 now
+        int currentBalance = pageBalance.getA4Balance(); // A4 equivalent (A3 = 2×A4)
         
-        log.info("Current balance: {} (A4={}), Required: {}", currentBalance, pageBalance.getA4Balance(), a4EquivalentPages);
+        log.info("Current balance: {} A4 equivalent, Required: {}", currentBalance, a4EquivalentPages);
         
         if (currentBalance < a4EquivalentPages) {
             log.warn("Insufficient balance. Need: {}, Have: {}", a4EquivalentPages, currentBalance);
@@ -102,7 +148,7 @@ public class PrintJobServiceImpl implements IPrintJobService {
         }
         
         // 5. Create print job
-        log.info("Step 5: Creating print job");
+        log.info("Step 6: Creating print job");
         PrintJob printJob = new PrintJob();
         printJob.setStudentId(studentId);
         printJob.setDocumentId(request.getDocumentId());
@@ -122,6 +168,14 @@ public class PrintJobServiceImpl implements IPrintJobService {
         log.info("Step 6: Saving print job to database");
         PrintJob savedJob = printJobRepository.save(printJob);
         log.info("Print job saved with ID: {}", savedJob.getJobId());
+        
+        // 5.1. RESERVE paper and toner for this job (prevents race conditions)
+        log.info("Step 6.1: Reserving printer resources");
+        printer.reservePaper(request.getPaperSize(), sheetsNeeded);
+        printer.reserveToner(totalPagesToPrint * request.getCopies(), request.getColorMode());
+        printerRepository.save(printer);
+        log.info("Reserved {} sheets of {} and toner for {} pages", 
+            sheetsNeeded, request.getPaperSize(), totalPagesToPrint * request.getCopies());
         
         // 6. Deduct pages from balance
         log.info("Step 7: Deducting pages from balance");
@@ -218,8 +272,32 @@ public class PrintJobServiceImpl implements IPrintJobService {
         }
         
         if (!"Pending".equals(job.getJobStatus())) {
-            throw new BusinessException("Chỉ có thể hủy lệnh in đang chờ");
+            if ("Printing".equals(job.getJobStatus())) {
+                throw new BusinessException("Không thể hủy lệnh in đang được in. Vui lòng đợi in xong.");
+            } else if ("Completed".equals(job.getJobStatus())) {
+                throw new BusinessException("Không thể hủy lệnh in đã hoàn thành");
+            } else if ("Cancelled".equals(job.getJobStatus())) {
+                throw new BusinessException("Lệnh in đã bị hủy trước đó");
+            } else if ("Failed".equals(job.getJobStatus())) {
+                throw new BusinessException("Không thể hủy lệnh in đã thất bại");
+            } else {
+                throw new BusinessException("Chỉ có thể hủy lệnh in đang chờ");
+            }
         }
+        
+        // Release reserved printer resources
+        Printer printer = printerRepository.findById(job.getPrinterId())
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy máy in"));
+        
+        int sheetsToRelease = job.getTotalSheetsUsed() * job.getNumCopies();
+        int pagesToRelease = job.getTotalPagesToPrint() * job.getNumCopies();
+        
+        printer.releasePaperReserve(job.getPaperSize(), sheetsToRelease);
+        printer.releaseTonerReserve(pagesToRelease, job.getColorMode());
+        printerRepository.save(printer);
+        
+        log.info("Released {} sheets of {} and toner for {} pages from printer {}", 
+            sheetsToRelease, job.getPaperSize(), pagesToRelease, printer.getPrinterId());
         
         job.setJobStatus("Cancelled");
         printJobRepository.save(job);
@@ -299,9 +377,9 @@ public class PrintJobServiceImpl implements IPrintJobService {
     
     /**
      * Trừ pages từ balance
+     * Luôn trừ từ A4Balance (đã quy đổi A3 = 2×A4)
      */
     private void deductPages(PageBalance balance, int a4Equivalent, String paperSize) {
-        // Always deduct from A4 balance only (no A3 support)
         balance.setA4Balance(balance.getA4Balance() - a4Equivalent);
         balance.setLastUpdated(LocalDateTime.now());
         pageBalanceRepository.save(balance);
@@ -309,9 +387,9 @@ public class PrintJobServiceImpl implements IPrintJobService {
     
     /**
      * Hoàn trả pages khi cancel
+     * Luôn hoàn trả vào A4Balance (đã quy đổi A3 = 2×A4)
      */
     private void refundPages(PageBalance balance, int a4Equivalent, String paperSize) {
-        // Always refund to A4 balance only (no A3 support)
         balance.setA4Balance(balance.getA4Balance() + a4Equivalent);
         balance.setLastUpdated(LocalDateTime.now());
         pageBalanceRepository.save(balance);

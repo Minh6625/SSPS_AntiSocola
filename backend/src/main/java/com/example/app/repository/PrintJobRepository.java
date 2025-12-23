@@ -54,4 +54,9 @@ public interface PrintJobRepository extends JpaRepository<PrintJob, Integer> {
      * Tìm print jobs theo status (cho print queue service)
      */
     List<PrintJob> findByJobStatus(String jobStatus);
+    
+    /**
+     * Đếm số jobs của printer theo danh sách status
+     */
+    long countByPrinterIdAndJobStatusIn(Long printerId, List<String> jobStatuses);
 }
