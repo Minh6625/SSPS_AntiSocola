@@ -53,6 +53,7 @@ public class DocumentService {
     private final DocumentRepository documentRepository;
     private final AllowedFileTypeRepository allowedFileTypeRepository;
     private final SupabaseStorageService supabaseStorageService;
+    private final ConvertApiService convertApiService;
     private final ModelMapper modelMapper;
     
     /**
@@ -489,18 +490,35 @@ public class DocumentService {
     
     /**
      * Detect số trang của DOCX file từ byte array
+     * Sử dụng ConvertAPI để convert DOCX -> PDF, sau đó đếm số trang PDF
      */
     private int detectDocxPagesFromBytes(byte[] fileBytes) throws IOException {
-        try (ByteArrayInputStream bis = new ByteArrayInputStream(fileBytes);
-             XWPFDocument document = new XWPFDocument(bis)) {
+        try {
+            // STEP 1: Convert DOCX sang PDF bằng ConvertAPI
+            logger.info("Converting DOCX to PDF using ConvertAPI...");
+            byte[] pdfBytes = convertApiService.convertDocxToPdf(fileBytes);
             
-            // Ước tính: ~30 paragraphs = 1 page (A4, font size 12)
-            int paragraphs = document.getParagraphs().size();
-            int estimatedPages = Math.max(1, (paragraphs + 29) / 30);
+            // STEP 2: Đếm số trang của PDF
+            int pageCount = detectPdfPagesFromBytes(pdfBytes);
             
-            logger.info("DOCX pages estimated: {} pages (~{} paragraphs)", 
-                       estimatedPages, paragraphs);
-            return estimatedPages;
+            logger.info("DOCX pages detected (via PDF conversion): {} pages", pageCount);
+            return pageCount;
+            
+        } catch (Exception e) {
+            // Fallback: Nếu ConvertAPI fail, dùng phương pháp ước tính cũ
+            logger.warn("ConvertAPI failed, falling back to paragraph estimation: {}", e.getMessage());
+            
+            try (ByteArrayInputStream bis = new ByteArrayInputStream(fileBytes);
+                 XWPFDocument document = new XWPFDocument(bis)) {
+                
+                // Ước tính: ~30 paragraphs = 1 page (A4, font size 12)
+                int paragraphs = document.getParagraphs().size();
+                int estimatedPages = Math.max(1, (paragraphs + 29) / 30);
+                
+                logger.info("DOCX pages estimated (fallback): {} pages (~{} paragraphs)", 
+                           estimatedPages, paragraphs);
+                return estimatedPages;
+            }
         }
     }
     
@@ -543,19 +561,44 @@ public class DocumentService {
     
     /**
      * Detect số trang của DOCX file
-     * Note: DOCX không có concept "page" rõ ràng, ước tính dựa trên số đoạn văn
+     * Sử dụng ConvertAPI để convert DOCX -> PDF, sau đó đếm số trang PDF
+     * Note: DOCX không có concept "page" rõ ràng, nên cần convert sang PDF để đếm chính xác
      */
     private int detectDocxPages(File file) throws IOException {
-        try (FileInputStream fis = new FileInputStream(file);
-             XWPFDocument document = new XWPFDocument(fis)) {
+        try {
+            // STEP 1: Đọc file DOCX thành byte array
+            byte[] fileBytes;
+            try (FileInputStream fis = new FileInputStream(file)) {
+                fileBytes = fis.readAllBytes();
+            }
             
-            // Ước tính: ~30 paragraphs = 1 page (A4, font size 12)
-            int paragraphs = document.getParagraphs().size();
-            int estimatedPages = Math.max(1, (paragraphs + 29) / 30);
+            // STEP 2: Convert DOCX sang PDF bằng ConvertAPI
+            logger.info("Converting DOCX to PDF using ConvertAPI for file: {}", file.getName());
+            byte[] pdfBytes = convertApiService.convertDocxToPdf(fileBytes);
             
-            logger.info("DOCX pages estimated: {} pages (~{} paragraphs) in {}", 
-                       estimatedPages, paragraphs, file.getName());
-            return estimatedPages;
+            // STEP 3: Đếm số trang của PDF
+            int pageCount = detectPdfPagesFromBytes(pdfBytes);
+            
+            logger.info("DOCX pages detected (via PDF conversion): {} pages in {}", 
+                       pageCount, file.getName());
+            return pageCount;
+            
+        } catch (Exception e) {
+            // Fallback: Nếu ConvertAPI fail, dùng phương pháp ước tính cũ
+            logger.warn("ConvertAPI failed for {}, falling back to paragraph estimation: {}", 
+                       file.getName(), e.getMessage());
+            
+            try (FileInputStream fis = new FileInputStream(file);
+                 XWPFDocument document = new XWPFDocument(fis)) {
+                
+                // Ước tính: ~30 paragraphs = 1 page (A4, font size 12)
+                int paragraphs = document.getParagraphs().size();
+                int estimatedPages = Math.max(1, (paragraphs + 29) / 30);
+                
+                logger.info("DOCX pages estimated (fallback): {} pages (~{} paragraphs) in {}", 
+                           estimatedPages, paragraphs, file.getName());
+                return estimatedPages;
+            }
         }
     }
     
@@ -602,8 +645,11 @@ public class DocumentService {
         int updatedCount = 0;
         for (Document doc : documents) {
             try {
-                // Recount pages
-                int newPageCount = detectPageCount(doc.getFilePath(), doc.getFileExtension());
+                // Download file từ Supabase
+                byte[] fileBytes = supabaseStorageService.downloadFile(doc.getFilePath());
+                
+                // Recount pages từ bytes
+                int newPageCount = detectPageCountFromBytes(fileBytes, doc.getFileExtension());
                 
                 if (doc.getTotalPages() != newPageCount) {
                     doc.setTotalPages(newPageCount);
