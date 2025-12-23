@@ -115,9 +115,9 @@ class StudentServiceImplTest {
         assertNotNull(result);
         assertEquals("S2123456", result.getStudentId());
         assertEquals("Nguyễn Văn A", result.getFullName());
-        assertEquals(100, result.getA4Balance());
-        assertEquals(10, result.getA3Balance());
-        assertEquals(120, result.getTotalA4Equivalent());
+        assertEquals(120, result.getA4Balance()); // A4 balance from pageBalance
+        assertEquals(0, result.getA3Balance()); // No A3 support
+        assertEquals(120, result.getTotalA4Equivalent()); // Same as A4 balance
         assertEquals(25L, result.getTotalPrintJobs());
         verify(studentRepository, times(1)).findStudentById("S2123456");
     }
