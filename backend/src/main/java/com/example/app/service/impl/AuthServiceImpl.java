@@ -12,6 +12,7 @@ import com.example.app.repository.SystemConfigRepository;
 import com.example.app.repository.TrustedDeviceRepository;
 import com.example.app.repository.UserRepository;
 import com.example.app.service.DeviceFingerprintService;
+import com.example.app.service.NotificationService;
 import com.example.app.service.OtpService;
 import com.example.app.service.RefreshTokenService;
 import com.example.app.service.interfaces.IAuthService;
@@ -56,6 +57,9 @@ public class AuthServiceImpl implements IAuthService {
     
     @Autowired
     private HttpServletRequest httpServletRequest;
+    
+    @Autowired
+    private NotificationService notificationService;
 
     @Override
     @Transactional
@@ -165,6 +169,9 @@ public class AuthServiceImpl implements IAuthService {
         // Cập nhật last login
         user.setLastLogin(LocalDateTime.now());
         userRepository.save(user);
+        
+        // Tạo thông báo đăng nhập thành công
+        notificationService.createLoginSuccessNotification(user.getUserId());
         
         log.info("User logged in successfully: {}", user.getUserId());
         
