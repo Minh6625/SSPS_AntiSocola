@@ -13,13 +13,11 @@ const PageBalanceSection: React.FC = () => {
   const [balance, setBalance] = useState<PageBalanceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [purchaseA4Pages, setPurchaseA4Pages] = useState<number>(0);
-  const [purchaseA3Pages, setPurchaseA3Pages] = useState<number>(0);
+  const [purchaseA4Pages, setPurchaseA4Pages] = useState<number>(1);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [purchasing, setPurchasing] = useState(false);
   const [priceA4, setPriceA4] = useState<number>(500);
-  const [priceA3, setPriceA3] = useState<number>(1000);
   
   // Payment state
   const [currentPayment, setCurrentPayment] = useState<CreatePaymentResponse | null>(null);
@@ -103,9 +101,7 @@ const PageBalanceSection: React.FC = () => {
     try {
       const pricings = await pagePricingService.getAllPricing();
       const a4Price = pricings.find(p => p.paperSize === 'A4');
-      const a3Price = pricings.find(p => p.paperSize === 'A3');
       if (a4Price) setPriceA4(a4Price.pricePerPage);
-      if (a3Price) setPriceA3(a3Price.pricePerPage);
     } catch (err) {
       console.error('Failed to fetch pricing:', err);
     }
@@ -164,12 +160,10 @@ const PageBalanceSection: React.FC = () => {
       setPaymentStatus('success');
       setSuccessMessage(notification.message);
       
-      // Update balance immediately
+      // Update balance immediately - chỉ A4
       setBalance(prev => prev ? {
         ...prev,
         pagesA4: notification.newA4Balance,
-        pagesA3: notification.newA3Balance,
-        totalA4Equivalent: notification.newA4Balance + (notification.newA3Balance * 2),
       } : null);
       
       // Stop polling
@@ -217,8 +211,8 @@ const PageBalanceSection: React.FC = () => {
 
   // Create payment and show QR
   const handleCreatePayment = async () => {
-    if (purchaseA4Pages === 0 && purchaseA3Pages === 0) {
-      setError('Vui lòng nhập ít nhất 1 trang');
+    if (purchaseA4Pages < 1) {
+      setError('Vui lòng nhập ít nhất 1 trang A4');
       return;
     }
 
@@ -227,10 +221,10 @@ const PageBalanceSection: React.FC = () => {
       setError(null);
       setPaymentStatus('pending');
       
-      console.log('Creating payment request:', { a4Pages: purchaseA4Pages, a3Pages: purchaseA3Pages });
+      console.log('Creating payment request:', { a4Pages: purchaseA4Pages });
       
-      // Create payment
-      const payment = await paymentService.createPayment(purchaseA4Pages, purchaseA3Pages);
+      // Create payment - chỉ A4
+      const payment = await paymentService.createPayment(purchaseA4Pages, 0);
       console.log('Payment created successfully:', payment);
       
       // Validate payment response
@@ -267,8 +261,7 @@ const PageBalanceSection: React.FC = () => {
     setCurrentPayment(null);
     setPaymentStatus('idle');
     setSuccessMessage('');
-    setPurchaseA4Pages(0);
-    setPurchaseA3Pages(0);
+    setPurchaseA4Pages(1);
     disconnectWebSocket();
     
     if (pollingIntervalRef.current) {
@@ -280,11 +273,7 @@ const PageBalanceSection: React.FC = () => {
     fetchBalance();
   };
 
-  const totalPrice = (purchaseA4Pages * priceA4) + (purchaseA3Pages * priceA3);
-  const isValidForm = 
-    (purchaseA4Pages >= 0 && purchaseA4Pages <= 1000) &&
-    (purchaseA3Pages >= 0 && purchaseA3Pages <= 500) &&
-    (purchaseA4Pages > 0 || purchaseA3Pages > 0);
+  const totalPrice = purchaseA4Pages * priceA4;
 
   const formatCountdown = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -325,7 +314,7 @@ const PageBalanceSection: React.FC = () => {
       {/* Balance Cards */}
       {balance && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* A4 Balance Card */}
             <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
               <div className="flex items-center justify-between mb-4">
@@ -339,74 +328,47 @@ const PageBalanceSection: React.FC = () => {
               </div>
             </div>
 
-            {/* A3 Balance Card */}
+            {/* Available for Print Card */}
             <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Trang A3</h3>
-                <div className="text-3xl">📋</div>
+                <h3 className="text-lg font-semibold text-gray-900">Có thể in</h3>
+                <div className="text-3xl">🖨️</div>
               </div>
-              <div className="text-4xl font-bold text-green-600 mb-2">{balance.pagesA3}</div>
-              <p className="text-gray-600 text-sm mb-4">trang</p>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min((balance.pagesA3 / 100) * 100, 100)}%` }}></div>
-              </div>
-            </div>
-
-            {/* Total A4 Equivalent Card */}
-            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-purple-500">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Tổng A4 tương đương</h3>
-                <div className="text-3xl">📊</div>
-              </div>
-              <div className="text-4xl font-bold text-purple-600 mb-2">{balance.totalA4Equivalent}</div>
-              <p className="text-gray-600 text-sm mb-4">trang</p>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${Math.min((balance.totalA4Equivalent / 100) * 100, 100)}%` }}></div>
-              </div>
+              <div className="text-2xl font-bold text-green-600 mb-1">{balance.pagesA4} trang A4</div>
+              <div className="text-lg font-semibold text-green-600 mb-2">hoặc {Math.floor(balance.pagesA4 / 2)} trang A3</div>
+              <p className="text-gray-600 text-xs">1 trang A3 = 2 trang A4</p>
             </div>
           </div>
 
           {/* Purchase Section */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Mua thêm trang in</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Số trang A4 (0-1000)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Số trang A4 (1-1000)</label>
                 <input
                   type="number"
-                  min="0"
+                  min="1"
                   max="1000"
                   value={purchaseA4Pages}
-                  onChange={(e) => setPurchaseA4Pages(Math.max(0, parseInt(e.target.value) || 0))}
+                  onChange={(e) => setPurchaseA4Pages(Math.max(1, parseInt(e.target.value) || 1))}
                   className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    purchaseA4Pages >= 0 && purchaseA4Pages <= 1000 ? 'border-gray-300 focus:ring-blue-500' : 'border-red-300 focus:ring-red-500'
+                    purchaseA4Pages >= 1 && purchaseA4Pages <= 1000 ? 'border-gray-300 focus:ring-blue-500' : 'border-red-300 focus:ring-red-500'
                   }`}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Số trang A3 (0-500)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="500"
-                  value={purchaseA3Pages}
-                  onChange={(e) => setPurchaseA3Pages(Math.max(0, parseInt(e.target.value) || 0))}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                    purchaseA3Pages >= 0 && purchaseA3Pages <= 500 ? 'border-gray-300 focus:ring-blue-500' : 'border-red-300 focus:ring-red-500'
-                  }`}
-                />
+                <p className="text-xs text-gray-500 mt-1">Có thể in {purchaseA4Pages} trang A4 hoặc {Math.floor(purchaseA4Pages / 2)} trang A3</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Tổng tiền</label>
-                <div className="text-2xl font-bold text-blue-600">{totalPrice.toLocaleString('vi-VN')} VND</div>
-                <p className="text-xs text-gray-600 mt-1">A4: {priceA4.toLocaleString('vi-VN')} | A3: {priceA3.toLocaleString('vi-VN')}</p>
+                <div className="text-2xl font-bold text-blue-600">{(purchaseA4Pages * priceA4).toLocaleString('vi-VN')} VND</div>
+                <p className="text-xs text-gray-600 mt-1">Giá: {priceA4.toLocaleString('vi-VN')} VND/trang</p>
               </div>
               <div className="flex items-end">
                 <button
                   onClick={() => setShowPurchaseModal(true)}
-                  disabled={!isValidForm}
+                  disabled={purchaseA4Pages < 1 || purchaseA4Pages > 1000}
                   className={`w-full px-6 py-2 rounded-lg transition-colors font-medium ${
-                    isValidForm ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    purchaseA4Pages >= 1 && purchaseA4Pages <= 1000 ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
                   Thanh toán qua SePay
@@ -433,8 +395,8 @@ const PageBalanceSection: React.FC = () => {
                 <span className="font-semibold text-gray-900">{purchaseA4Pages} trang</span>
               </div>
               <div className="flex justify-between mb-2">
-                <span className="text-gray-700">Số trang A3:</span>
-                <span className="font-semibold text-gray-900">{purchaseA3Pages} trang</span>
+                <span className="text-gray-700">Có thể in A3:</span>
+                <span className="font-semibold text-gray-600">{Math.floor(purchaseA4Pages / 2)} trang</span>
               </div>
               <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
                 <span className="text-gray-900 font-semibold">Tổng cộng:</span>

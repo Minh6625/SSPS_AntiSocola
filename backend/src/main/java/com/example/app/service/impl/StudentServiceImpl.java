@@ -106,7 +106,7 @@ public class StudentServiceImpl implements IStudentService {
         
         // Get page balance
         PageBalance pageBalance = pageBalanceRepository.findById(studentId)
-            .orElse(new PageBalance(studentId, 0, 0, LocalDateTime.now(), student));
+            .orElse(new PageBalance(studentId, 0, LocalDateTime.now(), student));
         
         // Get statistics
         Long totalJobs = printLogRepository.countByStudentId(studentId);
@@ -123,8 +123,8 @@ public class StudentServiceImpl implements IStudentService {
         dto.setCreatedAt(student.getCreatedAt());
         dto.setLastLogin(student.getLastLogin());
         dto.setA4Balance(pageBalance.getA4Balance());
-        dto.setA3Balance(pageBalance.getA3Balance());
-        dto.setTotalA4Equivalent(pageBalance.getA4Balance() + (pageBalance.getA3Balance() * 2));
+        dto.setA3Balance(0); // No A3 support
+        dto.setTotalA4Equivalent(pageBalance.getA4Balance()); // Only A4
         dto.setTotalPrintJobs(totalJobs != null ? totalJobs : 0L);
         dto.setTotalPagesPrinted(totalPages != null ? totalPages.longValue() : 0L);
         dto.setLastPrintTime(lastPrint);
@@ -153,11 +153,11 @@ public class StudentServiceImpl implements IStudentService {
         
         // Get or create page balance
         PageBalance pageBalance = pageBalanceRepository.findById(request.getStudentId())
-            .orElse(new PageBalance(request.getStudentId(), 0, 0, LocalDateTime.now(), student));
+            .orElse(new PageBalance(request.getStudentId(), 0, LocalDateTime.now(), student));
         
-        // Update balance
-        pageBalance.setA4Balance(pageBalance.getA4Balance() + request.getA4Pages());
-        pageBalance.setA3Balance(pageBalance.getA3Balance() + request.getA3Pages());
+        // Update balance (convert A3 to A4 equivalent)
+        int totalA4ToAdd = request.getA4Pages() + (request.getA3Pages() * 2);
+        pageBalance.setA4Balance(pageBalance.getA4Balance() + totalA4ToAdd);
         pageBalance.setLastUpdated(LocalDateTime.now());
         
         pageBalanceRepository.save(pageBalance);
@@ -171,10 +171,10 @@ public class StudentServiceImpl implements IStudentService {
             request.getA4Pages(),
             request.getA3Pages(),
             pageBalance.getA4Balance(),
-            pageBalance.getA3Balance(),
-            pageBalance.getA4Balance() + (pageBalance.getA3Balance() * 2),
-            String.format("Đã cấp %d trang A4 và %d trang A3 cho sinh viên %s", 
-                         request.getA4Pages(), request.getA3Pages(), student.getFullName())
+            0, // No separate A3 balance
+            pageBalance.getA4Balance(), // Total = A4 balance
+            String.format("Đã cấp %d trang A4 và %d trang A3 cho sinh viên %s (tổng %d A4)", 
+                         request.getA4Pages(), request.getA3Pages(), student.getFullName(), totalA4ToAdd)
         );
     }
     
@@ -282,9 +282,9 @@ public class StudentServiceImpl implements IStudentService {
         
         // Get page balance
         PageBalance pageBalance = pageBalanceRepository.findById(user.getUserId())
-            .orElse(new PageBalance(user.getUserId(), 0, 0, LocalDateTime.now(), user));
+            .orElse(new PageBalance(user.getUserId(), 0, LocalDateTime.now(), user));
         dto.setA4Balance(pageBalance.getA4Balance());
-        dto.setA3Balance(pageBalance.getA3Balance());
+        dto.setA3Balance(0); // No A3 support
         
         // Get total print jobs
         Long totalJobs = printLogRepository.countByStudentId(user.getUserId());

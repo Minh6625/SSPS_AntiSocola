@@ -43,10 +43,10 @@ CREATE INDEX IX_Users_Type ON Users(UserType, Status);
 CREATE TABLE PageBalance (
     StudentID VARCHAR(20) PRIMARY KEY,
     A4Balance INT NOT NULL DEFAULT 0,
-    A3Balance INT NOT NULL DEFAULT 0,
-    TotalA4Equivalent INT GENERATED ALWAYS AS (A4Balance + A3Balance * 2) STORED,
     LastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
+    FOREIGN KEY (StudentID) REFERENCES Users(UserID) ON DELETE CASCADE
+);  
     FOREIGN KEY (StudentID) REFERENCES Users(UserID) ON DELETE CASCADE
 );
 
@@ -59,9 +59,7 @@ CREATE TABLE PageTransactions (
     StudentID VARCHAR(20) NOT NULL,
     TransactionType VARCHAR(20) NOT NULL CHECK (TransactionType IN ('Allocate', 'Purchase', 'Use')),
     A4Pages INT NOT NULL DEFAULT 0,
-    A3Pages INT NOT NULL DEFAULT 0,
     BalanceAfterA4 INT,
-    BalanceAfterA3 INT,
     Amount DECIMAL(10,2),
     PaymentMethod VARCHAR(50),
     TransactionStatus VARCHAR(20) DEFAULT 'Completed' CHECK (TransactionStatus IN ('Pending', 'Completed', 'Failed')),
@@ -70,7 +68,7 @@ CREATE TABLE PageTransactions (
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CreatedBy VARCHAR(20),
     
-    CONSTRAINT CK_PageTrans_NonNegative CHECK (COALESCE(Amount,0) >= 0 AND A4Pages >= -100000 AND A3Pages >= -100000),
+    CONSTRAINT CK_PageTrans_NonNegative CHECK (COALESCE(Amount,0) >= 0 AND A4Pages >= -100000),
     
     FOREIGN KEY (StudentID) REFERENCES Users(UserID) ON DELETE CASCADE
 );

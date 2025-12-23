@@ -322,15 +322,15 @@ INSERT INTO Rooms (BuildingID, RoomNumber, RoomName, RoomType, Capacity, IsActiv
 (6, '201', 'Phòng họp E3', 'Meeting', 30, TRUE);
 
 -- ================================================================
--- 9. SEED PAGE BALANCE (Cấp trang cho sinh viên)
+-- 9. SEED PAGE BALANCE (Cấp trang cho sinh viên - chỉ A4)
 -- ================================================================
 
-INSERT INTO PageBalance (StudentID, A4Balance, A3Balance)
+INSERT INTO PageBalance (StudentID, A4Balance)
 VALUES 
-('STUDENT_TEST', 100, 10),
-('ITITIU21001', 100, 0),
-('ITITIU21002', 80, 5),
-('IELSIU21001', 50, 10);
+('STUDENT_TEST', 100),
+('ITITIU21001', 100),
+('ITITIU21002', 80),
+('IELSIU21001', 50);
 
 -- ================================================================
 -- 10. SEED PRINTERS (Updated với Foreign Keys)
@@ -362,13 +362,12 @@ VALUES
 ('Máy in E3-101 (Brother)', 4, 14, 17, '192.168.6.101', 'A4', FALSE, TRUE, 'Active', 0, 'SPSO001');
 
 -- ================================================================
--- 11. SEED PAGE PRICING
+-- 11. SEED PAGE PRICING (chỉ A4)
 -- ================================================================
 
 INSERT INTO PagePricing (PaperSize, PricePerPage, Currency, EffectiveFrom, IsActive, Notes)
 VALUES 
-('A4', 500.00, 'VND', '2024-01-01', TRUE, 'Giá tiêu chuẩn trang A4'),
-('A3', 1000.00, 'VND', '2024-01-01', TRUE, 'Giá tiêu chuẩn trang A3 (= 2 x A4)');
+('A4', 500.00, 'VND', '2024-01-01', TRUE, 'Giá tiêu chuẩn trang A4');
 
 -- ================================================================
 -- 12. SEED ALLOWED FILE TYPES
@@ -399,7 +398,6 @@ VALUES
 
 -- Giá cả
 ('A4PricePerPage', '500', 'Giá 1 trang A4 (VND)', 'Integer', 'ADMIN_TEST'),
-('A3PricePerPage', '1000', 'Giá 1 trang A3 (VND)', 'Integer', 'ADMIN_TEST'),
 
 -- Học kỳ
 ('CurrentSemester', 'HK2-2024', 'Học kỳ hiện tại', 'String', 'ADMIN_TEST'),

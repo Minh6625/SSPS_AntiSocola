@@ -111,11 +111,11 @@ public class AccountServiceImpl implements IAccountService {
         // Thông tin trang in chỉ có với Student
         if ("Student".equals(user.getUserType())) {
             PageBalance pageBalance = pageBalanceRepository.findById(userId)
-                .orElse(new PageBalance(userId, 0, 0, LocalDateTime.now(), user));
+                .orElse(new PageBalance(userId, 0, LocalDateTime.now(), user));
             
             dto.setA4Balance(pageBalance.getA4Balance());
-            dto.setA3Balance(pageBalance.getA3Balance());
-            dto.setTotalA4Equivalent(pageBalance.getA4Balance() + (pageBalance.getA3Balance() * 2));
+            dto.setA3Balance(0); // No A3 support
+            dto.setTotalA4Equivalent(pageBalance.getA4Balance()); // Only A4
             
             Long totalJobs = printLogRepository.countByStudentId(userId);
             Integer totalPages = printLogRepository.sumA4EquivalentByStudentId(userId);
@@ -188,7 +188,7 @@ public class AccountServiceImpl implements IAccountService {
         // Nếu đổi sang Student, cần tạo PageBalance nếu chưa có
         if ("Student".equals(request.getNewRole()) && !"Student".equals(previousRole)) {
             PageBalance pageBalance = pageBalanceRepository.findById(user.getUserId())
-                .orElse(new PageBalance(user.getUserId(), 0, 0, LocalDateTime.now(), user));
+                .orElse(new PageBalance(user.getUserId(), 0, LocalDateTime.now(), user));
             pageBalanceRepository.save(pageBalance);
         }
         
@@ -225,10 +225,11 @@ public class AccountServiceImpl implements IAccountService {
         }
         
         PageBalance pageBalance = pageBalanceRepository.findById(request.getStudentId())
-            .orElse(new PageBalance(request.getStudentId(), 0, 0, LocalDateTime.now(), user));
+            .orElse(new PageBalance(request.getStudentId(), 0, LocalDateTime.now(), user));
         
-        pageBalance.setA4Balance(pageBalance.getA4Balance() + request.getA4Pages());
-        pageBalance.setA3Balance(pageBalance.getA3Balance() + request.getA3Pages());
+        // Convert A3 to A4 equivalent and add to A4 balance
+        int totalA4ToAdd = request.getA4Pages() + (request.getA3Pages() * 2);
+        pageBalance.setA4Balance(pageBalance.getA4Balance() + totalA4ToAdd);
         pageBalance.setLastUpdated(LocalDateTime.now());
         
         pageBalanceRepository.save(pageBalance);
@@ -241,10 +242,10 @@ public class AccountServiceImpl implements IAccountService {
             request.getA4Pages(),
             request.getA3Pages(),
             pageBalance.getA4Balance(),
-            pageBalance.getA3Balance(),
-            pageBalance.getA4Balance() + (pageBalance.getA3Balance() * 2),
-            String.format("Đã cấp %d trang A4 và %d trang A3 cho %s", 
-                         request.getA4Pages(), request.getA3Pages(), user.getFullName())
+            0, // No separate A3 balance
+            pageBalance.getA4Balance(), // Total = A4 balance
+            String.format("Đã cấp %d trang A4 và %d trang A3 cho %s (tổng %d A4)", 
+                         request.getA4Pages(), request.getA3Pages(), user.getFullName(), totalA4ToAdd)
         );
     }
     
@@ -312,9 +313,9 @@ public class AccountServiceImpl implements IAccountService {
         // Thông tin trang in chỉ có với Student
         if ("Student".equals(user.getUserType())) {
             PageBalance pageBalance = pageBalanceRepository.findById(user.getUserId())
-                .orElse(new PageBalance(user.getUserId(), 0, 0, LocalDateTime.now(), user));
+                .orElse(new PageBalance(user.getUserId(), 0, LocalDateTime.now(), user));
             dto.setA4Balance(pageBalance.getA4Balance());
-            dto.setA3Balance(pageBalance.getA3Balance());
+            dto.setA3Balance(0); // No A3 support
             
             Long totalJobs = printLogRepository.countByStudentId(user.getUserId());
             dto.setTotalPrintJobs(totalJobs != null ? totalJobs : 0L);

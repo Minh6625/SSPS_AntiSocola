@@ -180,13 +180,12 @@ public class RegistrationService {
         // Step 5: Create PageBalance (allocate default pages)
         PageBalance pageBalance = new PageBalance();
         pageBalance.setStudentId(studentId);
-        pageBalance.setA4Balance(defaultA4Pages);
-        pageBalance.setA3Balance(defaultA3Pages);
+        pageBalance.setA4Balance(defaultA4Pages + (defaultA3Pages * 2)); // Convert A3 to A4 equivalent
         pageBalance.setLastUpdated(LocalDateTime.now());
         
         pageBalanceRepository.save(pageBalance);
-        log.info("PageBalance created for student: {} (A4: {}, A3: {})", 
-            studentId, defaultA4Pages, defaultA3Pages);
+        log.info("PageBalance created for student: {} (A4: {}, A3: {} -> Total A4: {})", 
+            studentId, defaultA4Pages, defaultA3Pages, defaultA4Pages + (defaultA3Pages * 2));
         
         // Step 6: Mark OTP as consumed (dùng email vì user chưa tồn tại)
         otpService.deleteOtpByEmail(request.getEmail(), "Register2FA");

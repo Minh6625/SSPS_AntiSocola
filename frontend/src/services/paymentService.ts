@@ -70,7 +70,6 @@ export interface CreatePaymentResponse {
   paymentCode: string;
   amount: number;
   a4Pages: number;
-  a3Pages: number;
   qrUrl: string;
   bankName: string;
   bankAccount: string;
@@ -84,7 +83,6 @@ export interface PaymentStatus {
   status: 'PENDING' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED';
   amount: number;
   a4Pages: number;
-  a3Pages: number;
   createdAt: string;
   expiresAt: string;
   completedAt?: string;
@@ -97,23 +95,22 @@ export interface PaymentNotification {
   amount: number;
   studentId: string;
   a4Pages: number;
-  a3Pages: number;
   newA4Balance: number;
-  newA3Balance: number;
   timestamp: string;
 }
 
 export const paymentService = {
   /**
    * POST /api/payment/create
-   * Tạo giao dịch thanh toán mới
+   * Tạo giao dịch thanh toán mới (chỉ A4)
    */
-  async createPayment(a4Pages: number, a3Pages: number): Promise<CreatePaymentResponse> {
+  async createPayment(a4Pages: number, a3Pages: number = 0): Promise<CreatePaymentResponse> {
     try {
-      console.log('Creating payment request:', { a4Pages, a3Pages });
+      console.log('Creating payment request:', { a4Pages });
       console.log('API Base URL:', API_BASE_URL);
       
-      const response = await apiClient.post<CreatePaymentResponse>('/create', { a4Pages, a3Pages });
+      // Chỉ gửi A4Pages, bỏ qua a3Pages
+      const response = await apiClient.post<CreatePaymentResponse>('/create', { a4Pages });
       
       console.log('Payment response:', response.data);
       

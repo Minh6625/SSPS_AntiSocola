@@ -100,14 +100,14 @@ public class PaymentController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
             }
 
-            log.info("Creating payment for student: {}, A4: {}, A3: {}", 
-                    studentId, paymentRequest.getA4Pages(), paymentRequest.getA3Pages());
+            log.info("Creating payment for student: {}, A4: {}", 
+                    studentId, paymentRequest.getA4Pages());
 
-            // Create pending payment
+            // Create pending payment (chỉ A4)
             PendingPayment payment = paymentService.createPendingPayment(
                     studentId, 
                     paymentRequest.getA4Pages(), 
-                    paymentRequest.getA3Pages()
+                    0  // A3 = 0
             );
 
             // Build QR URL
@@ -123,7 +123,6 @@ public class PaymentController {
             response.put("paymentCode", payment.getPaymentCode());
             response.put("amount", payment.getAmount());
             response.put("a4Pages", payment.getA4Pages());
-            response.put("a3Pages", payment.getA3Pages());
             response.put("qrUrl", qrUrl);
             response.put("bankName", bankName);
             response.put("bankAccount", bankAccount);
@@ -166,7 +165,6 @@ public class PaymentController {
             response.put("status", payment.getStatus());
             response.put("amount", payment.getAmount());
             response.put("a4Pages", payment.getA4Pages());
-            response.put("a3Pages", payment.getA3Pages());
             response.put("createdAt", payment.getCreatedAt().toString());
             response.put("expiresAt", payment.getExpiresAt().toString());
             
@@ -277,7 +275,7 @@ public class PaymentController {
             response.put("paymentCode", payment.getPaymentCode());
             response.put("amount", payment.getAmount());
             response.put("a4Pages", payment.getA4Pages());
-            response.put("a3Pages", payment.getA3Pages());
+            response.put("a3Pages", 0); // No A3 support
             response.put("qrUrl", qrUrl);
             response.put("bankName", bankName);
             response.put("bankAccount", bankAccount);
@@ -310,15 +308,16 @@ public class PaymentController {
     }
 
     /**
-     * Request DTO for creating payment
+     * Request DTO for creating payment (chỉ A4)
      */
     public static class CreatePaymentRequest {
         private Integer a4Pages;
-        private Integer a3Pages;
 
         public Integer getA4Pages() { return a4Pages != null ? a4Pages : 0; }
         public void setA4Pages(Integer a4Pages) { this.a4Pages = a4Pages; }
-        public Integer getA3Pages() { return a3Pages != null ? a3Pages : 0; }
-        public void setA3Pages(Integer a3Pages) { this.a3Pages = a3Pages; }
+        
+        // Deprecated - không sử dụng A3 nữa
+        public Integer getA3Pages() { return 0; }
+        public void setA3Pages(Integer a3Pages) { /* Ignore */ }
     }
 }

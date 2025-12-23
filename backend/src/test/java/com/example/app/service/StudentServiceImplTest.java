@@ -67,8 +67,7 @@ class StudentServiceImplTest {
         
         testPageBalance = new PageBalance();
         testPageBalance.setStudentId("S2123456");
-        testPageBalance.setA4Balance(100);
-        testPageBalance.setA3Balance(10);
+        testPageBalance.setA4Balance(120); // 100 A4 + (10 A3 * 2)
         testPageBalance.setLastUpdated(LocalDateTime.now());
     }
     

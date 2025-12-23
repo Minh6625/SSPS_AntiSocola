@@ -196,13 +196,7 @@ const TransactionHistory: React.FC = () => {
                     Số trang A4
                   </th>
                   <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
-                    Số trang A3
-                  </th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
                     Số dư A4 sau
-                  </th>
-                  <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
-                    Số dư A3 sau
                   </th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">
                     Ghi chú
@@ -231,14 +225,8 @@ const TransactionHistory: React.FC = () => {
                       {transaction.transactionType === 'Use' || transaction.transactionType === 'DEDUCTED' ? '-' : '+'}
                       {Math.abs(transaction.a4Pages)}
                     </td>
-                    <td className="px-6 py-4 text-sm text-right text-gray-900 font-medium">
-                      {transaction.a3Pages === 0 ? '-' : (transaction.transactionType === 'Use' || transaction.transactionType === 'DEDUCTED' ? '-' : '+') + Math.abs(transaction.a3Pages)}
-                    </td>
                     <td className="px-6 py-4 text-sm text-right text-gray-900 font-semibold">
                       {transaction.balanceAfterA4 ?? '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-right text-gray-900 font-semibold">
-                      {transaction.balanceAfterA3 ?? '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {transaction.notes}

@@ -148,12 +148,11 @@ public class GoogleOAuthService {
         // Create PageBalance
         PageBalance pageBalance = new PageBalance();
         pageBalance.setStudentId(studentId);
-        pageBalance.setA4Balance(defaultA4Pages);
-        pageBalance.setA3Balance(defaultA3Pages);
+        pageBalance.setA4Balance(defaultA4Pages + (defaultA3Pages * 2)); // Convert A3 to A4 equivalent
         pageBalance.setLastUpdated(LocalDateTime.now());
 
         pageBalanceRepository.save(pageBalance);
-        log.info("PageBalance created for Google user: {}", studentId);
+        log.info("PageBalance created for Google user: {} (Total A4: {})", studentId, defaultA4Pages + (defaultA3Pages * 2));
 
         return generateLoginResponse(savedUser);
     }
