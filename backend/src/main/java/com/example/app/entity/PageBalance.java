@@ -27,9 +27,6 @@ public class PageBalance {
     @Column(name = "A4Balance", nullable = false)
     private Integer a4Balance = 0;
     
-    @Column(name = "A3Balance", nullable = false)
-    private Integer a3Balance = 0;
-    
     @Column(name = "LastUpdated", nullable = false)
     private LocalDateTime lastUpdated = LocalDateTime.now();
     

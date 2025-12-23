@@ -87,9 +87,9 @@ public class PrintJobServiceImpl implements IPrintJobService {
         PageBalance pageBalance = pageBalanceRepository.findById(studentId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy số dư trang in"));
         
-        int currentBalance = pageBalance.getA4Balance() + (pageBalance.getA3Balance() * 2);
+        int currentBalance = pageBalance.getA4Balance(); // Only A4 now
         
-        log.info("Current balance: {} (A4={}, A3={}), Required: {}", currentBalance, pageBalance.getA4Balance(), pageBalance.getA3Balance(), a4EquivalentPages);
+        log.info("Current balance: {} (A4={}), Required: {}", currentBalance, pageBalance.getA4Balance(), a4EquivalentPages);
         
         if (currentBalance < a4EquivalentPages) {
             log.warn("Insufficient balance. Need: {}, Have: {}", a4EquivalentPages, currentBalance);
@@ -124,6 +124,7 @@ public class PrintJobServiceImpl implements IPrintJobService {
         // 6. Deduct pages from balance
         log.info("Step 7: Deducting pages from balance");
         deductPages(pageBalance, a4EquivalentPages, request.getPaperSize());
+        int newBalance = pageBalance.getA4Balance(); // Get updated balance
         
         // 7. Create page transaction (Use)
         log.info("Step 8: Creating page transaction");
@@ -131,7 +132,7 @@ public class PrintJobServiceImpl implements IPrintJobService {
         transaction.setStudentId(studentId);
         transaction.setTransactionType("Use");
         transaction.setA4Pages(-a4EquivalentPages);
-        transaction.setA3Pages(0);
+        transaction.setBalanceAfterA4(newBalance);
         transaction.setNotes("JobID: " + savedJob.getJobId());
         transaction.setCreatedAt(LocalDateTime.now());
         pageTransactionRepository.save(transaction);
@@ -202,13 +203,14 @@ public class PrintJobServiceImpl implements IPrintJobService {
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy số dư trang"));
         
         refundPages(pageBalance, job.getA4EquivalentPages(), job.getPaperSize());
+        int newBalance = pageBalance.getA4Balance(); // Get updated balance
         
         // Create refund transaction
         PageTransaction transaction = new PageTransaction();
         transaction.setStudentId(studentId);
         transaction.setTransactionType("Allocate");
         transaction.setA4Pages(job.getA4EquivalentPages());
-        transaction.setA3Pages(0);
+        transaction.setBalanceAfterA4(newBalance);
         transaction.setNotes("Refund - Cancelled JobID: " + jobId);
         transaction.setCreatedAt(LocalDateTime.now());
         pageTransactionRepository.save(transaction);
@@ -273,24 +275,8 @@ public class PrintJobServiceImpl implements IPrintJobService {
      * Trừ pages từ balance
      */
     private void deductPages(PageBalance balance, int a4Equivalent, String paperSize) {
-        if ("A3".equalsIgnoreCase(paperSize)) {
-            // Trừ từ A3 trước
-            int a3ToDeduct = a4Equivalent / 2;
-            int remainingA4 = a4Equivalent % 2;
-            
-            if (balance.getA3Balance() >= a3ToDeduct) {
-                balance.setA3Balance(balance.getA3Balance() - a3ToDeduct);
-                balance.setA4Balance(balance.getA4Balance() - remainingA4);
-            } else {
-                // Không đủ A3, convert sang A4
-                int neededA4 = a4Equivalent;
-                balance.setA4Balance(balance.getA4Balance() - neededA4);
-            }
-        } else {
-            // Trừ A4
-            balance.setA4Balance(balance.getA4Balance() - a4Equivalent);
-        }
-        
+        // Always deduct from A4 balance only (no A3 support)
+        balance.setA4Balance(balance.getA4Balance() - a4Equivalent);
         balance.setLastUpdated(LocalDateTime.now());
         pageBalanceRepository.save(balance);
     }
@@ -299,15 +285,8 @@ public class PrintJobServiceImpl implements IPrintJobService {
      * Hoàn trả pages khi cancel
      */
     private void refundPages(PageBalance balance, int a4Equivalent, String paperSize) {
-        if ("A3".equalsIgnoreCase(paperSize)) {
-            int a3ToRefund = a4Equivalent / 2;
-            int remainingA4 = a4Equivalent % 2;
-            balance.setA3Balance(balance.getA3Balance() + a3ToRefund);
-            balance.setA4Balance(balance.getA4Balance() + remainingA4);
-        } else {
-            balance.setA4Balance(balance.getA4Balance() + a4Equivalent);
-        }
-        
+        // Always refund to A4 balance only (no A3 support)
+        balance.setA4Balance(balance.getA4Balance() + a4Equivalent);
         balance.setLastUpdated(LocalDateTime.now());
         pageBalanceRepository.save(balance);
     }

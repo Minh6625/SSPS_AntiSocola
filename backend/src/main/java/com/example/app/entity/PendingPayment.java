@@ -32,9 +32,6 @@ public class PendingPayment {
     @Column(name = "A4Pages", nullable = false)
     private Integer a4Pages;
     
-    @Column(name = "A3Pages", nullable = false)
-    private Integer a3Pages;
-    
     @Column(name = "Amount", nullable = false)
     private Long amount;  // Total amount in VND
     

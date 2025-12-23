@@ -1,5 +1,5 @@
 /**
- * PAGE BALANCE TYPES
+ * PAGE BALANCE TYPES - Chỉ A4
  */
 
 export type TransactionType = 'Allocate' | 'Purchase' | 'Use' | 'ALLOCATED' | 'PURCHASED' | 'DEDUCTED';
@@ -9,9 +9,7 @@ export interface PageTransaction {
   transactionCode: string;  // Mã giao dịch: TXN819201
   transactionType: string;
   a4Pages: number;
-  a3Pages: number;
   balanceAfterA4: number;
-  balanceAfterA3: number;
   notes: string;
   createdAt: string;
 }
@@ -28,10 +26,9 @@ export interface PageBalance {
   id: number;
   userId: number;
   pagesA4: number;
-  pagesA3: number;
   lastUpdated: string;
 }
 
 export interface PageBalanceResponse extends PageBalance {
-  totalA4Equivalent: number;
+  // Chỉ có A4, không có totalA4Equivalent
 }

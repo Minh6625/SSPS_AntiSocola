@@ -89,6 +89,6 @@ public interface StudentRepository extends JpaRepository<User, String> {
     @Query("SELECT u FROM User u " +
            "JOIN PageBalance pb ON u.userId = pb.studentId " +
            "WHERE u.userType = 'Student' " +
-           "AND (pb.a4Balance + pb.a3Balance * 2) < :threshold")
+           "AND pb.a4Balance < :threshold")
     List<User> findStudentsWithLowPageBalance(@Param("threshold") Integer threshold);
 }

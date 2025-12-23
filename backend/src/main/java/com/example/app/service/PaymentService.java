@@ -84,19 +84,20 @@ public class PaymentService {
             pendingPaymentRepository.save(existing);
         }
 
-        // Create new pending payment
+        // Create new pending payment (only A4 pages, A3 is converted to A4 equivalent)
+        int totalA4Pages = a4Pages + (a3Pages * 2); // Convert A3 to A4 equivalent
         PendingPayment payment = PendingPayment.builder()
                 .paymentCode(paymentCode)
                 .studentId(studentId)
-                .a4Pages(a4Pages)
-                .a3Pages(a3Pages)
+                .a4Pages(totalA4Pages)
                 .amount(amount)
                 .status("PENDING")
                 .expiresAt(LocalDateTime.now().plusMinutes(30)) // Tăng từ 15 lên 30 phút
                 .build();
 
         payment = pendingPaymentRepository.save(payment);
-        log.info("Created pending payment: {} for amount: {} VND", paymentCode, amount);
+        log.info("Created pending payment: {} for amount: {} VND (A4: {}, A3: {} -> Total A4: {})", 
+                paymentCode, amount, a4Pages, a3Pages, totalA4Pages);
 
         return payment;
     }
@@ -238,11 +239,11 @@ public class PaymentService {
         PageBalance balance = pageBalanceRepository.findByStudentId(payment.getStudentId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy số dư trang"));
 
-        int newA4Balance = balance.getA4Balance() + payment.getA4Pages();
-        int newA3Balance = balance.getA3Balance() + payment.getA3Pages();
+        // Only use A4 pages now (no A3 support)
+        int totalA4ToAdd = payment.getA4Pages();
+        int newA4Balance = balance.getA4Balance() + totalA4ToAdd;
 
         balance.setA4Balance(newA4Balance);
-        balance.setA3Balance(newA3Balance);
         balance.setLastUpdated(LocalDateTime.now());
         pageBalanceRepository.save(balance);
 
@@ -250,10 +251,8 @@ public class PaymentService {
         PageTransaction transaction = new PageTransaction();
         transaction.setStudentId(payment.getStudentId());
         transaction.setTransactionType("Purchase");
-        transaction.setA4Pages(payment.getA4Pages());
-        transaction.setA3Pages(payment.getA3Pages());
+        transaction.setA4Pages(totalA4ToAdd);
         transaction.setBalanceAfterA4(newA4Balance);
-        transaction.setBalanceAfterA3(newA3Balance);
         transaction.setAmount(BigDecimal.valueOf(payment.getAmount()));
         transaction.setPaymentMethod("SePay - " + webhook.getGateway());
         transaction.setTransactionStatus("Completed");
@@ -261,27 +260,26 @@ public class PaymentService {
         transaction.setCreatedBy(payment.getStudentId());
         pageTransactionRepository.save(transaction);
 
-        log.info("Payment completed. New balance - A4: {}, A3: {}", newA4Balance, newA3Balance);
+        log.info("Payment completed. New balance - A4: {}", newA4Balance);
 
         // Send WebSocket notification
-        sendPaymentNotification(payment, newA4Balance, newA3Balance);
+        sendPaymentNotification(payment, newA4Balance);
     }
 
     /**
      * Send real-time notification via WebSocket
      */
-    private void sendPaymentNotification(PendingPayment payment, int newA4Balance, int newA3Balance) {
+    private void sendPaymentNotification(PendingPayment payment, int newA4Balance) {
         PaymentNotificationDTO notification = PaymentNotificationDTO.builder()
                 .status("SUCCESS")
-                .message("Thanh toán thành công! Đã cộng " + payment.getA4Pages() + " trang A4 và " 
-                        + payment.getA3Pages() + " trang A3 vào tài khoản.")
+                .message("Thanh toán thành công! Đã cộng " + payment.getA4Pages() + " trang A4 vào tài khoản.")
                 .transactionCode(payment.getPaymentCode())
                 .amount(payment.getAmount())
                 .studentId(payment.getStudentId())
                 .a4Pages(payment.getA4Pages())
-                .a3Pages(payment.getA3Pages())
+                .a3Pages(0) // No A3 support
                 .newA4Balance(newA4Balance)
-                .newA3Balance(newA3Balance)
+                .newA3Balance(0) // No separate A3 balance
                 .timestamp(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
                 .build();
 
