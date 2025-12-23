@@ -37,6 +37,9 @@ public class GoogleOAuthService {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private NotificationService notificationService;
+
     @Value("${google.client.id:}")
     private String googleClientId;
 
@@ -81,6 +84,9 @@ public class GoogleOAuthService {
             // Update last login
             user.setLastLogin(LocalDateTime.now());
             userRepository.save(user);
+
+            // Tạo thông báo đăng nhập thành công
+            notificationService.createLoginSuccessNotification(user.getUserId());
 
             return generateLoginResponse(user);
         } else {

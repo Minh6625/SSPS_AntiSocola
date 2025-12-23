@@ -297,6 +297,70 @@ public class PaymentController {
     }
 
     /**
+     * POST /api/payment/test-complete/{paymentCode}
+     * Test endpoint to simulate successful payment (DEV ONLY)
+     */
+    @PostMapping("/api/payment/test-complete/{paymentCode}")
+    @Operation(summary = "Test hoàn thành giao dịch", description = "Simulate thanh toán thành công (chỉ dùng cho test)")
+    public ResponseEntity<?> testCompletePayment(
+            HttpServletRequest request,
+            @PathVariable String paymentCode
+    ) {
+        log.info("=== Test Complete Payment: {} ===", paymentCode);
+        
+        try {
+            String token = extractTokenFromRequest(request);
+            if (token == null || jwtUtil.isTokenExpired(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Token không hợp lệ"));
+            }
+
+            String studentId = jwtUtil.extractUserId(token);
+            
+            // Get pending payment
+            PendingPayment payment = paymentService.getPendingPayment(paymentCode);
+            
+            // Verify ownership
+            if (!payment.getStudentId().equals(studentId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Không có quyền thực hiện"));
+            }
+            
+            // Check status
+            if (!"PENDING".equals(payment.getStatus())) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Giao dịch không ở trạng thái chờ thanh toán"));
+            }
+
+            // Simulate webhook from SePay
+            SepayWebhookDTO fakeWebhook = new SepayWebhookDTO();
+            fakeWebhook.setTransferType("in");
+            fakeWebhook.setTransferAmount(payment.getAmount());
+            fakeWebhook.setContent(paymentCode);
+            fakeWebhook.setAccountNumber(bankAccount);
+            fakeWebhook.setReferenceCode("TEST_" + System.currentTimeMillis());
+            fakeWebhook.setGateway("TEST_GATEWAY");
+
+            // Complete payment
+            paymentService.completePayment(payment, fakeWebhook);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Thanh toán test thành công! Đã cộng " + payment.getA4Pages() + " trang A4.");
+            response.put("paymentCode", paymentCode);
+            response.put("a4Pages", payment.getA4Pages());
+
+            log.info("Test payment completed: {}", paymentCode);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error completing test payment: ", e);
+            return ResponseEntity.badRequest()
+                .body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    /**
      * Extract JWT token from request
      */
     private String extractTokenFromRequest(HttpServletRequest request) {

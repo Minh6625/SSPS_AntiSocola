@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { authService } from '@/services/authService';
+import { notificationService } from '@/services/notificationService';
 import Link from 'next/link';
 
 interface LayoutProps {
@@ -84,6 +85,7 @@ export default function StudentLayout({ children }: LayoutProps) {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     // Check authentication
@@ -95,7 +97,30 @@ export default function StudentLayout({ children }: LayoutProps) {
 
     const user = authService.getUserInfo();
     setUserInfo(user);
+    
+    // Load unread notification count
+    loadUnreadCount();
+
+    // Listen for notification updates from other components
+    const handleNotificationUpdate = () => {
+      loadUnreadCount();
+    };
+    
+    window.addEventListener('notification-update', handleNotificationUpdate);
+    
+    return () => {
+      window.removeEventListener('notification-update', handleNotificationUpdate);
+    };
   }, [router]);
+
+  const loadUnreadCount = async () => {
+    try {
+      const count = await notificationService.getUnreadCount();
+      setUnreadCount(count);
+    } catch (error) {
+      console.error('Error loading unread count:', error);
+    }
+  };
 
   const handleLogout = () => {
     authService.logout();
@@ -186,7 +211,21 @@ export default function StudentLayout({ children }: LayoutProps) {
                 <span className={`text-base leading-none ${isActive(item.href) ? 'text-blue-600' : 'text-gray-600'}`}>
                   {item.icon}
                 </span>
-                {sidebarOpen && <span className="text-sm">{item.name}</span>}
+                {sidebarOpen && (
+                  <span className="text-sm flex-1 flex items-center justify-between">
+                    {item.name}
+                    {item.href === '/student/notifications' && unreadCount > 0 && (
+                      <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </span>
+                )}
+                {!sidebarOpen && item.href === '/student/notifications' && unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Link>
             ))}
           </div>
@@ -227,8 +266,24 @@ export default function StudentLayout({ children }: LayoutProps) {
       <div className="flex-1 flex flex-col">
         {/* Header */}
         <header
-          className="h-16 border-b border-gray-200 flex items-center justify-end px-6 bg-white"
+          className="h-16 border-b border-gray-200 flex items-center justify-end px-6 bg-white gap-4"
         >
+          {/* Notification Bell */}
+          <Link
+            href="/student/notifications"
+            className="relative p-2 hover:bg-gray-100 rounded-lg transition"
+          >
+            <svg className="w-6 h-6 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
+
           {/* User Menu */}
           <div className="relative">
             <button

@@ -166,6 +166,9 @@ const PageBalanceSection: React.FC = () => {
         pagesA4: notification.newA4Balance,
       } : null);
       
+      // Trigger notification update in header
+      window.dispatchEvent(new Event('notification-update'));
+      
       // Stop polling
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -545,6 +548,27 @@ const PageBalanceSection: React.FC = () => {
                     className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
                   >
                     Hủy giao dịch
+                  </button>
+                  {/* Nút test thanh toán - chỉ hiển thị trong môi trường dev */}
+                  <button
+                    onClick={async () => {
+                      try {
+                        const result = await paymentService.testCompletePayment(currentPayment.paymentCode);
+                        if (result.success) {
+                          setPaymentStatus('success');
+                          setSuccessMessage(result.message);
+                          await fetchBalance();
+                          // Trigger notification update in header
+                          window.dispatchEvent(new Event('notification-update'));
+                        }
+                      } catch (err) {
+                        console.error('Test payment error:', err);
+                        setError(err instanceof Error ? err.message : 'Test thanh toán thất bại');
+                      }
+                    }}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  >
+                    ✓ Test thanh toán
                   </button>
                 </div>
               </>

@@ -162,4 +162,19 @@ export const paymentService = {
       throw new Error(handleApiError(error));
     }
   },
+
+  /**
+   * POST /api/payment/test-complete/{paymentCode}
+   * Test hoàn thành giao dịch (chỉ dùng cho dev/test)
+   */
+  async testCompletePayment(paymentCode: string): Promise<{ success: boolean; message: string; a4Pages: number }> {
+    try {
+      const response = await apiClient.post<{ success: boolean; message: string; a4Pages: number }>(
+        `/test-complete/${paymentCode}`
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(handleApiError(error));
+    }
+  },
 };
