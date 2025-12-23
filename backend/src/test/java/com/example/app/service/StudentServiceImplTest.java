@@ -67,7 +67,7 @@ class StudentServiceImplTest {
         
         testPageBalance = new PageBalance();
         testPageBalance.setStudentId("S2123456");
-        testPageBalance.setA4Balance(120); // 100 A4 + (10 A3 * 2)
+        testPageBalance.setA4Balance(100); // A4 balance only
         testPageBalance.setLastUpdated(LocalDateTime.now());
     }
     
@@ -116,8 +116,8 @@ class StudentServiceImplTest {
         assertEquals("S2123456", result.getStudentId());
         assertEquals("Nguyễn Văn A", result.getFullName());
         assertEquals(100, result.getA4Balance());
-        assertEquals(10, result.getA3Balance());
-        assertEquals(120, result.getTotalA4Equivalent());
+        assertEquals(0, result.getA3Balance()); // No A3 support
+        assertEquals(100, result.getTotalA4Equivalent()); // Only A4
         assertEquals(25L, result.getTotalPrintJobs());
         verify(studentRepository, times(1)).findStudentById("S2123456");
     }
