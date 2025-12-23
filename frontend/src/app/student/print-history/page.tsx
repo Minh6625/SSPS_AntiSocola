@@ -158,7 +158,7 @@ export default function PrintHistoryPage() {
       setJobs(data);
       
       // Fetch document names
-      const docIds = [...new Set(data.map(j => j.documentId))];
+      const docIds = [...new Set(data.map(j => j.documentId).filter(id => id && !isNaN(id)))];
       const docMap: Record<number, string> = {};
       
       await Promise.all(
