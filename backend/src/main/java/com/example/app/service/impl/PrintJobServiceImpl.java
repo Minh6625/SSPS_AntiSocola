@@ -6,6 +6,7 @@ import com.example.app.entity.*;
 import com.example.app.exception.BusinessException;
 import com.example.app.exception.ResourceNotFoundException;
 import com.example.app.repository.*;
+import com.example.app.service.NotificationService;
 import com.example.app.service.interfaces.IPrintJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class PrintJobServiceImpl implements IPrintJobService {
     private final PrinterRepository printerRepository;
     private final PageBalanceRepository pageBalanceRepository;
     private final PageTransactionRepository pageTransactionRepository;
+    private final NotificationService notificationService;
     
     @Override
     public PrintJobResponseDTO submitPrintJob(String studentId, PrintJobSubmitRequestDTO request) {
@@ -138,14 +140,38 @@ public class PrintJobServiceImpl implements IPrintJobService {
         pageTransactionRepository.save(transaction);
         
         log.info("Print job {} created successfully for student {}", savedJob.getJobId(), studentId);
+        
+        // Tạo thông báo in tài liệu thành công
+        notificationService.createPrintSuccessNotification(
+                studentId, 
+                document.getOriginalFileName(), 
+                printer.getPrinterName()
+        );
+        
         log.info("========== SUBMIT PRINT JOB END ==========");
         
         return convertToDTO(savedJob);
         } catch (ResourceNotFoundException | BusinessException e) {
             log.error("Business error in submitPrintJob: {}", e.getMessage());
+            // Tạo thông báo in thất bại
+            try {
+                Document doc = documentRepository.findById(request.getDocumentId()).orElse(null);
+                String docName = doc != null ? doc.getOriginalFileName() : "Tài liệu";
+                notificationService.createPrintFailedNotification(studentId, docName, e.getMessage());
+            } catch (Exception ex) {
+                log.warn("Could not create print failed notification: {}", ex.getMessage());
+            }
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error in submitPrintJob", e);
+            // Tạo thông báo in thất bại
+            try {
+                Document doc = documentRepository.findById(request.getDocumentId()).orElse(null);
+                String docName = doc != null ? doc.getOriginalFileName() : "Tài liệu";
+                notificationService.createPrintFailedNotification(studentId, docName, "Lỗi hệ thống");
+            } catch (Exception ex) {
+                log.warn("Could not create print failed notification: {}", ex.getMessage());
+            }
             throw new BusinessException("Lỗi hệ thống khi tạo lệnh in: " + e.getMessage());
         }
     }

@@ -23,7 +23,7 @@ public class ConvertApiService {
     private static final Logger logger = LoggerFactory.getLogger(ConvertApiService.class);
     private static final String CONVERT_API_BASE_URL = "https://v2.convertapi.com";
     
-    @Value("${convertapi.secret}")
+    @Value("${convertapi.secret:}")
     private String apiSecret;
     
     private final OkHttpClient httpClient = new OkHttpClient.Builder()

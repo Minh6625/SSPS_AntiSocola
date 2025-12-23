@@ -13,6 +13,7 @@ import com.example.app.repository.PendingPaymentRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +43,10 @@ public class PaymentService {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    @Lazy
+    private NotificationService notificationService;
 
     @Value("${sepay.api-key:}")
     private String sepayApiKey;
@@ -261,6 +266,13 @@ public class PaymentService {
         pageTransactionRepository.save(transaction);
 
         log.info("Payment completed. New balance - A4: {}", newA4Balance);
+
+        // Tạo thông báo mua trang thành công
+        notificationService.createPurchaseSuccessNotification(
+                payment.getStudentId(), 
+                totalA4ToAdd, 
+                payment.getAmount()
+        );
 
         // Send WebSocket notification
         sendPaymentNotification(payment, newA4Balance);
