@@ -272,7 +272,17 @@ public class PrintJobServiceImpl implements IPrintJobService {
         }
         
         if (!"Pending".equals(job.getJobStatus())) {
-            throw new BusinessException("Chỉ có thể hủy lệnh in đang chờ");
+            if ("Printing".equals(job.getJobStatus())) {
+                throw new BusinessException("Không thể hủy lệnh in đang được in. Vui lòng đợi in xong.");
+            } else if ("Completed".equals(job.getJobStatus())) {
+                throw new BusinessException("Không thể hủy lệnh in đã hoàn thành");
+            } else if ("Cancelled".equals(job.getJobStatus())) {
+                throw new BusinessException("Lệnh in đã bị hủy trước đó");
+            } else if ("Failed".equals(job.getJobStatus())) {
+                throw new BusinessException("Không thể hủy lệnh in đã thất bại");
+            } else {
+                throw new BusinessException("Chỉ có thể hủy lệnh in đang chờ");
+            }
         }
         
         // Release reserved printer resources
