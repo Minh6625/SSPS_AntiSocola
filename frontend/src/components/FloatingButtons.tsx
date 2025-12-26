@@ -30,6 +30,12 @@ export default function FloatingButtons({
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Drag state
+  const [position, setPosition] = useState({ x: 24, y: 24 }); // bottom-right offset
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const quickOptions = ['Kiểm tra số dư', 'Trạng thái máy in', 'Cách in tài liệu', 'Mua thêm trang', 'Liên hệ hỗ trợ'];
 
   useEffect(() => {
@@ -52,6 +58,76 @@ export default function FloatingButtons({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (showChatbot) return; // Không cho kéo khi đang mở chatbot
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX + position.x,
+      y: e.clientY + position.y
+    });
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (showChatbot) return;
+    setIsDragging(true);
+    const touch = e.touches[0];
+    setDragStart({
+      x: touch.clientX + position.x,
+      y: touch.clientY + position.y
+    });
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const newX = dragStart.x - e.clientX;
+      const newY = dragStart.y - e.clientY;
+      
+      // Giới hạn trong viewport
+      const maxX = window.innerWidth - 80;
+      const maxY = window.innerHeight - 80;
+      
+      setPosition({
+        x: Math.max(10, Math.min(maxX, newX)),
+        y: Math.max(10, Math.min(maxY, newY))
+      });
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging) return;
+      const touch = e.touches[0];
+      const newX = dragStart.x - touch.clientX;
+      const newY = dragStart.y - touch.clientY;
+      
+      const maxX = window.innerWidth - 80;
+      const maxY = window.innerHeight - 80;
+      
+      setPosition({
+        x: Math.max(10, Math.min(maxX, newX)),
+        y: Math.max(10, Math.min(maxY, newY))
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchend', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDragging, dragStart]);
+
   const handleSendMessage = async (text: string) => {
     if (!text.trim() || isTyping) return;
 
@@ -62,7 +138,6 @@ export default function FloatingButtons({
     const loadingId = Date.now() + 1;
     setMessages(prev => [...prev, { id: loadingId, type: 'bot', content: '', isLoading: true }]);
 
-    // Gọi API backend
     const response = await chatbotService.chat(text);
 
     setMessages(prev => prev.map(m => 
@@ -75,10 +150,25 @@ export default function FloatingButtons({
     if (e.key === 'Enter') handleSendMessage(inputValue);
   };
 
+  const handleButtonClick = () => {
+    if (!isDragging) {
+      setShowButtons(!showButtons);
+      setShowTooltip(false);
+    }
+  };
+
   return (
     <>
       {/* Floating Buttons */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <div 
+        ref={containerRef}
+        className="fixed z-50 flex flex-col items-end gap-3"
+        style={{ 
+          right: `${position.x}px`, 
+          bottom: `${position.y}px`,
+          cursor: isDragging ? 'grabbing' : 'grab'
+        }}
+      >
         
         {/* Tooltip bubble */}
         {showTooltip && !showChatbot && !showButtons && (
@@ -88,7 +178,7 @@ export default function FloatingButtons({
           </div>
         )}
 
-        {/* Expandable buttons - chỉ hiện khi showButtons = true */}
+        {/* Expandable buttons */}
         <div className={`flex flex-col items-end gap-3 transition-all duration-300 overflow-hidden ${showButtons ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
           {/* Logo SIU - AI Chat */}
           <button onClick={() => { setShowChatbot(true); setShowTooltip(false); setShowButtons(false); }} className="relative group">
@@ -118,14 +208,16 @@ export default function FloatingButtons({
           </a>
         </div>
 
-        {/* Toggle Button - Nút chính để mở/đóng */}
+        {/* Toggle Button - Nút chính có thể kéo */}
         <button 
-          onClick={() => { setShowButtons(!showButtons); setShowTooltip(false); }} 
-          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 ${
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          onClick={handleButtonClick}
+          className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 select-none ${
             showButtons 
               ? 'bg-gray-500 hover:bg-gray-600' 
               : 'bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
-          }`}
+          } ${isDragging ? 'scale-110 shadow-2xl' : ''}`}
         >
           <svg 
             className={`w-7 h-7 text-white transition-transform duration-300 ${showButtons ? 'rotate-45' : ''}`} 
@@ -144,7 +236,10 @@ export default function FloatingButtons({
 
       {/* Chatbot Modal */}
       {showChatbot && (
-        <div className="fixed bottom-6 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200">
+        <div 
+          className="fixed z-50 w-[380px] max-w-[calc(100vw-3rem)] bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-200"
+          style={{ right: `${position.x}px`, bottom: `${position.y}px` }}
+        >
           {/* Header */}
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
             <div className="flex items-center justify-between">
