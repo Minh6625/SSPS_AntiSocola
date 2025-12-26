@@ -411,17 +411,24 @@ VALUES
 INSERT INTO SystemConfig (ConfigKey, ConfigValue, Description, DataType, UpdatedBy)
 VALUES 
 -- Cấu hình trang in
-('DefaultA4PagesPerSemester', '100', 'Số trang A4 mặc định mỗi học kỳ', 'Integer', 'ADMIN_TEST'),
-('MaxFileSizeMB', '50', 'Kích thước file tối đa (MB)', 'Integer', 'ADMIN_TEST'),
-('MaxPagesPerJob', '100', 'Số trang tối đa mỗi lần in', 'Integer', 'ADMIN_TEST'),
-('AllowedFileTypes', '["pdf","docx","pptx","xlsx","txt","doc","ppt","xls"]', 'Loại file được phép', 'JSON', 'ADMIN_TEST'),
+('default_a4_pages_per_semester', '100', 'Số trang A4 mặc định cấp phát mỗi học kỳ', 'Integer', 'ADMIN_TEST'),
+('default_a3_pages_per_semester', '0', 'Số trang A3 mặc định cấp phát mỗi học kỳ', 'Integer', 'ADMIN_TEST'),
+('max_file_size_mb', '50', 'Kích thước file tối đa cho phép upload (MB)', 'Integer', 'ADMIN_TEST'),
+('max_pages_per_job', '100', 'Số trang tối đa cho phép in mỗi lần', 'Integer', 'ADMIN_TEST'),
+('page_allocation_day', '1', 'Ngày trong tháng tự động cấp trang (1-31)', 'Integer', 'ADMIN_TEST'),
+('allowed_file_extensions', 'pdf,doc,docx,ppt,pptx,xls,xlsx,txt', 'Các định dạng file được phép upload', 'String', 'ADMIN_TEST'),
+
+-- Tùy chọn in
+('enable_color_printing', 'false', 'Cho phép in màu', 'Boolean', 'ADMIN_TEST'),
+('enable_duplex_printing', 'true', 'Cho phép in 2 mặt', 'Boolean', 'ADMIN_TEST'),
 
 -- Giá cả
-('A4PricePerPage', '500', 'Giá 1 trang A4 (VND)', 'Integer', 'ADMIN_TEST'),
+('a4_price_per_page', '500', 'Giá mỗi trang A4 (VND)', 'Decimal', 'ADMIN_TEST'),
+('a3_price_per_page', '1000', 'Giá mỗi trang A3 (VND)', 'Decimal', 'ADMIN_TEST'),
 
--- Học kỳ
-('CurrentSemester', 'HK2-2024', 'Học kỳ hiện tại', 'String', 'ADMIN_TEST'),
-('PageAllocationDate', '2025-01-01', 'Ngày cấp trang học kỳ này', 'String', 'ADMIN_TEST'),
+-- Hệ thống
+('system_maintenance_mode', 'false', 'Chế độ bảo trì hệ thống', 'Boolean', 'ADMIN_TEST'),
+('auto_allocate_pages', 'true', 'Tự động cấp trang đầu học kỳ', 'Boolean', 'ADMIN_TEST'),
 
 -- Authentication & Security
 ('TwoFactor.Enabled', 'true', 'Bật xác thực hai lớp (2FA) qua email', 'Boolean', 'ADMIN_TEST'),
@@ -440,6 +447,16 @@ VALUES
 ('Session.TimeoutMinutes', '30', 'Thời gian timeout session (phút)', 'Integer', 'ADMIN_TEST'),
 ('JWT.ExpirationHours', '24', 'Thời hạn JWT token (giờ)', 'Integer', 'ADMIN_TEST'),
 ('JWT.RefreshTokenDays', '7', 'Thời hạn refresh token (ngày)', 'Integer', 'ADMIN_TEST');
+
+-- ================================================================
+-- 14. SEED SEMESTERS
+-- ================================================================
+
+INSERT INTO Semesters (SemesterCode, SemesterName, AcademicYear, StartDate, EndDate, DefaultA4Pages, DefaultA3Pages, PageAllocationDate, IsActive, IsCurrent, CreatedAt, CreatedBy)
+VALUES 
+('HK1-2024', 'Học kỳ 1 năm 2024-2025', '2024-2025', '2024-09-01', '2024-12-31', 100, 0, '2024-09-01', TRUE, FALSE, CURRENT_TIMESTAMP, 'ADMIN_TEST'),
+('HK2-2024', 'Học kỳ 2 năm 2024-2025', '2024-2025', '2025-01-01', '2025-05-31', 100, 0, '2025-01-01', TRUE, TRUE, CURRENT_TIMESTAMP, 'ADMIN_TEST'),
+('HK3-2024', 'Học kỳ hè năm 2024-2025', '2024-2025', '2025-06-01', '2025-08-31', 50, 0, '2025-06-01', TRUE, FALSE, CURRENT_TIMESTAMP, 'ADMIN_TEST');
 
 -- ================================================================
 -- VERIFICATION & SUMMARY

@@ -32,6 +32,7 @@ public class PrintJobServiceImpl implements IPrintJobService {
     private final PrinterRepository printerRepository;
     private final PageBalanceRepository pageBalanceRepository;
     private final PageTransactionRepository pageTransactionRepository;
+    private final SystemConfigRepository systemConfigRepository;
     private final NotificationService notificationService;
     
     @Override
@@ -58,7 +59,57 @@ public class PrintJobServiceImpl implements IPrintJobService {
             throw new BusinessException("Tài liệu đã bị xóa");
         }
         
-        log.info("Document validated: {} pages", document.getTotalPages());
+        // 1.5. Validate file extension is still allowed (check SystemConfig)
+        log.info("Step 1.5: Validating file extension against SystemConfig");
+        String fileExtension = document.getFileExtension();
+        String allowedExtensions = systemConfigRepository.findByConfigKey("allowed_file_extensions")
+            .map(config -> config.getConfigValue())
+            .orElse("pdf,docx,pptx,xlsx"); // Default fallback
+        
+        String[] allowedExtensionsArray = allowedExtensions.toLowerCase().split(",");
+        boolean isAllowed = false;
+        for (String ext : allowedExtensionsArray) {
+            if (ext.trim().equals(fileExtension.toLowerCase())) {
+                isAllowed = true;
+                break;
+            }
+        }
+        
+        if (!isAllowed) {
+            log.warn("Document {} has disallowed extension: {}. Allowed: {}", 
+                document.getDocumentId(), fileExtension, allowedExtensions);
+            throw new BusinessException(
+                String.format("Loại file '%s' không còn được phép in. Các loại được phép: %s", 
+                    fileExtension, allowedExtensions)
+            );
+        }
+        
+        log.info("Document validated: {} pages, extension: {}", document.getTotalPages(), fileExtension);
+        
+        // 1.6. Validate file size against current SystemConfig
+        log.info("Step 1.6: Validating file size against SystemConfig");
+        int maxFileSizeMB = systemConfigRepository.findByConfigKey("max_file_size_mb")
+            .map(config -> {
+                try {
+                    return Integer.parseInt(config.getConfigValue());
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid max_file_size_mb value: {}. Using default 50", config.getConfigValue());
+                    return 50;
+                }
+            })
+            .orElse(50); // Default fallback
+        
+        double fileSizeMB = document.getFileSizeKB().doubleValue() / 1024.0;
+        if (fileSizeMB > maxFileSizeMB) {
+            log.warn("Document {} size {:.2f}MB exceeds max allowed {}MB", 
+                document.getDocumentId(), fileSizeMB, maxFileSizeMB);
+            throw new BusinessException(
+                String.format("File quá lớn (%.1f MB). Kích thước tối đa hiện tại: %d MB", 
+                    fileSizeMB, maxFileSizeMB)
+            );
+        }
+        
+        log.info("File size validated: {:.2f}MB (max: {}MB)", fileSizeMB, maxFileSizeMB);
         
         // 2. Validate printer
         log.info("Step 2: Validating printer {}", request.getPrinterId());
