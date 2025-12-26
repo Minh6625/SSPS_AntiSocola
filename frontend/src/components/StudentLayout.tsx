@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { authService } from '@/services/authService';
 import { notificationService } from '@/services/notificationService';
 import Link from 'next/link';
+import FloatingButtons from './FloatingButtons';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -336,6 +337,11 @@ export default function StudentLayout({ children }: LayoutProps) {
         </main>
       </div>
 
+      {/* Floating Buttons - Chatbot, Zalo, Messenger */}
+      <FloatingButtons 
+        zaloLink="https://zalo.me/0937833154"
+        messengerLink="https://www.messenger.com/e2ee/t/8489567564474582"
+      />
     </div>
   );
 }
