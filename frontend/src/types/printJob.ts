@@ -34,9 +34,13 @@ export interface PrintJobResponse {
 export interface PrintJob {
   jobId: number;
   documentId: number;
+  documentName?: string;
   printerId: string;
+  printerName?: string;
   studentId: string;
+  studentName?: string;
   paperSize: string;
+  pageRange?: string;
   pagesToPrint?: string;
   colorMode: string;
   colorPageRange?: string;
