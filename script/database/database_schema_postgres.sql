@@ -2,7 +2,7 @@
 -- HCMSIU_SSPS - STUDENT SMART PRINTING SERVICE DATABASE
 -- Hệ thống quản lý in ấn thông minh cho sinh viên
 -- Database: PostgreSQL 14+
--- Total: 27 Tables
+-- Total: 28 Tables
 -- Date: December 20, 2025
 -- ================================================================
 
@@ -625,7 +625,45 @@ CREATE TABLE PrinterMaintenance (
 CREATE INDEX IX_PM_PrinterDate ON PrinterMaintenance(PrinterID, MaintenanceDate DESC);
 
 -- ================================================================
--- END OF PART 2 - All 27 Tables Completed! ✅
+-- BẢNG 28: SEMESTERS - Quản lý học kỳ
+-- ================================================================
+CREATE TABLE Semesters (
+    SemesterID SERIAL PRIMARY KEY,
+    SemesterCode VARCHAR(20) NOT NULL UNIQUE,
+    SemesterName VARCHAR(100) NOT NULL,
+    AcademicYear VARCHAR(20) NOT NULL,
+    StartDate DATE NOT NULL,
+    EndDate DATE NOT NULL,
+    DefaultA4Pages INT NOT NULL DEFAULT 100,
+    DefaultA3Pages INT NOT NULL DEFAULT 0,
+    PageAllocationDate DATE,
+    IsActive BOOLEAN NOT NULL DEFAULT TRUE,
+    IsCurrent BOOLEAN NOT NULL DEFAULT FALSE,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CreatedBy VARCHAR(20),
+    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UpdatedBy VARCHAR(20),
+    
+    CONSTRAINT CK_Semester_Dates CHECK (EndDate > StartDate),
+    CONSTRAINT CK_Semester_Pages CHECK (DefaultA4Pages >= 0 AND DefaultA3Pages >= 0),
+    
+    FOREIGN KEY (CreatedBy) REFERENCES Users(UserID),
+    FOREIGN KEY (UpdatedBy) REFERENCES Users(UserID)
+);
+
+CREATE INDEX IX_Semester_Code ON Semesters(SemesterCode);
+CREATE INDEX IX_Semester_Active ON Semesters(IsActive, IsCurrent);
+CREATE INDEX IX_Semester_Dates ON Semesters(StartDate, EndDate);
+
+COMMENT ON TABLE Semesters IS 'Quản lý học kỳ và cấu hình cấp trang tự động';
+COMMENT ON COLUMN Semesters.SemesterCode IS 'Mã học kỳ (VD: HK1-2024, HK2-2024, HK3-2024)';
+COMMENT ON COLUMN Semesters.DefaultA4Pages IS 'Số trang A4 cấp phát mặc định cho sinh viên mỗi học kỳ';
+COMMENT ON COLUMN Semesters.DefaultA3Pages IS 'Số trang A3 cấp phát mặc định cho sinh viên mỗi học kỳ';
+COMMENT ON COLUMN Semesters.PageAllocationDate IS 'Ngày tự động cấp trang cho sinh viên';
+COMMENT ON COLUMN Semesters.IsCurrent IS 'Học kỳ hiện tại (chỉ có 1 học kỳ IsCurrent=TRUE)';
+
+-- ================================================================
+-- END OF SCHEMA - All 28 Tables Completed! ✅
 -- Now run both Part 1 and Part 2 in pgAdmin
 -- ================================================================
 

@@ -32,6 +32,7 @@ public class PrintJobServiceImpl implements IPrintJobService {
     private final PrinterRepository printerRepository;
     private final PageBalanceRepository pageBalanceRepository;
     private final PageTransactionRepository pageTransactionRepository;
+    private final SystemConfigRepository systemConfigRepository;
     private final NotificationService notificationService;
     
     @Override
@@ -58,7 +59,32 @@ public class PrintJobServiceImpl implements IPrintJobService {
             throw new BusinessException("Tài liệu đã bị xóa");
         }
         
-        log.info("Document validated: {} pages", document.getTotalPages());
+        // 1.5. Validate file extension is still allowed (check SystemConfig)
+        log.info("Step 1.5: Validating file extension against SystemConfig");
+        String fileExtension = document.getFileExtension();
+        String allowedExtensions = systemConfigRepository.findByConfigKey("allowed_file_extensions")
+            .map(config -> config.getConfigValue())
+            .orElse("pdf,docx,pptx,xlsx"); // Default fallback
+        
+        String[] allowedExtensionsArray = allowedExtensions.toLowerCase().split(",");
+        boolean isAllowed = false;
+        for (String ext : allowedExtensionsArray) {
+            if (ext.trim().equals(fileExtension.toLowerCase())) {
+                isAllowed = true;
+                break;
+            }
+        }
+        
+        if (!isAllowed) {
+            log.warn("Document {} has disallowed extension: {}. Allowed: {}", 
+                document.getDocumentId(), fileExtension, allowedExtensions);
+            throw new BusinessException(
+                String.format("Loại file '%s' không còn được phép in. Các loại được phép: %s", 
+                    fileExtension, allowedExtensions)
+            );
+        }
+        
+        log.info("Document validated: {} pages, extension: {}", document.getTotalPages(), fileExtension);
         
         // 2. Validate printer
         log.info("Step 2: Validating printer {}", request.getPrinterId());

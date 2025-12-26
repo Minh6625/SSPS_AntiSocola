@@ -6,6 +6,7 @@ import { authService } from '@/services/authService';
 import { notificationService } from '@/services/notificationService';
 import Link from 'next/link';
 import FloatingButtons from './FloatingButtons';
+import MaintenanceCheck from './MaintenanceCheck';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -624,6 +625,9 @@ export default function StudentLayout({ children }: LayoutProps) {
         zaloLink="https://zalo.me/0937833154"
         messengerLink="https://www.messenger.com/e2ee/t/8489567564474582"
       />
+
+      {/* Maintenance Mode Check */}
+      <MaintenanceCheck />
     </div>
   );
 }

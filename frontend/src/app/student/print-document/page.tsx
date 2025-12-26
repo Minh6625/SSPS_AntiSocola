@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import StudentLayout from '@/components/StudentLayout';
 import DocumentUpload from '@/components/DocumentUpload';
 import { documentService, DocumentResponse } from '@/services/documentService';
+import { systemSettingsService } from '@/services/systemSettingsService';
 
 export default function PrintDocumentPage() {
   const router = useRouter();
@@ -22,6 +23,28 @@ export default function PrintDocumentPage() {
   const [sizeMax, setSizeMax] = useState(''); // MB
   const [sortBy, setSortBy] = useState('Mặc định');
   const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
+  const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
+
+  // Load allowed file extensions from SystemConfig
+  useEffect(() => {
+    const loadAllowedExtensions = async () => {
+      try {
+        const settings = await systemSettingsService.getAllSettings();
+        const allowedExts = settings.configs['allowed_file_extensions']?.configValue || 'pdf,docx,pptx,xlsx';
+        setAllowedExtensions(allowedExts.toLowerCase().split(',').map((ext: string) => ext.trim()));
+      } catch (error) {
+        console.error('Failed to load allowed extensions:', error);
+        setAllowedExtensions(['pdf', 'docx', 'pptx', 'xlsx']); // Fallback
+      }
+    };
+    loadAllowedExtensions();
+  }, []);
+
+  // Check if document extension is allowed
+  const isDocumentAllowed = (doc: DocumentResponse): boolean => {
+    if (allowedExtensions.length === 0) return true; // Not loaded yet
+    return allowedExtensions.includes(doc.fileExtension?.toLowerCase() || '');
+  };
 
   // Fetch documents khi user click tab hoặc change filter
   const loadDocuments = async (page: number = 0) => {
@@ -98,8 +121,14 @@ export default function PrintDocumentPage() {
     }
   };
 
-  // Toggle chọn/bỏ chọn document
+  // Toggle chọn/bỏ chọn document (only if allowed)
   const toggleSelectDocument = (documentId: number) => {
+    const doc = documents.find(d => d.id === documentId);
+    if (doc && !isDocumentAllowed(doc)) {
+      alert(`File ${doc.fileExtension?.toUpperCase()} không còn được phép in. Các loại được phép: ${allowedExtensions.join(', ').toUpperCase()}`);
+      return;
+    }
+    
     setSelectedDocuments(prev => 
       prev.includes(documentId)
         ? prev.filter(id => id !== documentId)
@@ -107,12 +136,13 @@ export default function PrintDocumentPage() {
     );
   };
 
-  // Chọn/bỏ chọn tất cả
+  // Chọn/bỏ chọn tất cả (only allowed documents)
   const toggleSelectAll = () => {
-    if (selectedDocuments.length === documents.length) {
+    const allowedDocs = documents.filter(doc => isDocumentAllowed(doc));
+    if (selectedDocuments.length === allowedDocs.length) {
       setSelectedDocuments([]);
     } else {
-      setSelectedDocuments(documents.map(doc => doc.id));
+      setSelectedDocuments(allowedDocs.map(doc => doc.id));
     }
   };
 
@@ -424,7 +454,8 @@ export default function PrintDocumentPage() {
                           <th className="px-4 py-3 text-center w-12">
                             <input
                               type="checkbox"
-                              checked={documents.length > 0 && selectedDocuments.length === documents.length}
+                              checked={documents.filter(doc => isDocumentAllowed(doc)).length > 0 && 
+                                       selectedDocuments.length === documents.filter(doc => isDocumentAllowed(doc)).length}
                               onChange={toggleSelectAll}
                               className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                             />
@@ -447,20 +478,40 @@ export default function PrintDocumentPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white">
-                        {documents.map((doc) => (
-                          <tr key={doc.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                        {documents.map((doc) => {
+                          const isAllowed = isDocumentAllowed(doc);
+                          const isSelected = selectedDocuments.includes(doc.id);
+                          
+                          return (
+                          <tr 
+                            key={doc.id} 
+                            className={`border-b border-gray-100 transition ${
+                              isAllowed ? 'hover:bg-gray-50' : 'bg-gray-100 opacity-60'
+                            }`}
+                          >
                             <td className="px-4 py-3 text-center">
                               <input
                                 type="checkbox"
-                                checked={selectedDocuments.includes(doc.id)}
+                                checked={isSelected}
                                 onChange={() => toggleSelectDocument(doc.id)}
-                                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                                disabled={!isAllowed}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 disabled:opacity-30 disabled:cursor-not-allowed"
                               />
                             </td>
                             <td className="px-4 py-3">
-                              <span className="text-gray-900 font-medium" title={doc.fileName}>
-                                {doc.fileName || 'Không tên'}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={`font-medium ${isAllowed ? 'text-gray-900' : 'text-gray-500'}`} title={doc.fileName}>
+                                  {doc.fileName || 'Không tên'}
+                                </span>
+                                {!isAllowed && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd"/>
+                                    </svg>
+                                    Không cho phép
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-3">
                               <span
@@ -477,19 +528,20 @@ export default function PrintDocumentPage() {
                                 {doc.fileExtension || '--'}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-gray-700">
+                            <td className={`px-4 py-3 ${isAllowed ? 'text-gray-700' : 'text-gray-500'}`}>
                               {doc.fileSizeKB < 1024
                                 ? `${doc.fileSizeKB.toFixed(1)} KB`
                                 : `${(doc.fileSizeKB / 1024).toFixed(1)} KB`}
                             </td>
-                            <td className="px-4 py-3 text-gray-700">
+                            <td className={`px-4 py-3 ${isAllowed ? 'text-gray-700' : 'text-gray-500'}`}>
                               {doc.totalPages ? `${doc.totalPages} trang` : '--'}
                             </td>
-                            <td className="px-4 py-3 text-gray-700">
+                            <td className={`px-4 py-3 ${isAllowed ? 'text-gray-700' : 'text-gray-500'}`}>
                               {doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString('en-GB').replace(/\//g, '/') : '--'}
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
