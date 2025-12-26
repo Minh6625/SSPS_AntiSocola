@@ -61,22 +61,41 @@ export default function PrintLogsPage() {
     setIsLoading(true);
     setError('');
     try {
+      // Format dates for API (yyyy-MM-dd HH:mm:ss)
+      const formattedFilters = { ...filters };
+      if (formattedFilters.startDate) {
+        // Convert from datetime-local format to API format
+        formattedFilters.startDate = formattedFilters.startDate.replace('T', ' ');
+        if (!formattedFilters.startDate.includes(':00:00')) {
+          formattedFilters.startDate = formattedFilters.startDate.slice(0, 16).replace('T', ' ') + ':00';
+        }
+      }
+      if (formattedFilters.endDate) {
+        formattedFilters.endDate = formattedFilters.endDate.replace('T', ' ');
+        if (!formattedFilters.endDate.includes(':00:00')) {
+          formattedFilters.endDate = formattedFilters.endDate.slice(0, 16).replace('T', ' ') + ':00';
+        }
+      }
+
       const [logsData, statsData] = await Promise.all([
         printLogService.getPrintLogs({
-          ...filters,
+          ...formattedFilters,
           page: currentPage,
           size: pageSize,
         }),
-        printLogService.getPrintLogStats(filters),
+        printLogService.getPrintLogStats(formattedFilters),
       ]);
       
-      setLogs(logsData.content);
-      setTotalPages(logsData.totalPages);
-      setTotalElements(logsData.totalElements);
+      setLogs(logsData.content || []);
+      setTotalPages(logsData.totalPages || 0);
+      setTotalElements(logsData.totalElements || 0);
       setStats(statsData);
-    } catch (err) {
-      setError('Không thể tải dữ liệu. Vui lòng thử lại.');
-      console.error(err);
+    } catch (err: any) {
+      console.error('Error loading print logs:', err);
+      setError(err?.response?.data?.message || err?.message || 'Không thể tải dữ liệu. Vui lòng thử lại.');
+      setLogs([]);
+      setTotalPages(0);
+      setTotalElements(0);
     } finally {
       setIsLoading(false);
     }
@@ -202,8 +221,8 @@ export default function PrintLogsPage() {
               <p className="text-xl font-bold text-green-600">{stats.completedLogs}</p>
             </div>
             <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-red-500">
-              <p className="text-xs text-gray-500">Thất bại</p>
-              <p className="text-xl font-bold text-red-600">{stats.failedLogs}</p>
+              <p className="text-xs text-gray-500">Đã hủy</p>
+              <p className="text-xl font-bold text-red-600">{stats.cancelledLogs}</p>
             </div>
             <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-yellow-500">
               <p className="text-xs text-gray-500">Đang chờ</p>
@@ -268,7 +287,7 @@ export default function PrintLogsPage() {
                 <option value="">Tất cả trạng thái</option>
                 <option value="Pending">Đang chờ</option>
                 <option value="Printing">Đang in</option>
-                <option value="Success">Hoàn thành</option>
+                <option value="Completed">Hoàn thành</option>
                 <option value="Failed">Thất bại</option>
                 <option value="Cancelled">Đã hủy</option>
               </select>
@@ -291,8 +310,8 @@ export default function PrintLogsPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">Từ ngày</label>
               <input
                 type="datetime-local"
-                value={tempFilters.startDate || ''}
-                onChange={(e) => setTempFilters({ ...tempFilters, startDate: e.target.value ? e.target.value + ':00' : '' })}
+                value={tempFilters.startDate?.replace(' ', 'T').slice(0, 16) || ''}
+                onChange={(e) => setTempFilters({ ...tempFilters, startDate: e.target.value ? e.target.value.replace('T', ' ') + ':00' : '' })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
@@ -302,8 +321,8 @@ export default function PrintLogsPage() {
               <label className="block text-xs font-medium text-gray-600 mb-1">Đến ngày</label>
               <input
                 type="datetime-local"
-                value={tempFilters.endDate || ''}
-                onChange={(e) => setTempFilters({ ...tempFilters, endDate: e.target.value ? e.target.value + ':00' : '' })}
+                value={tempFilters.endDate?.replace(' ', 'T').slice(0, 16) || ''}
+                onChange={(e) => setTempFilters({ ...tempFilters, endDate: e.target.value ? e.target.value.replace('T', ' ') + ':00' : '' })}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
@@ -380,64 +399,64 @@ export default function PrintLogsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">ID</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Sinh viên</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Tài liệu</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Máy in</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Khổ giấy</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Số trang</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Thời gian</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Thời lượng</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Trạng thái</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-600">Chi tiết</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-600">ID</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-600">Sinh viên</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-600">Tài liệu</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-600">Máy in</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-600">Khổ giấy</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-600">Số trang</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-600">Thời gian</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-600">Thời lượng</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-600">Trạng thái</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-600">Chi tiết</th>
                   </tr>
                 </thead>
                 <tbody>
                   {logs.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
+                      <td colSpan={10} className="px-2 py-12 text-center text-gray-500">
                         Không có dữ liệu nhật ký in
                       </td>
                     </tr>
                   ) : (
                     logs.map((log) => (
                       <tr key={log.logId} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="px-4 py-3 text-gray-600">#{log.logId}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-2 text-gray-600">#{log.logId}</td>
+                        <td className="px-2 py-2">
                           <div>
                             <p className="font-medium text-gray-800">{log.studentName || log.studentId}</p>
                             <p className="text-xs text-gray-500">{log.studentEmail}</p>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <p className="text-gray-700 truncate max-w-[180px]" title={log.documentName}>
+                        <td className="px-2 py-2">
+                          <p className="text-gray-700 truncate max-w-[140px]" title={log.documentName}>
                             {log.documentName}
                           </p>
                           <p className="text-xs text-gray-400">{log.fileType?.toUpperCase()}</p>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-2">
                           <p className="text-gray-700">{log.printerName || log.printerId}</p>
                           <p className="text-xs text-gray-400">{log.printerLocation}</p>
                         </td>
-                        <td className="px-4 py-3 text-gray-600">{log.paperSize}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-2 text-gray-600">{log.paperSize}</td>
+                        <td className="px-2 py-2">
                           <p className="text-gray-800 font-medium">{log.pagesPrinted}</p>
                           <p className="text-xs text-gray-400">A4: {log.a4EquivalentUsed}</p>
                         </td>
-                        <td className="px-4 py-3 text-gray-600 text-xs">{formatDate(log.printTime)}</td>
-                        <td className="px-4 py-3 text-gray-600">{formatDuration(log.durationSeconds)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(log.status)}`}>
+                        <td className="px-2 py-2 text-gray-600">{formatDate(log.printTime)}</td>
+                        <td className="px-2 py-2 text-gray-600">{formatDuration(log.durationSeconds)}</td>
+                        <td className="px-2 py-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(log.status)}`}>
                             {getStatusDisplay(log.status)}
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-2 py-2">
                           <button
                             onClick={() => setSelectedLog(log)}
-                            className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                            className="text-indigo-600 hover:text-indigo-800 text-xs font-medium"
                           >
                             Xem
                           </button>

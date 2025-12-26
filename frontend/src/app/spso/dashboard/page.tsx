@@ -130,8 +130,8 @@ export default function SPSODashboard() {
           <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-red-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Thất bại</p>
-                <p className="text-3xl font-bold text-gray-800 mt-1">{stats?.failedLogs || 0}</p>
+                <p className="text-gray-500 text-sm">Đã hủy</p>
+                <p className="text-3xl font-bold text-gray-800 mt-1">{stats?.cancelledLogs || 0}</p>
               </div>
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
                 <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

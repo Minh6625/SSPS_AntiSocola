@@ -16,22 +16,35 @@ public interface PrintLogRepository extends JpaRepository<PrintLog, Integer> {
     
     /**
      * Tìm logs với filters và pagination
+     * Note: Sử dụng native query để tránh lỗi PostgreSQL với null parameters
      */
-    @Query("SELECT pl FROM PrintLog pl " +
-           "LEFT JOIN FETCH pl.student s " +
-           "LEFT JOIN FETCH pl.printer p " +
-           "WHERE (:studentSearch IS NULL OR " +
-           "       pl.studentId = :studentSearch OR " +
-           "       LOWER(s.fullName) LIKE LOWER(CONCAT('%', :studentSearch, '%')) OR " +
-           "       LOWER(s.email) LIKE LOWER(CONCAT('%', :studentSearch, '%'))) " +
-           "AND (:printerId IS NULL OR pl.printerId = :printerId) " +
-           "AND (:status IS NULL OR pl.status = :status) " +
-           "AND (:startDate IS NULL OR pl.printTime >= :startDate) " +
-           "AND (:endDate IS NULL OR pl.printTime <= :endDate) " +
-           "AND (:documentName IS NULL OR LOWER(pl.documentName) LIKE LOWER(CONCAT('%', :documentName, '%')))")
+    @Query(value = "SELECT pl.* FROM PrintLogs pl " +
+           "LEFT JOIN Users s ON s.UserID = pl.StudentID " +
+           "WHERE (CAST(:studentSearch AS VARCHAR) IS NULL OR " +
+           "       pl.StudentID = CAST(:studentSearch AS VARCHAR) OR " +
+           "       LOWER(s.FullName) LIKE LOWER(CONCAT('%', CAST(:studentSearch AS VARCHAR), '%')) OR " +
+           "       LOWER(s.Email) LIKE LOWER(CONCAT('%', CAST(:studentSearch AS VARCHAR), '%'))) " +
+           "AND (CAST(:printerId AS BIGINT) IS NULL OR pl.PrinterID = CAST(:printerId AS BIGINT)) " +
+           "AND (CAST(:status AS VARCHAR) IS NULL OR pl.Status = CAST(:status AS VARCHAR)) " +
+           "AND (CAST(:startDate AS TIMESTAMP) IS NULL OR pl.PrintTime >= CAST(:startDate AS TIMESTAMP)) " +
+           "AND (CAST(:endDate AS TIMESTAMP) IS NULL OR pl.PrintTime <= CAST(:endDate AS TIMESTAMP)) " +
+           "AND (CAST(:documentName AS VARCHAR) IS NULL OR LOWER(pl.DocumentName) LIKE LOWER(CONCAT('%', CAST(:documentName AS VARCHAR), '%'))) " +
+           "ORDER BY pl.PrintTime DESC",
+           countQuery = "SELECT COUNT(*) FROM PrintLogs pl " +
+           "LEFT JOIN Users s ON s.UserID = pl.StudentID " +
+           "WHERE (CAST(:studentSearch AS VARCHAR) IS NULL OR " +
+           "       pl.StudentID = CAST(:studentSearch AS VARCHAR) OR " +
+           "       LOWER(s.FullName) LIKE LOWER(CONCAT('%', CAST(:studentSearch AS VARCHAR), '%')) OR " +
+           "       LOWER(s.Email) LIKE LOWER(CONCAT('%', CAST(:studentSearch AS VARCHAR), '%'))) " +
+           "AND (CAST(:printerId AS BIGINT) IS NULL OR pl.PrinterID = CAST(:printerId AS BIGINT)) " +
+           "AND (CAST(:status AS VARCHAR) IS NULL OR pl.Status = CAST(:status AS VARCHAR)) " +
+           "AND (CAST(:startDate AS TIMESTAMP) IS NULL OR pl.PrintTime >= CAST(:startDate AS TIMESTAMP)) " +
+           "AND (CAST(:endDate AS TIMESTAMP) IS NULL OR pl.PrintTime <= CAST(:endDate AS TIMESTAMP)) " +
+           "AND (CAST(:documentName AS VARCHAR) IS NULL OR LOWER(pl.DocumentName) LIKE LOWER(CONCAT('%', CAST(:documentName AS VARCHAR), '%')))",
+           nativeQuery = true)
     Page<PrintLog> findLogsWithFilters(
         @Param("studentSearch") String studentSearch,
-        @Param("printerId") String printerId, 
+        @Param("printerId") Long printerId, 
         @Param("status") String status,
         @Param("startDate") LocalDateTime startDate,
         @Param("endDate") LocalDateTime endDate,
@@ -42,20 +55,21 @@ public interface PrintLogRepository extends JpaRepository<PrintLog, Integer> {
     /**
      * Đếm số lượng logs với filters (cho export)
      */
-    @Query("SELECT COUNT(pl) FROM PrintLog pl " +
-           "LEFT JOIN pl.student s " +
-           "WHERE (:studentSearch IS NULL OR " +
-           "       pl.studentId = :studentSearch OR " +
-           "       LOWER(s.fullName) LIKE LOWER(CONCAT('%', :studentSearch, '%')) OR " +
-           "       LOWER(s.email) LIKE LOWER(CONCAT('%', :studentSearch, '%'))) " +
-           "AND (:printerId IS NULL OR pl.printerId = :printerId) " +
-           "AND (:status IS NULL OR pl.status = :status) " +
-           "AND (:startDate IS NULL OR pl.printTime >= :startDate) " +
-           "AND (:endDate IS NULL OR pl.printTime <= :endDate) " +
-           "AND (:documentName IS NULL OR LOWER(pl.documentName) LIKE LOWER(CONCAT('%', :documentName, '%')))")
+    @Query(value = "SELECT COUNT(*) FROM PrintLogs pl " +
+           "LEFT JOIN Users s ON s.UserID = pl.StudentID " +
+           "WHERE (CAST(:studentSearch AS VARCHAR) IS NULL OR " +
+           "       pl.StudentID = CAST(:studentSearch AS VARCHAR) OR " +
+           "       LOWER(s.FullName) LIKE LOWER(CONCAT('%', CAST(:studentSearch AS VARCHAR), '%')) OR " +
+           "       LOWER(s.Email) LIKE LOWER(CONCAT('%', CAST(:studentSearch AS VARCHAR), '%'))) " +
+           "AND (CAST(:printerId AS BIGINT) IS NULL OR pl.PrinterID = CAST(:printerId AS BIGINT)) " +
+           "AND (CAST(:status AS VARCHAR) IS NULL OR pl.Status = CAST(:status AS VARCHAR)) " +
+           "AND (CAST(:startDate AS TIMESTAMP) IS NULL OR pl.PrintTime >= CAST(:startDate AS TIMESTAMP)) " +
+           "AND (CAST(:endDate AS TIMESTAMP) IS NULL OR pl.PrintTime <= CAST(:endDate AS TIMESTAMP)) " +
+           "AND (CAST(:documentName AS VARCHAR) IS NULL OR LOWER(pl.DocumentName) LIKE LOWER(CONCAT('%', CAST(:documentName AS VARCHAR), '%')))",
+           nativeQuery = true)
     Long countLogsWithFilters(
         @Param("studentSearch") String studentSearch,
-        @Param("printerId") String printerId,
+        @Param("printerId") Long printerId,
         @Param("status") String status, 
         @Param("startDate") LocalDateTime startDate,
         @Param("endDate") LocalDateTime endDate,
@@ -65,22 +79,22 @@ public interface PrintLogRepository extends JpaRepository<PrintLog, Integer> {
     /**
      * Lấy logs cho export (không pagination)
      */
-    @Query("SELECT pl FROM PrintLog pl " +
-           "LEFT JOIN FETCH pl.student s " +
-           "LEFT JOIN FETCH pl.printer p " +
-           "WHERE (:studentSearch IS NULL OR " +
-           "       pl.studentId = :studentSearch OR " +
-           "       LOWER(s.fullName) LIKE LOWER(CONCAT('%', :studentSearch, '%')) OR " +
-           "       LOWER(s.email) LIKE LOWER(CONCAT('%', :studentSearch, '%'))) " +
-           "AND (:printerId IS NULL OR pl.printerId = :printerId) " +
-           "AND (:status IS NULL OR pl.status = :status) " +
-           "AND (:startDate IS NULL OR pl.printTime >= :startDate) " +
-           "AND (:endDate IS NULL OR pl.printTime <= :endDate) " +
-           "AND (:documentName IS NULL OR LOWER(pl.documentName) LIKE LOWER(CONCAT('%', :documentName, '%'))) " +
-           "ORDER BY pl.printTime DESC")
+    @Query(value = "SELECT pl.* FROM PrintLogs pl " +
+           "LEFT JOIN Users s ON s.UserID = pl.StudentID " +
+           "WHERE (CAST(:studentSearch AS VARCHAR) IS NULL OR " +
+           "       pl.StudentID = CAST(:studentSearch AS VARCHAR) OR " +
+           "       LOWER(s.FullName) LIKE LOWER(CONCAT('%', CAST(:studentSearch AS VARCHAR), '%')) OR " +
+           "       LOWER(s.Email) LIKE LOWER(CONCAT('%', CAST(:studentSearch AS VARCHAR), '%'))) " +
+           "AND (CAST(:printerId AS BIGINT) IS NULL OR pl.PrinterID = CAST(:printerId AS BIGINT)) " +
+           "AND (CAST(:status AS VARCHAR) IS NULL OR pl.Status = CAST(:status AS VARCHAR)) " +
+           "AND (CAST(:startDate AS TIMESTAMP) IS NULL OR pl.PrintTime >= CAST(:startDate AS TIMESTAMP)) " +
+           "AND (CAST(:endDate AS TIMESTAMP) IS NULL OR pl.PrintTime <= CAST(:endDate AS TIMESTAMP)) " +
+           "AND (CAST(:documentName AS VARCHAR) IS NULL OR LOWER(pl.DocumentName) LIKE LOWER(CONCAT('%', CAST(:documentName AS VARCHAR), '%'))) " +
+           "ORDER BY pl.PrintTime DESC",
+           nativeQuery = true)
     List<PrintLog> findLogsForExport(
         @Param("studentSearch") String studentSearch,
-        @Param("printerId") String printerId,
+        @Param("printerId") Long printerId,
         @Param("status") String status,
         @Param("startDate") LocalDateTime startDate,
         @Param("endDate") LocalDateTime endDate,
