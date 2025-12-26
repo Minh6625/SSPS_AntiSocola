@@ -85,6 +85,12 @@ public class PrintLogController {
         @RequestParam(defaultValue = "DESC") String sortDirection
     ) {
         try {
+            // Sanitize empty strings to null
+            studentSearch = (studentSearch != null && studentSearch.trim().isEmpty()) ? null : studentSearch;
+            printerId = (printerId != null && printerId.trim().isEmpty()) ? null : printerId;
+            status = (status != null && status.trim().isEmpty()) ? null : status;
+            documentName = (documentName != null && documentName.trim().isEmpty()) ? null : documentName;
+            
             PrintLogFilterDTO filter = new PrintLogFilterDTO(
                 studentSearch, printerId, status, startDate, endDate, 
                 documentName, page, size, sortBy, sortDirection
@@ -190,6 +196,12 @@ public class PrintLogController {
         @RequestParam(required = false) String documentName
     ) {
         try {
+            // Sanitize empty strings to null
+            studentSearch = (studentSearch != null && studentSearch.trim().isEmpty()) ? null : studentSearch;
+            printerId = (printerId != null && printerId.trim().isEmpty()) ? null : printerId;
+            status = (status != null && status.trim().isEmpty()) ? null : status;
+            documentName = (documentName != null && documentName.trim().isEmpty()) ? null : documentName;
+            
             PrintLogFilterDTO filter = new PrintLogFilterDTO(
                 studentSearch, printerId, status, startDate, endDate, 
                 documentName, 0, 20, "printTime", "DESC"
@@ -203,7 +215,8 @@ public class PrintLogController {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             log.error("Error getting print log stats", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            // Return empty stats instead of error
+            return ResponseEntity.ok(new PrintLogStatsDTO(0L, 0L, 0L, 0L, 0L, 0L, 0, 0, 0));
         }
     }
     
