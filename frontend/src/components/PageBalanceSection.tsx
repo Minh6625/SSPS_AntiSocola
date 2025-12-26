@@ -239,13 +239,7 @@ const PageBalanceSection: React.FC = () => {
       setShowPurchaseModal(false);
       setShowQRModal(true);
       
-      // Connect WebSocket
-      const studentId = getStudentId();
-      if (studentId) {
-        connectWebSocket(studentId);
-      }
-      
-      // Start polling as fallback
+      // Chỉ dùng polling (WebSocket chưa được cấu hình trên Heroku)
       startPolling(payment.paymentCode);
       
     } catch (err) {
@@ -317,29 +311,41 @@ const PageBalanceSection: React.FC = () => {
       {/* Balance Cards */}
       {balance && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* A4 Balance Card */}
-            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Trang A4</h3>
-                <div className="text-3xl">📄</div>
+            <div className="bg-white rounded-lg shadow-sm p-4 border-t-4 border-blue-500">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-600 mb-1">Trang A4</h3>
+                  <div className="text-3xl font-bold text-blue-600">{balance.pagesA4}</div>
+                  <p className="text-gray-500 text-xs mt-1">trang</p>
+                </div>
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
               </div>
-              <div className="text-4xl font-bold text-blue-600 mb-2">{balance.pagesA4}</div>
-              <p className="text-gray-600 text-sm mb-4">trang</p>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min((balance.pagesA4 / 100) * 100, 100)}%` }}></div>
+              <div className="w-full bg-gray-200 rounded-full h-1.5 mt-3">
+                <div className="bg-blue-500 h-1.5 rounded-full" style={{ width: `${Math.min((balance.pagesA4 / 100) * 100, 100)}%` }}></div>
               </div>
             </div>
 
             {/* Available for Print Card */}
-            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Có thể in</h3>
-                <div className="text-3xl">🖨️</div>
+            <div className="bg-white rounded-lg shadow-sm p-4 border-t-4 border-green-500">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-600 mb-1">Có thể in</h3>
+                  <div className="text-xl font-bold text-green-600">{balance.pagesA4} trang A4</div>
+                  <div className="text-sm font-medium text-green-600">hoặc {Math.floor(balance.pagesA4 / 2)} trang A3</div>
+                  <p className="text-gray-500 text-xs mt-1">1 trang A3 = 2 trang A4</p>
+                </div>
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                </div>
               </div>
-              <div className="text-2xl font-bold text-green-600 mb-1">{balance.pagesA4} trang A4</div>
-              <div className="text-lg font-semibold text-green-600 mb-2">hoặc {Math.floor(balance.pagesA4 / 2)} trang A3</div>
-              <p className="text-gray-600 text-xs">1 trang A3 = 2 trang A4</p>
             </div>
           </div>
 
@@ -441,37 +447,37 @@ const PageBalanceSection: React.FC = () => {
       {/* QR Code Payment Modal */}
       {showQRModal && currentPayment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full mx-4">
+          <div className="bg-white rounded-lg shadow-lg p-4 max-w-sm w-full mx-4">
             {paymentStatus === 'success' ? (
               // Success State
-              <div className="text-center py-8">
-                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-green-600 mb-2">Thanh toán thành công!</h3>
-                <p className="text-gray-600 mb-6">{successMessage}</p>
+                <h3 className="text-xl font-bold text-green-600 mb-2">Thanh toán thành công!</h3>
+                <p className="text-gray-600 text-sm mb-4">{successMessage}</p>
                 <button
                   onClick={handleCloseQRModal}
-                  className="px-8 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
                 >
                   Đóng
                 </button>
               </div>
             ) : paymentStatus === 'failed' ? (
               // Failed State
-              <div className="text-center py-8">
-                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-10 h-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-red-600 mb-2">Giao dịch thất bại</h3>
-                <p className="text-gray-600 mb-6">{error || 'Giao dịch đã hết hạn hoặc bị hủy.'}</p>
+                <h3 className="text-xl font-bold text-red-600 mb-2">Giao dịch thất bại</h3>
+                <p className="text-gray-600 text-sm mb-4">{error || 'Giao dịch đã hết hạn hoặc bị hủy.'}</p>
                 <button
                   onClick={handleCloseQRModal}
-                  className="px-8 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                  className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm"
                 >
                   Đóng
                 </button>
@@ -479,9 +485,9 @@ const PageBalanceSection: React.FC = () => {
             ) : (
               // Pending State - Show QR
               <>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-bold text-gray-900">Quét mã QR để thanh toán</h3>
-                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-base font-bold text-gray-900">Quét mã QR để thanh toán</h3>
+                  <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                     countdown > 60 ? 'bg-green-100 text-green-700' : 
                     countdown > 30 ? 'bg-yellow-100 text-yellow-700' : 
                     'bg-red-100 text-red-700'
@@ -491,61 +497,61 @@ const PageBalanceSection: React.FC = () => {
                 </div>
                 
                 {/* QR Code */}
-                <div className="flex justify-center mb-4">
+                <div className="flex justify-center mb-3">
                   <div className="relative">
                     <img
                       src={currentPayment.qrUrl}
                       alt="QR Code thanh toán"
-                      className="w-64 h-64 border-2 border-gray-200 rounded-lg"
+                      className="w-48 h-48 border border-gray-200 rounded-lg"
                     />
-                    <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white px-2 py-1 rounded text-xs">
+                    <div className="absolute -bottom-1 -right-1 bg-blue-600 text-white px-1.5 py-0.5 rounded text-xs">
                       SePay
                     </div>
                   </div>
                 </div>
 
                 {/* Payment Info */}
-                <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-700">Mã giao dịch:</span>
+                <div className="bg-blue-50 rounded-lg p-3 mb-3 text-sm">
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Mã giao dịch:</span>
                     <span className="font-bold text-blue-600">{currentPayment.paymentCode}</span>
                   </div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-700">Ngân hàng:</span>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Ngân hàng:</span>
                     <span className="font-semibold text-gray-900">{currentPayment.bankName}</span>
                   </div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-700">Số tài khoản:</span>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Số tài khoản:</span>
                     <span className="font-semibold text-gray-900">{currentPayment.bankAccount}</span>
                   </div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-700">Chủ tài khoản:</span>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Chủ tài khoản:</span>
                     <span className="font-semibold text-gray-900">{currentPayment.accountName}</span>
                   </div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-700">Số tiền:</span>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-gray-600">Số tiền:</span>
                     <span className="font-bold text-blue-600">{currentPayment.amount.toLocaleString('vi-VN')} VND</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-700">Nội dung CK:</span>
+                    <span className="text-gray-600">Nội dung CK:</span>
                     <span className="font-semibold text-orange-600">{currentPayment.paymentCode}</span>
                   </div>
                 </div>
 
                 {/* Status indicator */}
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="animate-pulse w-3 h-3 bg-yellow-500 rounded-full"></div>
-                    <p className="text-sm text-yellow-800">
+                    <div className="animate-pulse w-2 h-2 bg-yellow-500 rounded-full"></div>
+                    <p className="text-xs text-yellow-800">
                       Đang chờ thanh toán... Hệ thống sẽ tự động xác nhận khi nhận được tiền.
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <button
                     onClick={handleCloseQRModal}
-                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                    className="flex-1 px-3 py-1.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm"
                   >
                     Hủy giao dịch
                   </button>
@@ -566,7 +572,7 @@ const PageBalanceSection: React.FC = () => {
                         setError(err instanceof Error ? err.message : 'Test thanh toán thất bại');
                       }
                     }}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    className="flex-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
                   >
                     ✓ Test thanh toán
                   </button>
