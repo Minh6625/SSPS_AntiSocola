@@ -58,22 +58,27 @@ const PageBalanceSection: React.FC = () => {
   // Countdown timer for QR modal
   useEffect(() => {
     if (showQRModal && currentPayment && paymentStatus === 'pending') {
-      const expiresAt = new Date(currentPayment.expiresAt).getTime();
-      
+      // Đảm bảo parse đúng UTC time từ server
+      let expiresAtStr = currentPayment.expiresAt;
+      if (!expiresAtStr.endsWith('Z') && !expiresAtStr.includes('+')) {
+        expiresAtStr += 'Z'; // Thêm Z để parse như UTC
+      }
+      const expiresAt = new Date(expiresAtStr).getTime();
+
       const updateCountdown = () => {
         const now = Date.now();
         const remaining = Math.max(0, Math.floor((expiresAt - now) / 1000));
         setCountdown(remaining);
-        
+
         if (remaining <= 0) {
           setPaymentStatus('failed');
           setError('Giao dịch đã hết hạn. Vui lòng tạo giao dịch mới.');
         }
       };
-      
+
       updateCountdown();
       const timer = setInterval(updateCountdown, 1000);
-      
+
       return () => clearInterval(timer);
     }
   }, [showQRModal, currentPayment, paymentStatus]);
