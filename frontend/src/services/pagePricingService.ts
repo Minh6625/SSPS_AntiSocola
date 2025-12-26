@@ -11,7 +11,7 @@ export const pagePricingService = {
    * Lấy tất cả giá đang active
    */
   async getAllPricing(): Promise<PagePricing[]> {
-    const response = await axios.get<PagePricing[]>('/api/page-pricing');
+    const response = await axios.get<PagePricing[]>('/page-pricing');
     return response.data;
   },
 
@@ -19,7 +19,7 @@ export const pagePricingService = {
    * Lấy giá theo paper size
    */
   async getPricing(paperSize: string): Promise<PagePricing> {
-    const response = await axios.get<PagePricing>(`/api/page-pricing/${paperSize}`);
+    const response = await axios.get<PagePricing>(`/page-pricing/${paperSize}`);
     return response.data;
   },
 
