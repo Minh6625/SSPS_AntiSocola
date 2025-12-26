@@ -48,4 +48,10 @@ public interface PageTransactionRepository extends JpaRepository<PageTransaction
                                                            @Param("startDate") LocalDateTime startDate,
                                                            @Param("endDate") LocalDateTime endDate,
                                                            Pageable pageable);
+    
+    /**
+     * Đếm số lượng giao dịch theo học kỳ và loại giao dịch
+     * Dùng để kiểm tra đã cấp phát cho học kỳ này chưa (idempotent check)
+     */
+    long countBySemesterAndTransactionType(String semester, String transactionType);
 }

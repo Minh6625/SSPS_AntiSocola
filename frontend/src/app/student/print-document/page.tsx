@@ -24,17 +24,22 @@ export default function PrintDocumentPage() {
   const [sortBy, setSortBy] = useState('Mặc định');
   const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
   const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
+  const [maxFileSizeMB, setMaxFileSizeMB] = useState<number>(50);
 
-  // Load allowed file extensions from SystemConfig
+  // Load allowed file extensions and max file size from SystemConfig
   useEffect(() => {
     const loadAllowedExtensions = async () => {
       try {
         const settings = await systemSettingsService.getAllSettings();
         const allowedExts = settings.configs['allowed_file_extensions']?.configValue || 'pdf,docx,pptx,xlsx';
         setAllowedExtensions(allowedExts.toLowerCase().split(',').map((ext: string) => ext.trim()));
+        
+        const maxSize = parseInt(settings.configs['max_file_size_mb']?.configValue || '50');
+        setMaxFileSizeMB(maxSize);
       } catch (error) {
         console.error('Failed to load allowed extensions:', error);
         setAllowedExtensions(['pdf', 'docx', 'pptx', 'xlsx']); // Fallback
+        setMaxFileSizeMB(50);
       }
     };
     loadAllowedExtensions();
@@ -43,7 +48,32 @@ export default function PrintDocumentPage() {
   // Check if document extension is allowed
   const isDocumentAllowed = (doc: DocumentResponse): boolean => {
     if (allowedExtensions.length === 0) return true; // Not loaded yet
-    return allowedExtensions.includes(doc.fileExtension?.toLowerCase() || '');
+    
+    // Check extension
+    const extensionAllowed = allowedExtensions.includes(doc.fileExtension?.toLowerCase() || '');
+    if (!extensionAllowed) return false;
+    
+    // Check file size
+    const fileSizeMB = doc.fileSizeKB / 1024;
+    const sizeAllowed = fileSizeMB <= maxFileSizeMB;
+    
+    return extensionAllowed && sizeAllowed;
+  };
+  
+  // Get reason why document is not allowed
+  const getDisallowReason = (doc: DocumentResponse): string => {
+    const extensionAllowed = allowedExtensions.includes(doc.fileExtension?.toLowerCase() || '');
+    const fileSizeMB = doc.fileSizeKB / 1024;
+    const sizeAllowed = fileSizeMB <= maxFileSizeMB;
+    
+    if (!extensionAllowed && !sizeAllowed) {
+      return `Loại file không được phép & Quá lớn (${fileSizeMB.toFixed(1)}MB > ${maxFileSizeMB}MB)`;
+    } else if (!extensionAllowed) {
+      return 'Loại file không được phép';
+    } else if (!sizeAllowed) {
+      return `Quá lớn (${fileSizeMB.toFixed(1)}MB > ${maxFileSizeMB}MB)`;
+    }
+    return '';
   };
 
   // Fetch documents khi user click tab hoặc change filter
@@ -125,7 +155,8 @@ export default function PrintDocumentPage() {
   const toggleSelectDocument = (documentId: number) => {
     const doc = documents.find(d => d.id === documentId);
     if (doc && !isDocumentAllowed(doc)) {
-      alert(`File ${doc.fileExtension?.toUpperCase()} không còn được phép in. Các loại được phép: ${allowedExtensions.join(', ').toUpperCase()}`);
+      const reason = getDisallowReason(doc);
+      alert(`Không thể chọn file này: ${reason}`);
       return;
     }
     
@@ -504,7 +535,7 @@ export default function PrintDocumentPage() {
                                   {doc.fileName || 'Không tên'}
                                 </span>
                                 {!isAllowed && (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded" title={getDisallowReason(doc)}>
                                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" clipRule="evenodd"/>
                                     </svg>
@@ -531,7 +562,7 @@ export default function PrintDocumentPage() {
                             <td className={`px-4 py-3 ${isAllowed ? 'text-gray-700' : 'text-gray-500'}`}>
                               {doc.fileSizeKB < 1024
                                 ? `${doc.fileSizeKB.toFixed(1)} KB`
-                                : `${(doc.fileSizeKB / 1024).toFixed(1)} KB`}
+                                : `${(doc.fileSizeKB / 1024).toFixed(1)} MB`}
                             </td>
                             <td className={`px-4 py-3 ${isAllowed ? 'text-gray-700' : 'text-gray-500'}`}>
                               {doc.totalPages ? `${doc.totalPages} trang` : '--'}

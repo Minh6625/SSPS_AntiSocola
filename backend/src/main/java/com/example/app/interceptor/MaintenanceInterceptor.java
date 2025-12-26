@@ -43,7 +43,11 @@ public class MaintenanceInterceptor implements HandlerInterceptor {
         
         // Kiểm tra role
         boolean isStudent = authentication.getAuthorities().stream()
-            .anyMatch(auth -> auth.getAuthority().equals("ROLE_Student"));
+            .anyMatch(auth -> {
+                String authority = auth.getAuthority();
+                // Check both "Student" and "ROLE_Student"
+                return "Student".equals(authority) || "ROLE_Student".equals(authority);
+            });
         
         log.debug("User: {}, isStudent: {}, authorities: {}", 
             authentication.getName(), isStudent, authentication.getAuthorities());

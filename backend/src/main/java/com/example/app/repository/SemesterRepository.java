@@ -46,4 +46,16 @@ public interface SemesterRepository extends JpaRepository<Semester, Integer> {
      * Kiểm tra xem có học kỳ nào trùng code không
      */
     boolean existsBySemesterCode(String semesterCode);
+    
+    /**
+     * Tìm học kỳ theo ngày cấp phát trang
+     */
+    List<Semester> findByPageAllocationDate(java.time.LocalDate pageAllocationDate);
+    
+    /**
+     * Tìm học kỳ hiện tại (alias cho findByIsCurrentTrue)
+     */
+    default Optional<Semester> findByIsCurrent() {
+        return findByIsCurrentTrue();
+    }
 }

@@ -50,6 +50,9 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
 
     @Value("${print.queue.mock-print-duration-seconds:30}")
     private int mockPrintDuration;
+    
+    @Value("${print.queue.printing-timeout-minutes:10}")
+    private int printingTimeoutMinutes;
 
     /**
      * Scheduled job - chạy mỗi 5 giây để quét job pending
@@ -65,6 +68,9 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
         }
 
         log.info("Scanning for pending print jobs...");
+        
+        // Kiểm tra và xử lý các job "Printing" bị timeout
+        checkAndHandleStuckJobs();
         
         // Kiểm tra xem có job nào đang Printing không
         List<PrintJob> printingJobs = printJobRepository.findByJobStatus("Printing");
@@ -95,6 +101,65 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
         }
     }
 
+    /**
+     * Kiểm tra và xử lý các job "Printing" bị kẹt quá lâu
+     * Nếu job ở trạng thái "Printing" quá X phút, tự động chuyển sang "Failed"
+     */
+    private void checkAndHandleStuckJobs() {
+        List<PrintJob> printingJobs = printJobRepository.findByJobStatus("Printing");
+        
+        if (printingJobs.isEmpty()) {
+            return;
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime timeoutThreshold = now.minusMinutes(printingTimeoutMinutes);
+        
+        for (PrintJob job : printingJobs) {
+            LocalDateTime startedAt = job.getStartedAt();
+            
+            // Nếu không có StartedAt, dùng SubmittedAt
+            if (startedAt == null) {
+                startedAt = job.getSubmittedAt();
+            }
+            
+            // Nếu vẫn null, skip
+            if (startedAt == null) {
+                log.warn("Job {} has no StartedAt or SubmittedAt timestamp. Skipping timeout check.", job.getJobId());
+                continue;
+            }
+            
+            // Kiểm tra timeout
+            if (startedAt.isBefore(timeoutThreshold)) {
+                log.warn("Job {} has been printing for more than {} minutes. Marking as Failed.", 
+                    job.getJobId(), printingTimeoutMinutes);
+                
+                // Lấy printer để release reserves
+                try {
+                    Printer printer = printerRepository.findById(job.getPrinterId()).orElse(null);
+                    
+                    if (printer != null) {
+                        // Release reserves
+                        int sheetsUsed = job.getTotalSheetsUsed() * job.getNumCopies();
+                        int pagesUsed = job.getTotalPagesToPrint() * job.getNumCopies();
+                        
+                        printer.releasePaperReserve(job.getPaperSize(), sheetsUsed);
+                        printer.releaseTonerReserve(pagesUsed, job.getColorMode());
+                        printerRepository.save(printer);
+                        
+                        log.info("Released reserves for stuck job {}", job.getJobId());
+                    }
+                } catch (Exception e) {
+                    log.error("Error releasing reserves for stuck job {}: {}", job.getJobId(), e.getMessage());
+                }
+                
+                // Update job status
+                updateJobStatus(job, "Failed", 
+                    String.format("Timeout: Job bị kẹt quá %d phút", printingTimeoutMinutes));
+            }
+        }
+    }
+    
     /**
      * Gửi job đến máy in thật
      */

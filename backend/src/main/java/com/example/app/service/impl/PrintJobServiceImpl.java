@@ -86,6 +86,31 @@ public class PrintJobServiceImpl implements IPrintJobService {
         
         log.info("Document validated: {} pages, extension: {}", document.getTotalPages(), fileExtension);
         
+        // 1.6. Validate file size against current SystemConfig
+        log.info("Step 1.6: Validating file size against SystemConfig");
+        int maxFileSizeMB = systemConfigRepository.findByConfigKey("max_file_size_mb")
+            .map(config -> {
+                try {
+                    return Integer.parseInt(config.getConfigValue());
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid max_file_size_mb value: {}. Using default 50", config.getConfigValue());
+                    return 50;
+                }
+            })
+            .orElse(50); // Default fallback
+        
+        double fileSizeMB = document.getFileSizeKB().doubleValue() / 1024.0;
+        if (fileSizeMB > maxFileSizeMB) {
+            log.warn("Document {} size {:.2f}MB exceeds max allowed {}MB", 
+                document.getDocumentId(), fileSizeMB, maxFileSizeMB);
+            throw new BusinessException(
+                String.format("File quá lớn (%.1f MB). Kích thước tối đa hiện tại: %d MB", 
+                    fileSizeMB, maxFileSizeMB)
+            );
+        }
+        
+        log.info("File size validated: {:.2f}MB (max: {}MB)", fileSizeMB, maxFileSizeMB);
+        
         // 2. Validate printer
         log.info("Step 2: Validating printer {}", request.getPrinterId());
         Printer printer = printerRepository.findById(request.getPrinterId())
