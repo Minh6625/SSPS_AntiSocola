@@ -206,11 +206,34 @@ export default function StudentDashboard() {
             </div>
             <div className="h-64 flex items-end justify-between gap-4 px-4">
               {weeklyStats.length > 0 ? weeklyStats.map((stat, index) => (
-                <div key={index} className="flex-1 flex flex-col items-center gap-2">
-                  <div className="w-full flex flex-col items-center gap-1" style={{ height: '200px' }}>
-                    <div className="w-full flex flex-col justify-end h-full gap-1">
-                      <div className="w-full bg-green-500 rounded-t-sm transition-all" style={{ height: `${(stat.success / maxBarValue) * 100}%`, minHeight: stat.success > 0 ? '4px' : '0' }}></div>
-                      <div className="w-full bg-red-400 rounded-b-sm transition-all" style={{ height: `${(stat.failed / maxBarValue) * 100}%`, minHeight: stat.failed > 0 ? '4px' : '0' }}></div>
+                <div key={index} className="flex-1 flex flex-col items-center gap-2 group relative">
+                  {/* Tooltip on hover */}
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap shadow-lg">
+                    <div className="font-semibold mb-1">{stat.day}</div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 bg-green-400 rounded-sm"></span>
+                      <span>Thành công: {stat.success}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 bg-red-400 rounded-sm"></span>
+                      <span>Thất bại: {stat.failed}</span>
+                    </div>
+                    <div className="border-t border-gray-600 mt-1 pt-1">
+                      Tổng: {stat.success + stat.failed}
+                    </div>
+                    {/* Arrow */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                  
+                  {/* Number label on top of bar */}
+                  {(stat.success + stat.failed) > 0 && (
+                    <span className="text-xs font-semibold text-gray-700 mb-1">{stat.success + stat.failed}</span>
+                  )}
+                  
+                  <div className="w-full flex flex-col items-center gap-1" style={{ height: '180px' }}>
+                    <div className="w-full flex flex-col justify-end h-full gap-0.5 cursor-pointer">
+                      <div className="w-full bg-green-500 rounded-t-sm transition-all hover:bg-green-600" style={{ height: `${(stat.success / maxBarValue) * 100}%`, minHeight: stat.success > 0 ? '4px' : '0' }}></div>
+                      <div className="w-full bg-red-400 rounded-b-sm transition-all hover:bg-red-500" style={{ height: `${(stat.failed / maxBarValue) * 100}%`, minHeight: stat.failed > 0 ? '4px' : '0' }}></div>
                     </div>
                   </div>
                   <span className="text-xs text-gray-500 font-medium">{stat.day}</span>
@@ -233,14 +256,14 @@ export default function StudentDashboard() {
             </div>
             <div className="flex flex-col items-center">
               {/* Pie Chart with labels */}
-              <div className="relative w-full flex justify-center mb-8">
+              <div className="flex items-center justify-center gap-6 mb-8 w-full">
                 {/* Success Label - Left side */}
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-green-600 font-medium">
+                <div className="text-sm text-green-600 font-medium whitespace-nowrap text-right min-w-[110px]">
                   Thành công: {successPercent}%
                 </div>
                 
                 {/* Pie Chart */}
-                <svg className="w-40 h-40" viewBox="0 0 100 100">
+                <svg className="w-40 h-40 flex-shrink-0" viewBox="0 0 100 100">
                   {totalJobs === 0 || (successPercent === 0 && successRate.failed === 0) ? (
                     <circle cx="50" cy="50" r="45" fill="#e5e7eb" />
                   ) : successPercent === 100 ? (
@@ -259,7 +282,7 @@ export default function StudentDashboard() {
                 </svg>
                 
                 {/* Failed Label - Right side */}
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-red-500 font-medium">
+                <div className="text-sm text-red-500 font-medium whitespace-nowrap text-left min-w-[110px]">
                   Thất bại: {100 - successPercent}%
                 </div>
               </div>
