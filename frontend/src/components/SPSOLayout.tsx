@@ -50,6 +50,13 @@ const PrinterIcon = () => (
   </svg>
 );
 
+const LocationIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+    <circle cx="12" cy="10" r="3" />
+  </svg>
+);
+
 const UsersIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -113,6 +120,7 @@ export default function SPSOLayout({ children }: LayoutProps) {
     { name: 'Dashboard', icon: <DashboardIcon />, href: '/spso/dashboard' },
     { name: 'Nhật ký in', icon: <PrintLogIcon />, href: '/spso/print-logs' },
     { name: 'Quản lý máy in', icon: <PrinterIcon />, href: '/spso/printers' },
+    { name: 'Vị trí máy in', icon: <LocationIcon />, href: '/spso/locations' },
     { name: 'Quản lý tài khoản', icon: <UsersIcon />, href: '/spso/accounts' },
     { name: 'Báo cáo', icon: <ReportIcon />, href: '/spso/reports' },
     { name: 'Cài đặt hệ thống', icon: <SettingsIcon />, href: '/spso/settings' },

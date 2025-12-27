@@ -55,6 +55,9 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
 
     @Value("${print.queue.mock-print-duration-seconds:30}")
     private int mockPrintDuration;
+    
+    @Value("${print.queue.printing-timeout-minutes:10}")
+    private int printingTimeoutMinutes;
 
     /**
      * Scheduled job - chạy mỗi 5 giây để quét job pending
@@ -69,7 +72,10 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
             return;
         }
 
-        log.info("Scanning for pending print jobs...");
+        log.debug("Scanning for pending print jobs...");
+        
+        // Kiểm tra và xử lý các job "Printing" bị timeout
+        checkAndHandleStuckJobs();
         
         // Kiểm tra xem có job nào đang Printing không
         List<PrintJob> printingJobs = printJobRepository.findByJobStatus("Printing");
@@ -100,6 +106,65 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
         }
     }
 
+    /**
+     * Kiểm tra và xử lý các job "Printing" bị kẹt quá lâu
+     * Nếu job ở trạng thái "Printing" quá X phút, tự động chuyển sang "Failed"
+     */
+    private void checkAndHandleStuckJobs() {
+        List<PrintJob> printingJobs = printJobRepository.findByJobStatus("Printing");
+        
+        if (printingJobs.isEmpty()) {
+            return;
+        }
+        
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime timeoutThreshold = now.minusMinutes(printingTimeoutMinutes);
+        
+        for (PrintJob job : printingJobs) {
+            LocalDateTime startedAt = job.getStartedAt();
+            
+            // Nếu không có StartedAt, dùng SubmittedAt
+            if (startedAt == null) {
+                startedAt = job.getSubmittedAt();
+            }
+            
+            // Nếu vẫn null, skip
+            if (startedAt == null) {
+                log.warn("Job {} has no StartedAt or SubmittedAt timestamp. Skipping timeout check.", job.getJobId());
+                continue;
+            }
+            
+            // Kiểm tra timeout
+            if (startedAt.isBefore(timeoutThreshold)) {
+                log.warn("Job {} has been printing for more than {} minutes. Marking as Failed.", 
+                    job.getJobId(), printingTimeoutMinutes);
+                
+                // Lấy printer để release reserves
+                try {
+                    Printer printer = printerRepository.findById(job.getPrinterId()).orElse(null);
+                    
+                    if (printer != null) {
+                        // Release reserves
+                        int sheetsUsed = job.getTotalSheetsUsed() * job.getNumCopies();
+                        int pagesUsed = job.getTotalPagesToPrint() * job.getNumCopies();
+                        
+                        printer.releasePaperReserve(job.getPaperSize(), sheetsUsed);
+                        printer.releaseTonerReserve(pagesUsed, job.getColorMode());
+                        printerRepository.save(printer);
+                        
+                        log.info("Released reserves for stuck job {}", job.getJobId());
+                    }
+                } catch (Exception e) {
+                    log.error("Error releasing reserves for stuck job {}: {}", job.getJobId(), e.getMessage());
+                }
+                
+                // Update job status
+                updateJobStatus(job, "Failed", 
+                    String.format("Timeout: Job bị kẹt quá %d phút", printingTimeoutMinutes));
+            }
+        }
+    }
+    
     /**
      * Gửi job đến máy in thật
      */
@@ -241,18 +306,13 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
      * MOCK MODE: Nếu mock-mode=true, sẽ giả lập in thành công sau X giây
      */
     private boolean sendToPrinterViaNetwork(PrintJob job, Printer printer) {
-        // MOCK MODE: Giả lập in thành công
+        // MOCK MODE: Simulate printing
         if (mockMode) {
-            log.info("========== MOCK PRINTING MODE ==========");
-            log.info("Job {} will complete after {} seconds", job.getJobId(), mockPrintDuration);
+            log.info("Mock printing job {} (duration: {}s)", job.getJobId(), mockPrintDuration);
             
             try {
-                // Giả lập thời gian in
                 Thread.sleep(mockPrintDuration * 1000L);
-                
-                log.info("Job {} mock printing completed successfully!", job.getJobId());
-                return true; // Giả lập in thành công
-                
+                return true;
             } catch (InterruptedException e) {
                 log.error("Mock printing interrupted for job {}", job.getJobId());
                 Thread.currentThread().interrupt();

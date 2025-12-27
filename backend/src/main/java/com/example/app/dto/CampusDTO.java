@@ -15,4 +15,14 @@ public class CampusDTO {
     private String campusCode;
     private String campusName;
     private String address;
+    private Boolean isActive;
+    
+    // Constructor for backward compatibility
+    public CampusDTO(Integer campusId, String campusCode, String campusName, String address) {
+        this.campusId = campusId;
+        this.campusCode = campusCode;
+        this.campusName = campusName;
+        this.address = address;
+        this.isActive = true;
+    }
 }

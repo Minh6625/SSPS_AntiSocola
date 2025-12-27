@@ -1,13 +1,14 @@
 /**
  * DOCUMENT UPLOAD COMPONENT
  * Cho phép user chọn nhiều file từ thiết bị và upload lên backend
- * Hỗ trợ: PDF, DOCX, PPTX, XLSX (max 50MB mỗi file)
+ * Hỗ trợ file types theo cấu hình từ SPSO
  */
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { documentService } from '@/services/documentService';
+import { systemSettingsService } from '@/services/systemSettingsService';
 
 interface DocumentUploadProps {
   onUploadSuccess?: (documentId: number, fileName: string) => void;
@@ -32,6 +33,37 @@ export default function DocumentUpload({
   const [selectedFiles, setSelectedFiles] = useState<UploadingFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [allowedExtensions, setAllowedExtensions] = useState<string[]>([]);
+  const [maxFileSizeMB, setMaxFileSizeMB] = useState<number>(50);
+  const [loading, setLoading] = useState(true);
+
+  // Load config từ backend
+  useEffect(() => {
+    loadConfig();
+  }, []);
+
+  const loadConfig = async () => {
+    try {
+      const settings = await systemSettingsService.getAllSettings();
+      
+      // Parse allowed file extensions
+      const extensionsStr = settings.configs.allowed_file_extensions?.configValue || 'pdf,docx,pptx,xlsx,txt';
+      const extensions = extensionsStr.split(',').map(ext => ext.trim().toLowerCase());
+      setAllowedExtensions(extensions);
+      
+      // Parse max file size
+      const maxSize = parseInt(settings.configs.max_file_size_mb?.configValue || '50');
+      setMaxFileSizeMB(maxSize);
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Error loading config:', error);
+      // Fallback to default values
+      setAllowedExtensions(['pdf', 'docx', 'pptx', 'xlsx', 'txt']);
+      setMaxFileSizeMB(50);
+      setLoading(false);
+    }
+  };
 
   // Bật file picker khi click button
   const handleBrowseClick = () => {
@@ -40,16 +72,16 @@ export default function DocumentUpload({
 
   // Validate file
   const validateFile = (file: File): string | null => {
-    const allowedExtensions = ['.pdf', '.docx', '.pptx', '.xlsx'];
     const fileName = file.name.toLowerCase();
-    const isValidType = allowedExtensions.some(ext => fileName.endsWith(ext));
+    const fileExt = fileName.split('.').pop() || '';
     
-    if (!isValidType) {
-      return 'Chỉ hỗ trợ file PDF, DOCX, PPTX, XLSX';
+    if (!allowedExtensions.includes(fileExt)) {
+      return `Định dạng file không được phép. Chỉ hỗ trợ: ${allowedExtensions.map(e => e.toUpperCase()).join(', ')}`;
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      return 'File quá lớn. Tối đa 50MB';
+    const maxSizeBytes = maxFileSizeMB * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      return `File quá lớn. Tối đa ${maxFileSizeMB}MB`;
     }
 
     return null;
@@ -169,51 +201,58 @@ export default function DocumentUpload({
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-4">
       <h2 className="text-xl font-semibold text-gray-800">Tải Tài Liệu Lên</h2>
 
-      {/* File Input (Hidden) - cho phép chọn nhiều file */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf,.docx,.pptx,.xlsx"
-        onChange={handleFileSelect}
-        className="hidden"
-        multiple
-        disabled={isUploading}
-      />
-
-      {/* File Selection Area */}
-      <div
-        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition ${
-          isDragging 
-            ? 'border-blue-500 bg-blue-100' 
-            : 'border-blue-300 bg-blue-50 hover:bg-blue-100'
-        }`}
-        onClick={handleBrowseClick}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <div className="flex flex-col items-center gap-2">
-          <svg
-            className="w-12 h-12 text-blue-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-            />
-          </svg>
-          <p className="text-gray-700 font-medium">
-            <span className="text-blue-600">Nhấp để chọn file</span> hoặc kéo thả vào đây
-          </p>
-          <p className="text-sm text-gray-500">
-            Hỗ trợ: PDF, DOCX, PPTX, XLSX • Tối đa 50MB/file • Có thể chọn nhiều file
-          </p>
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="text-sm text-gray-500 mt-2">Đang tải cấu hình...</p>
         </div>
-      </div>
+      ) : (
+        <>
+          {/* File Input (Hidden) - cho phép chọn nhiều file */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={allowedExtensions.map(ext => `.${ext}`).join(',')}
+            onChange={handleFileSelect}
+            className="hidden"
+            multiple
+            disabled={isUploading}
+          />
+
+          {/* File Selection Area */}
+          <div
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition ${
+              isDragging 
+                ? 'border-blue-500 bg-blue-100' 
+                : 'border-blue-300 bg-blue-50 hover:bg-blue-100'
+            }`}
+            onClick={handleBrowseClick}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <svg
+                className="w-12 h-12 text-blue-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+              <p className="text-gray-700 font-medium">
+                <span className="text-blue-600">Nhấp để chọn file</span> hoặc kéo thả vào đây
+              </p>
+              <p className="text-sm text-gray-500">
+                Hỗ trợ: {allowedExtensions.map(e => e.toUpperCase()).join(', ')} • Tối đa {maxFileSizeMB}MB/file • Có thể chọn nhiều file
+              </p>
+            </div>
+          </div>
 
       {/* File List */}
       {selectedFiles.length > 0 && (
@@ -315,6 +354,8 @@ export default function DocumentUpload({
             {isUploading ? 'Đang tải lên...' : `Tải lên ${selectedFiles.filter(f => f.status === 'pending').length} file`}
           </button>
         </div>
+      )}
+        </>
       )}
     </div>
   );
