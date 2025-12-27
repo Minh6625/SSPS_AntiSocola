@@ -50,6 +50,9 @@ public class RegistrationService {
     @Autowired
     private JwtUtil jwtUtil;
     
+    @Autowired
+    private com.example.app.repository.SystemConfigRepository systemConfigRepository;
+    
     @Value("${app.registration.default-a4-pages:50}")
     private int defaultA4Pages;
     
@@ -177,15 +180,27 @@ public class RegistrationService {
         User savedUser = userRepository.save(user);
         log.info("User created: {} - {}", savedUser.getUserId(), savedUser.getEmail());
         
-        // Step 5: Create PageBalance (allocate default pages)
+        // Step 5: Create PageBalance (allocate default pages from SystemConfig)
+        int pagesToAllocate = systemConfigRepository.findByConfigKey("default_a4_pages_per_semester")
+            .map(config -> {
+                try {
+                    return Integer.parseInt(config.getConfigValue());
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid default_a4_pages_per_semester: {}. Using default 100", 
+                        config.getConfigValue());
+                    return 100;
+                }
+            })
+            .orElse(100); // Default fallback
+        
         PageBalance pageBalance = new PageBalance();
         pageBalance.setStudentId(studentId);
-        pageBalance.setA4Balance(defaultA4Pages + (defaultA3Pages * 2)); // Convert A3 to A4 equivalent
+        pageBalance.setA4Balance(pagesToAllocate);
         pageBalance.setLastUpdated(LocalDateTime.now());
         
         pageBalanceRepository.save(pageBalance);
-        log.info("PageBalance created for student: {} (A4: {}, A3: {} -> Total A4: {})", 
-            studentId, defaultA4Pages, defaultA3Pages, defaultA4Pages + (defaultA3Pages * 2));
+        log.info("PageBalance created for new student: {} (A4: {} from SystemConfig)", 
+            studentId, pagesToAllocate);
         
         // Step 6: Mark OTP as consumed (dùng email vì user chưa tồn tại)
         otpService.deleteOtpByEmail(request.getEmail(), "Register2FA");

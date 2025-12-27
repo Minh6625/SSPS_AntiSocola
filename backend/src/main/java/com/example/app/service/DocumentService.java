@@ -6,6 +6,7 @@ import com.example.app.entity.Document;
 import com.example.app.exception.ApplicationException;
 import com.example.app.repository.AllowedFileTypeRepository;
 import com.example.app.repository.DocumentRepository;
+import com.example.app.repository.SystemConfigRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.slf4j.Logger;
@@ -52,6 +53,7 @@ public class DocumentService {
     
     private final DocumentRepository documentRepository;
     private final AllowedFileTypeRepository allowedFileTypeRepository;
+    private final SystemConfigRepository systemConfigRepository;
     private final SupabaseStorageService supabaseStorageService;
     private final ConvertApiService convertApiService;
     private final ModelMapper modelMapper;
@@ -96,10 +98,24 @@ public class DocumentService {
             // Exception sẽ được throw từ saveFile() ở bước 6
         }
         
-        // STEP 3: Check file extension có được phép không
-        if (!allowedFileTypeRepository.existsByFileExtensionIgnoreCaseAndIsAllowedTrue(fileExtension)) {
+        // STEP 3: Check file extension có được phép không (từ SystemConfig)
+        String allowedExtensions = systemConfigRepository.findByConfigKey("allowed_file_extensions")
+            .map(config -> config.getConfigValue())
+            .orElse("pdf,docx,pptx,xlsx"); // Default fallback
+        
+        String[] allowedExtensionsArray = allowedExtensions.toLowerCase().split(",");
+        boolean isAllowed = false;
+        for (String ext : allowedExtensionsArray) {
+            if (ext.trim().equals(fileExtension.toLowerCase())) {
+                isAllowed = true;
+                break;
+            }
+        }
+        
+        if (!isAllowed) {
             throw new ApplicationException(
-                String.format("Loại file '%s' không được phép. Các loại được phép: pdf, docx, pptx, xlsx", fileExtension), 
+                String.format("Loại file '%s' không được phép. Các loại được phép: %s", 
+                    fileExtension, allowedExtensions), 
                 400
             );
         }
