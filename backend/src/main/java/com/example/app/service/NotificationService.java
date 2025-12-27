@@ -121,13 +121,34 @@ public class NotificationService {
     }
     
     /**
-     * Tạo thông báo in tài liệu thành công
+     * Tạo thông báo gửi lệnh in thành công (Pending)
      */
-    public void createPrintSuccessNotification(String userId, String documentName, String printerName) {
+    public void createPrintSubmittedNotification(String userId, String documentName, String printerName) {
+        createNotification(userId,
+                "Gửi lệnh in thành công",
+                String.format("Tài liệu '%s' đã được gửi đến máy in '%s'. Đang đợi in...", 
+                        documentName, printerName),
+                "Info");
+    }
+    
+    /**
+     * Tạo thông báo tài liệu đang in (Printing)
+     */
+    public void createPrintingNotification(String userId, String documentName) {
+        createNotification(userId,
+                "Đang in tài liệu",
+                String.format("Tài liệu '%s' đang được in...", documentName),
+                "Info");
+    }
+    
+    /**
+     * Tạo thông báo in tài liệu thành công (Completed)
+     */
+    public void createPrintSuccessNotification(String userId, String documentName, String printerLocation) {
         createNotification(userId,
                 "In tài liệu thành công",
-                String.format("Tài liệu '%s' đã được gửi đến máy in '%s' thành công.", 
-                        documentName, printerName),
+                String.format("Tài liệu '%s' đã được in thành công. Hãy đến %s để nhận tài liệu.", 
+                        documentName, printerLocation != null ? printerLocation : "vị trí đặt máy in"),
                 "Success");
     }
     

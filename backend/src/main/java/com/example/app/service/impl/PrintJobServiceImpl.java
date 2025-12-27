@@ -195,8 +195,8 @@ public class PrintJobServiceImpl implements IPrintJobService {
         
         log.info("Print job {} created successfully for student {}", savedJob.getJobId(), studentId);
         
-        // Tạo thông báo in tài liệu thành công
-        notificationService.createPrintSuccessNotification(
+        // Tạo thông báo gửi lệnh in thành công (Pending)
+        notificationService.createPrintSubmittedNotification(
                 studentId, 
                 document.getOriginalFileName(), 
                 printer.getPrinterName()
