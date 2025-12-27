@@ -49,32 +49,24 @@ public class PageAllocationScheduler {
      */
     @Scheduled(cron = "0 5 0 * * *")
     public void allocatePagesForNewSemester() {
-        log.info("========== PAGE ALLOCATION SCHEDULER START ==========");
         LocalDate today = LocalDate.now();
-        log.info("Checking for semesters starting on: {}", today);
+        log.info("Page allocation scheduler running for date: {}", today);
         
-        // Tìm các học kỳ có PageAllocationDate = hôm nay
         List<Semester> semestersToAllocate = semesterRepository.findByPageAllocationDate(today);
         
         if (semestersToAllocate.isEmpty()) {
-            log.info("No semesters to allocate pages today");
-            log.info("========== PAGE ALLOCATION SCHEDULER END ==========");
             return;
         }
         
         for (Semester semester : semestersToAllocate) {
-            log.info("Processing semester: {} ({})", semester.getSemesterName(), semester.getSemesterCode());
-            
             try {
                 allocatePagesForSemester(semester);
+                log.info("Allocated pages for semester: {}", semester.getSemesterCode());
             } catch (Exception e) {
                 log.error("Failed to allocate pages for semester {}: {}", 
-                    semester.getSemesterCode(), e.getMessage(), e);
-                // Continue với semester khác
+                    semester.getSemesterCode(), e.getMessage());
             }
         }
-        
-        log.info("========== PAGE ALLOCATION SCHEDULER END ==========");
     }
     
     /**
