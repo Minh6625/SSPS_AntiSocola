@@ -193,8 +193,10 @@ public class PrintJobServiceImpl implements IPrintJobService {
         transaction.setCreatedAt(LocalDateTime.now());
         pageTransactionRepository.save(transaction);
         
-        // Create notification
-        notificationService.createPrintSuccessNotification(
+        log.info("Print job {} created successfully for student {}", savedJob.getJobId(), studentId);
+        
+        // Tạo thông báo gửi lệnh in thành công (Pending)
+        notificationService.createPrintSubmittedNotification(
                 studentId, 
                 document.getOriginalFileName(), 
                 printer.getPrinterName()

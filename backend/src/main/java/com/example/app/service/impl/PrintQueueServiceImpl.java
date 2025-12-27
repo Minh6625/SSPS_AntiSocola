@@ -1,9 +1,12 @@
 package com.example.app.service.impl;
 
+import com.example.app.entity.Document;
 import com.example.app.entity.PrintJob;
 import com.example.app.entity.Printer;
+import com.example.app.repository.DocumentRepository;
 import com.example.app.repository.PrintJobRepository;
 import com.example.app.repository.PrinterRepository;
+import com.example.app.service.NotificationService;
 import com.example.app.service.interfaces.IPrintQueueService;
 import com.example.app.service.PrintJobStatusService;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +37,9 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
 
     private final PrintJobRepository printJobRepository;
     private final PrinterRepository printerRepository;
-    private final PrintJobStatusService statusService; // Inject service mới
+    private final DocumentRepository documentRepository;
+    private final PrintJobStatusService statusService;
+    private final NotificationService notificationService;
 
     @Value("${print.queue.enabled:false}")
     private boolean printQueueEnabled;
@@ -195,6 +200,15 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
         log.info("Calling statusService.updateStatusAndCommit for job {}", jobId);
         statusService.updateStatusAndCommit(job, "Printing", null);
         log.info("After statusService.updateStatusAndCommit for job {}", jobId);
+        
+        // Gửi thông báo đang in
+        try {
+            Document document = documentRepository.findById(job.getDocumentId()).orElse(null);
+            String documentName = document != null ? document.getOriginalFileName() : "Tài liệu";
+            notificationService.createPrintingNotification(job.getStudentId(), documentName);
+        } catch (Exception e) {
+            log.warn("Could not create printing notification: {}", e.getMessage());
+        }
 
         try {
             // Gửi đến máy in
@@ -203,6 +217,19 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
             if (success) {
                 updateJobStatus(job, "Completed", null);
                 job.setCompletedAt(LocalDateTime.now());
+                
+                // Gửi thông báo in thành công
+                try {
+                    Document document = documentRepository.findById(job.getDocumentId()).orElse(null);
+                    String documentName = document != null ? document.getOriginalFileName() : "Tài liệu";
+                    notificationService.createPrintSuccessNotification(
+                        job.getStudentId(), 
+                        documentName, 
+                        printer.getLocation()
+                    );
+                } catch (Exception e) {
+                    log.warn("Could not create print success notification: {}", e.getMessage());
+                }
                 
                 // Cập nhật tổng số trang đã in của máy
                 printer.setTotalPagesPrinted(
