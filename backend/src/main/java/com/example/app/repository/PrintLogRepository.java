@@ -148,4 +148,25 @@ public interface PrintLogRepository extends JpaRepository<PrintLog, Integer> {
      */
     @Query("SELECT MAX(pl.printTime) FROM PrintLog pl WHERE pl.studentId = :studentId")
     LocalDateTime findLastPrintTimeByStudentId(@Param("studentId") String studentId);
+    
+    /**
+     * Đếm theo status
+     */
+    Long countByStatus(String status);
+    
+    /**
+     * Tính tổng số trang in
+     */
+    @Query("SELECT COALESCE(SUM(pl.pagesPrinted), 0) FROM PrintLog pl")
+    Long sumPagesPrinted();
+    
+    /**
+     * Đếm logs trong khoảng thời gian với danh sách status
+     */
+    @Query("SELECT COUNT(pl) FROM PrintLog pl WHERE pl.printTime BETWEEN :startDate AND :endDate AND pl.status IN :statuses")
+    Long countByPrintTimeBetweenAndStatusIn(
+        @Param("startDate") LocalDateTime startDate,
+        @Param("endDate") LocalDateTime endDate,
+        @Param("statuses") List<String> statuses
+    );
 }
