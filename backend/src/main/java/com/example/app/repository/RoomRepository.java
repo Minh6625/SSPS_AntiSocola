@@ -31,4 +31,10 @@ public interface RoomRepository extends JpaRepository<Room, Integer> {
      */
     @Query("SELECT r FROM Room r WHERE r.isActive = true ORDER BY r.roomNumber")
     List<Room> findByIsActiveTrueOrderByRoomNumber();
+    
+    /**
+     * Tìm room theo buildingId và roomNumber (để check duplicate)
+     */
+    @Query("SELECT r FROM Room r WHERE r.building.buildingId = :buildingId AND r.roomNumber = :roomNumber")
+    java.util.Optional<Room> findByBuildingIdAndRoomNumber(@Param("buildingId") Integer buildingId, @Param("roomNumber") String roomNumber);
 }

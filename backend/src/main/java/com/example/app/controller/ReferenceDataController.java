@@ -39,39 +39,25 @@ public class ReferenceDataController {
     @GetMapping("/brands")
     public ResponseEntity<Map<String, Object>> getBrands() {
         try {
-            log.info("========== START GET BRANDS ==========");
             List<Brand> brands = brandRepository.findByIsActiveTrue();
-            log.info("Found {} brands from database", brands.size());
-            
             brands.sort((a, b) -> a.getBrandName().compareTo(b.getBrandName()));
-            log.info("Sorted brands successfully");
             
-            // Convert to DTOs
             List<BrandDTO> brandDTOs = brands.stream()
-                .map(brand -> {
-                    log.info("Mapping brand: ID={}, Name={}", brand.getBrandId(), brand.getBrandName());
-                    return new BrandDTO(
-                        brand.getBrandId(),
-                        brand.getBrandName(),
-                        brand.getBrandDescription()
-                    );
-                })
+                .map(brand -> new BrandDTO(
+                    brand.getBrandId(),
+                    brand.getBrandName(),
+                    brand.getBrandDescription()
+                ))
                 .collect(Collectors.toList());
-            
-            log.info("Mapped {} brand DTOs", brandDTOs.size());
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Lấy danh sách hãng thành công");
             response.put("data", brandDTOs);
             
-            log.info("========== END GET BRANDS SUCCESS ==========");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("========== ERROR IN GET BRANDS ==========", e);
-            log.error("Error type: {}", e.getClass().getName());
-            log.error("Error message: {}", e.getMessage());
-            e.printStackTrace();
+            log.error("Error getting brands", e);
             
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);
@@ -87,40 +73,26 @@ public class ReferenceDataController {
     @GetMapping("/campuses")
     public ResponseEntity<Map<String, Object>> getCampuses() {
         try {
-            log.info("========== START GET CAMPUSES ==========");
             List<Campus> campuses = campusRepository.findByIsActiveTrue();
-            log.info("Found {} campuses from database", campuses.size());
-            
             campuses.sort((a, b) -> a.getCampusCode().compareTo(b.getCampusCode()));
-            log.info("Sorted campuses successfully");
             
-            // Convert to DTOs
             List<CampusDTO> campusDTOs = campuses.stream()
-                .map(campus -> {
-                    log.info("Mapping campus: ID={}, Code={}", campus.getCampusId(), campus.getCampusCode());
-                    return new CampusDTO(
-                        campus.getCampusId(),
-                        campus.getCampusCode(),
-                        campus.getCampusName(),
-                        campus.getAddress()
-                    );
-                })
+                .map(campus -> new CampusDTO(
+                    campus.getCampusId(),
+                    campus.getCampusCode(),
+                    campus.getCampusName(),
+                    campus.getAddress()
+                ))
                 .collect(Collectors.toList());
-            
-            log.info("Mapped {} campus DTOs", campusDTOs.size());
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Lấy danh sách cơ sở thành công");
             response.put("data", campusDTOs);
             
-            log.info("========== END GET CAMPUSES SUCCESS ==========");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.error("========== ERROR IN GET CAMPUSES ==========", e);
-            log.error("Error type: {}", e.getClass().getName());
-            log.error("Error message: {}", e.getMessage());
-            e.printStackTrace();
+            log.error("Error getting campuses", e);
             
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);

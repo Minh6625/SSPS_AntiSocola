@@ -31,4 +31,10 @@ public interface BuildingRepository extends JpaRepository<Building, Integer> {
      */
     @Query("SELECT b FROM Building b WHERE b.isActive = true ORDER BY b.buildingCode")
     List<Building> findByIsActiveTrueOrderByBuildingCode();
+    
+    /**
+     * Tìm building theo campusId và buildingCode (để check duplicate)
+     */
+    @Query("SELECT b FROM Building b WHERE b.campus.campusId = :campusId AND b.buildingCode = :buildingCode")
+    java.util.Optional<Building> findByCampusIdAndBuildingCode(@Param("campusId") Integer campusId, @Param("buildingCode") String buildingCode);
 }

@@ -67,7 +67,7 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
             return;
         }
 
-        log.info("Scanning for pending print jobs...");
+        log.debug("Scanning for pending print jobs...");
         
         // Kiểm tra và xử lý các job "Printing" bị timeout
         checkAndHandleStuckJobs();
@@ -279,18 +279,13 @@ public class PrintQueueServiceImpl implements IPrintQueueService {
      * MOCK MODE: Nếu mock-mode=true, sẽ giả lập in thành công sau X giây
      */
     private boolean sendToPrinterViaNetwork(PrintJob job, Printer printer) {
-        // MOCK MODE: Giả lập in thành công
+        // MOCK MODE: Simulate printing
         if (mockMode) {
-            log.info("========== MOCK PRINTING MODE ==========");
-            log.info("Job {} will complete after {} seconds", job.getJobId(), mockPrintDuration);
+            log.info("Mock printing job {} (duration: {}s)", job.getJobId(), mockPrintDuration);
             
             try {
-                // Giả lập thời gian in
                 Thread.sleep(mockPrintDuration * 1000L);
-                
-                log.info("Job {} mock printing completed successfully!", job.getJobId());
-                return true; // Giả lập in thành công
-                
+                return true;
             } catch (InterruptedException e) {
                 log.error("Mock printing interrupted for job {}", job.getJobId());
                 Thread.currentThread().interrupt();

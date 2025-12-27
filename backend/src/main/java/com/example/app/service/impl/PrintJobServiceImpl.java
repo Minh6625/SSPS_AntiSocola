@@ -38,33 +38,25 @@ public class PrintJobServiceImpl implements IPrintJobService {
     @Override
     public PrintJobResponseDTO submitPrintJob(String studentId, PrintJobSubmitRequestDTO request) {
         try {
-            log.info("========== SUBMIT PRINT JOB START ==========");
             log.info("Student {} submitting print job for document {}", studentId, request.getDocumentId());
-            log.info("Request: printerId={}, paperSize={}, pageRange={}, duplex={}, copies={}", 
-                    request.getPrinterId(), request.getPaperSize(), request.getPageRange(), 
-                    request.getDuplex(), request.getCopies());
             
             // 1. Validate document
-            log.info("Step 1: Validating document {}", request.getDocumentId());
             Document document = documentRepository.findById(request.getDocumentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài liệu"));
         
         if (!document.getStudentId().equals(studentId)) {
-            log.warn("Student {} tried to print document {} owned by {}", studentId, document.getDocumentId(), document.getStudentId());
             throw new BusinessException("Bạn không có quyền in tài liệu này");
         }
         
         if (document.getIsDeleted()) {
-            log.warn("Document {} is deleted", document.getDocumentId());
             throw new BusinessException("Tài liệu đã bị xóa");
         }
         
-        // 1.5. Validate file extension is still allowed (check SystemConfig)
-        log.info("Step 1.5: Validating file extension against SystemConfig");
+        // 1.5. Validate file extension
         String fileExtension = document.getFileExtension();
         String allowedExtensions = systemConfigRepository.findByConfigKey("allowed_file_extensions")
             .map(config -> config.getConfigValue())
-            .orElse("pdf,docx,pptx,xlsx"); // Default fallback
+            .orElse("pdf,docx,pptx,xlsx");
         
         String[] allowedExtensionsArray = allowedExtensions.toLowerCase().split(",");
         boolean isAllowed = false;
@@ -76,48 +68,36 @@ public class PrintJobServiceImpl implements IPrintJobService {
         }
         
         if (!isAllowed) {
-            log.warn("Document {} has disallowed extension: {}. Allowed: {}", 
-                document.getDocumentId(), fileExtension, allowedExtensions);
             throw new BusinessException(
                 String.format("Loại file '%s' không còn được phép in. Các loại được phép: %s", 
                     fileExtension, allowedExtensions)
             );
         }
         
-        log.info("Document validated: {} pages, extension: {}", document.getTotalPages(), fileExtension);
-        
-        // 1.6. Validate file size against current SystemConfig
-        log.info("Step 1.6: Validating file size against SystemConfig");
+        // 1.6. Validate file size
         int maxFileSizeMB = systemConfigRepository.findByConfigKey("max_file_size_mb")
             .map(config -> {
                 try {
                     return Integer.parseInt(config.getConfigValue());
                 } catch (NumberFormatException e) {
-                    log.warn("Invalid max_file_size_mb value: {}. Using default 50", config.getConfigValue());
                     return 50;
                 }
             })
-            .orElse(50); // Default fallback
+            .orElse(50);
         
         double fileSizeMB = document.getFileSizeKB().doubleValue() / 1024.0;
         if (fileSizeMB > maxFileSizeMB) {
-            log.warn("Document {} size {:.2f}MB exceeds max allowed {}MB", 
-                document.getDocumentId(), fileSizeMB, maxFileSizeMB);
             throw new BusinessException(
                 String.format("File quá lớn (%.1f MB). Kích thước tối đa hiện tại: %d MB", 
                     fileSizeMB, maxFileSizeMB)
             );
         }
         
-        log.info("File size validated: {:.2f}MB (max: {}MB)", fileSizeMB, maxFileSizeMB);
-        
         // 2. Validate printer
-        log.info("Step 2: Validating printer {}", request.getPrinterId());
         Printer printer = printerRepository.findById(request.getPrinterId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy máy in"));
         
         if (!"Active".equals(printer.getStatus())) {
-            log.warn("Printer {} is not active. Status: {}", printer.getPrinterId(), printer.getStatus());
             String errorMsg = "Máy in không khả dụng";
             if ("OutOfPaper".equals(printer.getStatus())) {
                 errorMsg = "Máy in đã hết giấy";
@@ -129,10 +109,7 @@ public class PrintJobServiceImpl implements IPrintJobService {
             throw new BusinessException(errorMsg);
         }
         
-        log.info("Printer validated: {}", printer.getPrinterName());
-        
         // 3. Calculate pages
-        log.info("Step 3: Calculating pages");
         int totalPagesToPrint = calculateTotalPages(document.getTotalPages(), request.getPageRange());
         int totalSheetsUsed = calculateSheetsUsed(totalPagesToPrint, request.getDuplex());
         int a4EquivalentPages = calculateA4Equivalent(
@@ -141,23 +118,14 @@ public class PrintJobServiceImpl implements IPrintJobService {
             request.getCopies()
         );
         
-        log.info("Calculated: totalPages={}, sheets={}, a4Equivalent={}", totalPagesToPrint, totalSheetsUsed, a4EquivalentPages);
-        
-        // 4. Check printer supplies (paper and toner) - Check AVAILABLE (remaining - reserved)
-        log.info("Step 4: Checking printer supplies (available = remaining - reserved)");
-        
+        // 4. Check printer supplies
         int sheetsNeeded = totalSheetsUsed * request.getCopies();
         
-        // Kiểm tra giấy AVAILABLE
         if (!printer.hasEnoughPaper(request.getPaperSize(), sheetsNeeded)) {
             int available = "A3".equalsIgnoreCase(request.getPaperSize()) 
                 ? printer.getA3PaperAvailable() 
                 : printer.getA4PaperAvailable();
             
-            log.warn("Printer {} does not have enough {} paper. Required: {}, Available: {}", 
-                printer.getPrinterId(), request.getPaperSize(), sheetsNeeded, available);
-            
-            // Cập nhật trạng thái máy in ngay lập tức
             printer.updateStatusBasedOnSupplies();
             printerRepository.save(printer);
             
@@ -167,39 +135,26 @@ public class PrintJobServiceImpl implements IPrintJobService {
             );
         }
         
-        // Kiểm tra mực AVAILABLE
         if (!printer.hasEnoughToner()) {
-            log.warn("Printer {} does not have enough toner. Available: {}%", 
-                printer.getPrinterId(), printer.getTonerBlackAvailable());
-            
-            // Cập nhật trạng thái máy in ngay lập tức
             printer.updateStatusBasedOnSupplies();
             printerRepository.save(printer);
-            
             throw new BusinessException("Máy in sắp hết mực, vui lòng chọn máy in khác");
         }
         
-        log.info("Printer supplies validated (available resources checked)");
-        
         // 5. Check page balance
-        log.info("Step 5: Checking page balance for student {}", studentId);
         PageBalance pageBalance = pageBalanceRepository.findById(studentId)
                 .orElseThrow(() -> new BusinessException("Không tìm thấy số dư trang in"));
         
-        int currentBalance = pageBalance.getA4Balance(); // A4 equivalent (A3 = 2×A4)
-        
-        log.info("Current balance: {} A4 equivalent, Required: {}", currentBalance, a4EquivalentPages);
+        int currentBalance = pageBalance.getA4Balance();
         
         if (currentBalance < a4EquivalentPages) {
-            log.warn("Insufficient balance. Need: {}, Have: {}", a4EquivalentPages, currentBalance);
             throw new BusinessException(
                 String.format("Số dư không đủ. Cần %d trang, hiện có %d trang", 
                     a4EquivalentPages, currentBalance)
             );
         }
         
-        // 5. Create print job
-        log.info("Step 6: Creating print job");
+        // 6. Create print job
         PrintJob printJob = new PrintJob();
         printJob.setStudentId(studentId);
         printJob.setDocumentId(request.getDocumentId());
@@ -216,25 +171,19 @@ public class PrintJobServiceImpl implements IPrintJobService {
         printJob.setJobStatus("Pending");
         printJob.setSubmittedAt(LocalDateTime.now());
         
-        log.info("Step 6: Saving print job to database");
         PrintJob savedJob = printJobRepository.save(printJob);
-        log.info("Print job saved with ID: {}", savedJob.getJobId());
+        log.info("Created print job {} for student {}: {} pages", savedJob.getJobId(), studentId, a4EquivalentPages);
         
-        // 5.1. RESERVE paper and toner for this job (prevents race conditions)
-        log.info("Step 6.1: Reserving printer resources");
+        // 6.1. Reserve printer resources
         printer.reservePaper(request.getPaperSize(), sheetsNeeded);
         printer.reserveToner(totalPagesToPrint * request.getCopies(), request.getColorMode());
         printerRepository.save(printer);
-        log.info("Reserved {} sheets of {} and toner for {} pages", 
-            sheetsNeeded, request.getPaperSize(), totalPagesToPrint * request.getCopies());
         
-        // 6. Deduct pages from balance
-        log.info("Step 7: Deducting pages from balance");
+        // 7. Deduct pages from balance
         deductPages(pageBalance, a4EquivalentPages, request.getPaperSize());
-        int newBalance = pageBalance.getA4Balance(); // Get updated balance
+        int newBalance = pageBalance.getA4Balance();
         
-        // 7. Create page transaction (Use)
-        log.info("Step 8: Creating page transaction");
+        // 8. Create page transaction
         PageTransaction transaction = new PageTransaction();
         transaction.setStudentId(studentId);
         transaction.setTransactionType("Use");
@@ -244,16 +193,12 @@ public class PrintJobServiceImpl implements IPrintJobService {
         transaction.setCreatedAt(LocalDateTime.now());
         pageTransactionRepository.save(transaction);
         
-        log.info("Print job {} created successfully for student {}", savedJob.getJobId(), studentId);
-        
-        // Tạo thông báo in tài liệu thành công
+        // Create notification
         notificationService.createPrintSuccessNotification(
                 studentId, 
                 document.getOriginalFileName(), 
                 printer.getPrinterName()
         );
-        
-        log.info("========== SUBMIT PRINT JOB END ==========");
         
         return convertToDTO(savedJob);
         } catch (ResourceNotFoundException | BusinessException e) {
@@ -346,9 +291,6 @@ public class PrintJobServiceImpl implements IPrintJobService {
         printer.releasePaperReserve(job.getPaperSize(), sheetsToRelease);
         printer.releaseTonerReserve(pagesToRelease, job.getColorMode());
         printerRepository.save(printer);
-        
-        log.info("Released {} sheets of {} and toner for {} pages from printer {}", 
-            sheetsToRelease, job.getPaperSize(), pagesToRelease, printer.getPrinterId());
         
         job.setJobStatus("Cancelled");
         printJobRepository.save(job);
