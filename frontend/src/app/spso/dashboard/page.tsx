@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { printLogService, PrintLogDTO, PrintLogStatsDTO } from '@/services/printLogService';
 import { pagePricingService } from '@/services/pagePricingService';
 import { PagePricing } from '@/types/pagePricing';
+import { dashboardService } from '@/services/dashboardService';
 
 interface MonthlyStat {
   month: string;
@@ -40,7 +41,7 @@ export default function SPSODashboard() {
 
   useEffect(() => {
     if (allLogs.length > 0 && pricing.length > 0) {
-      calculateChartData(allLogs, pricing, selectedYear);
+      calculateChartData(allLogs, pricing, selectedYear, null);
     }
   }, [selectedYear, allLogs, pricing]);
 
@@ -48,17 +49,23 @@ export default function SPSODashboard() {
     setIsLoading(true);
     setError('');
     try {
-      const [statsData, logsData, allLogsData, pricingData] = await Promise.all([
+      const [statsData, logsData, allLogsData, pricingData, dashboardData] = await Promise.all([
         printLogService.getPrintLogStats({}),
         printLogService.getPrintLogs({ page: 0, size: 5, sortBy: 'printTime', sortDirection: 'DESC' }),
         printLogService.getPrintLogs({ page: 0, size: 1000, sortBy: 'printTime', sortDirection: 'DESC' }),
         pagePricingService.getAllPricing(),
+        dashboardService.getDashboardStats(),
       ]);
       setStats(statsData);
       setRecentLogs(logsData.content);
       setAllLogs(allLogsData.content);
       setPricing(pricingData);
-      calculateChartData(allLogsData.content, pricingData, selectedYear);
+      
+      // Lấy doanh thu từ API backend (tính từ Purchase transactions)
+      setTotalRevenue(dashboardData.totalRevenue || 0);
+      setMonthRevenue(dashboardData.monthRevenue || 0);
+      
+      calculateChartData(allLogsData.content, pricingData, selectedYear, dashboardData);
     } catch (err) {
       setError('Không thể tải dữ liệu. Vui lòng thử lại.');
       console.error(err);
@@ -67,43 +74,46 @@ export default function SPSODashboard() {
     }
   };
 
-  const calculateChartData = (logs: PrintLogDTO[], pricingData: PagePricing[], year: number) => {
+  const calculateChartData = (logs: PrintLogDTO[], pricingData: PagePricing[], year: number, dashboardData: any) => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // Calculate revenue per log
+    // Calculate revenue per log (chỉ dùng cho biểu đồ, không phải doanh thu thực)
     const getLogRevenue = (log: PrintLogDTO) => {
       const price = pricingData.find(p => p.paperSize === log.paperSize);
       return (price?.pricePerPage || 500) * log.pagesPrinted;
     };
 
-    // Total revenue (all completed logs)
-    const completedLogs = logs.filter(l => l.status === 'Success' || l.status === 'Completed');
-    const total = completedLogs.reduce((sum, log) => sum + getLogRevenue(log), 0);
-    setTotalRevenue(total);
+    // Doanh thu thực được lấy từ API backend (Purchase transactions)
+    // Không tính từ print logs nữa
 
-    // This month revenue
-    const thisMonthLogs = completedLogs.filter(log => {
-      const logDate = new Date(log.printTime);
-      return logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear;
-    });
-    const monthTotal = thisMonthLogs.reduce((sum, log) => sum + getLogRevenue(log), 0);
-    setMonthRevenue(monthTotal);
-
-    // Monthly stats (all 12 months of selected year)
+    // Monthly stats (all 12 months of selected year) - chỉ hiển thị số lệnh in
     const months = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
+    const completedLogs = logs.filter(l => l.status === 'Success' || l.status === 'Completed');
     const monthlyData: MonthlyStat[] = [];
+    
+    // Nếu có dữ liệu từ backend, sử dụng nó cho doanh thu theo tháng
+    const backendMonthlyStats = dashboardData?.monthlyStats || [];
+    
     for (let m = 0; m < 12; m++) {
       const monthLogs = completedLogs.filter(log => {
         const logDate = new Date(log.printTime);
         return logDate.getMonth() === m && logDate.getFullYear() === year;
       });
+      
+      // Tìm doanh thu từ backend cho tháng này
+      const backendStat = backendMonthlyStats.find((s: any) => {
+        const monthIndex = months.indexOf(s.month);
+        return monthIndex === m && s.year === year;
+      });
+      
       monthlyData.push({
         month: months[m],
         monthIndex: m,
         jobs: monthLogs.length,
-        revenue: monthLogs.reduce((sum, log) => sum + getLogRevenue(log), 0),
+        // Sử dụng doanh thu từ backend nếu có, nếu không thì để 0
+        revenue: backendStat?.revenue || 0,
       });
     }
     setMonthlyStats(monthlyData);

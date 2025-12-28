@@ -5,15 +5,16 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * DTO: Response sau khi cập nhật trạng thái tài khoản
+ * DTO cho response tạo tài khoản mới
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UpdateStatusResponseDTO {
+public class CreateAccountResponseDTO {
     private String userId;
+    private String email;
     private String fullName;
-    private String previousStatus;
-    private String newStatus;
+    private String userType;
+    private String status;
     private String message;
 }

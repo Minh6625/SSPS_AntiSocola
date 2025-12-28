@@ -18,7 +18,7 @@ public class UpdateAccountRoleRequestDTO {
     private String userId;
     
     @NotBlank(message = "Role không được để trống")
-    @Pattern(regexp = "^(Student|SPSO|Admin)$", message = "Role phải là Student, SPSO hoặc Admin")
+    @Pattern(regexp = "^(Student|SPSO)$", message = "Role phải là Student hoặc SPSO")
     private String newRole;
     
     private String reason;  // Lý do thay đổi (optional)

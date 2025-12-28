@@ -83,6 +83,20 @@ public class AccountManagementController {
     }
     
     /**
+     * POST /api/spso/accounts - Tạo tài khoản mới
+     */
+    @PostMapping
+    @Operation(summary = "Tạo tài khoản mới", description = "Tạo tài khoản mới (Student/SPSO/Admin)")
+    public ResponseEntity<CreateAccountResponseDTO> createAccount(
+            @Valid @RequestBody CreateAccountRequestDTO request) {
+        
+        log.info("SPSO creating new account: userId={}, userType={}", request.getUserId(), request.getUserType());
+        
+        CreateAccountResponseDTO result = accountService.createAccount(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+    
+    /**
      * PUT /api/spso/accounts/status - Cập nhật trạng thái tài khoản
      */
     @PutMapping("/status")
