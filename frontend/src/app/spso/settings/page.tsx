@@ -138,6 +138,13 @@ function GeneralSettingsTab({ settings, onUpdate }: GeneralSettingsTabProps) {
     try {
       setSaving(true);
       
+      // Validate: Phải chọn ít nhất 1 định dạng file
+      if (fileTypes.length === 0) {
+        alert("Vui lòng chọn ít nhất 1 định dạng file cho phép!");
+        setSaving(false);
+        return;
+      }
+      
       // Update file extensions
       const updatedFormData = {
         ...formData,
@@ -147,9 +154,11 @@ function GeneralSettingsTab({ settings, onUpdate }: GeneralSettingsTabProps) {
       await systemSettingsService.updateMultipleConfigs(updatedFormData, "SPSO001");
       alert("Cập nhật cấu hình thành công!");
       onUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving settings:", error);
-      alert("Lỗi khi cập nhật cấu hình");
+      // Hiển thị error message chi tiết từ server
+      const errorMessage = error?.response?.data?.message || error?.message || "Lỗi khi cập nhật cấu hình";
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -398,9 +407,10 @@ function SemestersTab({ settings, onUpdate }: SemestersTabProps) {
       await systemSettingsService.deleteSemester(semesterId);
       alert("Xóa học kỳ thành công!");
       onUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting semester:", error);
-      alert("Lỗi khi xóa học kỳ");
+      const errorMessage = error?.response?.data?.message || error?.message || "Lỗi khi xóa học kỳ";
+      alert(errorMessage);
     }
   };
 
