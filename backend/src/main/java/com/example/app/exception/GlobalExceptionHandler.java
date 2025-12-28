@@ -108,6 +108,23 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
     
+    // Xử lý IllegalArgumentException (ví dụ: validation errors)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(
+            IllegalArgumentException ex) {
+        
+        log.warn("IllegalArgumentException: {}", ex.getMessage());
+        
+        ErrorResponse response = new ErrorResponse(
+            LocalDateTime.now(),
+            HttpStatus.BAD_REQUEST.value(),
+            ex.getMessage(),
+            null
+        );
+        
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+    
     // Xử lý Generic Exception
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {

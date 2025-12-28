@@ -92,6 +92,19 @@ public class SystemSettingsServiceImpl implements ISystemSettingsService {
         SystemConfig config = systemConfigRepository.findByConfigKey(request.getConfigKey())
             .orElseThrow(() -> new RuntimeException("Config not found: " + request.getConfigKey()));
         
+        // Validation: allowed_file_extensions không được để trống
+        if ("allowed_file_extensions".equals(request.getConfigKey())) {
+            String value = request.getConfigValue();
+            if (value == null || value.trim().isEmpty()) {
+                throw new IllegalArgumentException("Phải chọn ít nhất 1 định dạng file cho phép");
+            }
+            // Kiểm tra format: phải là danh sách các extension cách nhau bởi dấu phẩy
+            String[] extensions = value.split(",");
+            if (extensions.length == 0) {
+                throw new IllegalArgumentException("Phải chọn ít nhất 1 định dạng file cho phép");
+            }
+        }
+        
         config.setConfigValue(request.getConfigValue());
         config.setUpdatedAt(LocalDateTime.now());
         config.setUpdatedBy(request.getUpdatedBy());
