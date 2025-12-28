@@ -56,11 +56,15 @@ export default function StudentProfile() {
     if (passwordData.newPassword.length < 8) { setPasswordError('Mật khẩu mới phải có ít nhất 8 ký tự'); return; }
     try {
       await profileService.changePassword(passwordData);
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setShowPasswordModal(false);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setSuccess('Đổi mật khẩu thành công');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) { setPasswordError('Đổi mật khẩu thất bại'); console.error(err); }
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) { 
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Đổi mật khẩu thất bại';
+      setPasswordError(errorMessage); 
+      console.error(err); 
+    }
   };
 
   const handleAvatarClick = () => fileInputRef.current?.click();
@@ -104,7 +108,23 @@ export default function StudentProfile() {
         </div>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">{error}</div>}
-        {success && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl">{success}</div>}
+
+        {/* Toast notification - hiển thị ở góc phải trên */}
+        {success && (
+          <div className="fixed top-4 right-4 z-50 animate-slide-in">
+            <div className="bg-green-500 text-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
+              <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="font-medium">{success}</span>
+              <button onClick={() => setSuccess('')} className="ml-2 hover:bg-green-600 rounded-full p-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         {profile && (
           <div className="space-y-6">
@@ -129,7 +149,7 @@ export default function StudentProfile() {
                     <p className="text-gray-500">{profile.email}</p>
                     <div className="flex gap-12 text-sm pt-1">
                       <div><span className="text-gray-400">Số điện thoại</span><p className="text-gray-700">{profile.phoneNumber || 'Chưa cập nhật'}</p></div>
-                      <div><span className="text-gray-400">Vai trò</span><p className="text-gray-700">Student</p></div>
+                      <div><span className="text-gray-400">Vai trò</span><p className="text-gray-700">Sinh viên</p></div>
                     </div>
                   </div>
                 </div>
@@ -193,7 +213,7 @@ export default function StudentProfile() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-bold text-gray-800 mb-6">Thông tin tài khoản</h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between py-2 border-b border-gray-100"><span className="text-gray-500">Loại tài khoản</span><span className="text-gray-800">Student</span></div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-100"><span className="text-gray-500">Loại tài khoản</span><span className="text-gray-800">Sinh viên</span></div>
                 <div className="flex items-center justify-between py-2 border-b border-gray-100"><span className="text-gray-500">Ngày tạo tài khoản</span><span className="text-gray-800">{new Date(profile.createdAt).toLocaleDateString('vi-VN')}</span></div>
                 <div className="flex items-center justify-between py-2 border-b border-gray-100"><span className="text-gray-500">Lần đăng nhập cuối</span><span className="text-gray-800">{profile.lastLogin ? formatDateTime(profile.lastLogin) : 'Chưa có'}</span></div>
                 <div className="flex items-center justify-between py-2"><span className="text-gray-500">Trạng thái tài khoản</span><span className="flex items-center gap-2 text-green-600"><span className="w-2 h-2 bg-green-500 rounded-full"></span>Active</span></div>

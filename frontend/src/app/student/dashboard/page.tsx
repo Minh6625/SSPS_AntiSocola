@@ -91,8 +91,10 @@ export default function StudentDashboard() {
   };
 
   const maxBarValue = Math.max(...weeklyStats.map((s) => Math.max(s.success, s.failed)), 1);
-  const totalJobs = successRate.success + successRate.failed || 1;
-  const successPercent = Math.round((successRate.success / totalJobs) * 100);
+  const totalJobs = successRate.success + successRate.failed;
+  const hasData = totalJobs > 0;
+  const successPercent = hasData ? Math.round((successRate.success / totalJobs) * 100) : 0;
+  const failedPercent = hasData ? 100 - successPercent : 0;
 
   const recentJobs = printJobs.slice(0, 5);
 
@@ -297,13 +299,16 @@ export default function StudentDashboard() {
               <div className="flex items-center justify-center gap-6 mb-8 w-full">
                 {/* Success Label - Left side */}
                 <div className="text-sm text-green-600 font-medium whitespace-nowrap text-right min-w-[110px]">
-                  Thành công: {successPercent}%
+                  {hasData ? `Thành công: ${successPercent}%` : ''}
                 </div>
                 
                 {/* Pie Chart */}
                 <svg className="w-40 h-40 flex-shrink-0" viewBox="0 0 100 100">
-                  {totalJobs === 0 || (successPercent === 0 && successRate.failed === 0) ? (
-                    <circle cx="50" cy="50" r="45" fill="#e5e7eb" />
+                  {!hasData ? (
+                    <>
+                      <circle cx="50" cy="50" r="45" fill="#e5e7eb" />
+                      <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" className="text-xs" fill="#9ca3af" fontSize="8">Chưa có dữ liệu</text>
+                    </>
                   ) : successPercent === 100 ? (
                     <circle cx="50" cy="50" r="45" fill="#22c55e" />
                   ) : successPercent === 0 ? (
@@ -312,7 +317,7 @@ export default function StudentDashboard() {
                     <>
                       <circle cx="50" cy="50" r="45" fill="#22c55e" />
                       <path
-                        d={`M 50 50 L 95 50 A 45 45 0 ${(100 - successPercent) > 50 ? 1 : 0} 1 ${50 + 45 * Math.cos(((100 - successPercent) / 100) * 2 * Math.PI)} ${50 + 45 * Math.sin(((100 - successPercent) / 100) * 2 * Math.PI)} Z`}
+                        d={`M 50 50 L 95 50 A 45 45 0 ${failedPercent > 50 ? 1 : 0} 1 ${50 + 45 * Math.cos((failedPercent / 100) * 2 * Math.PI)} ${50 + 45 * Math.sin((failedPercent / 100) * 2 * Math.PI)} Z`}
                         fill="#f87171"
                       />
                     </>
@@ -321,7 +326,7 @@ export default function StudentDashboard() {
                 
                 {/* Failed Label - Right side */}
                 <div className="text-sm text-red-500 font-medium whitespace-nowrap text-left min-w-[110px]">
-                  Thất bại: {100 - successPercent}%
+                  {hasData ? `Thất bại: ${failedPercent}%` : ''}
                 </div>
               </div>
               

@@ -51,8 +51,11 @@ export default function SPSOProfilePage() {
       setShowPasswordModal(false);
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setSuccess('Đổi mật khẩu thành công!');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) { setPasswordError(err.message || 'Đổi mật khẩu thất bại'); }
+      setTimeout(() => setSuccess(''), 5000);
+    } catch (err: any) { 
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || err.message || 'Đổi mật khẩu thất bại';
+      setPasswordError(errorMessage); 
+    }
   };
 
   const formatDateTime = (dateStr: string | null) => {
@@ -91,7 +94,23 @@ export default function SPSOProfilePage() {
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">{error}</div>}
-      {success && <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl">{success}</div>}
+
+      {/* Toast notification - hiển thị ở góc phải trên */}
+      {success && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in">
+          <div className="bg-green-500 text-white px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
+            <svg className="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <span className="font-medium">{success}</span>
+            <button onClick={() => setSuccess('')} className="ml-2 hover:bg-green-600 rounded-full p-1">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {profile && (
         <div className="space-y-6">
