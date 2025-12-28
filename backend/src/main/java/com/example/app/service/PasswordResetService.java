@@ -2,6 +2,7 @@ package com.example.app.service;
 
 import com.example.app.dto.ForgotPasswordRequestDTO;
 import com.example.app.dto.ForgotPasswordResponseDTO;
+import com.example.app.dto.OtpValidationResultDTO;
 import com.example.app.dto.VerifyPasswordResetOtpRequestDTO;
 import com.example.app.dto.VerifyPasswordResetOtpResponseDTO;
 import com.example.app.entity.User;
@@ -38,7 +39,7 @@ public class PasswordResetService {
     @Autowired
     private PasswordEncoder passwordEncoder;
     
-    @Value("${otp.expiration.minutes:10}")
+    @Value("${otp.expiration.minutes:5}")
     private int otpExpirationMinutes;
     
     /**
@@ -98,59 +99,62 @@ public class PasswordResetService {
      * - Cập nhật mật khẩu mới
      * - Xóa OTP đã dùng
      */
-    @Transactional
     public VerifyPasswordResetOtpResponseDTO verifyPasswordResetOtp(
             VerifyPasswordResetOtpRequestDTO request) {
+        String email = request.getEmail().toLowerCase().trim();
+        String otpCode = request.getOtpCode().trim();
+        String newPassword = request.getNewPassword();
+        String confirmPassword = request.getConfirmPassword();
+        
+        // Kiểm tra mật khẩu mới có khớp không (không cần transaction)
+        if (!newPassword.equals(confirmPassword)) {
+            throw new RuntimeException("Mật khẩu mới không khớp");
+        }
+        
+        // Kiểm tra email có tồn tại không (không cần transaction)
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("Email không tồn tại"));
+        
+        // Validate OTP với thông tin chi tiết (KHÔNG trong transaction để commit attemptCount)
+        OtpValidationResultDTO validationResult = otpService.validateOtpByEmailWithDetails(email, otpCode, "PasswordReset");
+        
+        if (!validationResult.isValid()) {
+            // Trả về message chi tiết từ validation (message đã có emoji từ OtpService)
+            throw new RuntimeException(validationResult.getMessage());
+        }
+        
+        log.info("OTP verified for password reset: {}", email);
+        
+        // Cập nhật mật khẩu - gọi method riêng có @Transactional
+        updatePasswordInternal(user, newPassword);
+        
+        // Xóa OTP đã dùng
+        otpService.deleteOtpByEmail(email, "PasswordReset");
+        
+        log.info("Password reset completed for user: {}", user.getUserId());
+        
+        VerifyPasswordResetOtpResponseDTO response = new VerifyPasswordResetOtpResponseDTO();
+        response.setMessage("✅ Mật khẩu đã được đặt lại thành công");
+        response.setEmail(email);
+        response.setUserId(user.getUserId());
+        response.setTimestamp(System.currentTimeMillis());
+        
+        return response;
+    }
+    
+    /**
+     * Internal method để update password trong transaction riêng
+     */
+    @Transactional
+    protected void updatePasswordInternal(User user, String newPassword) {
         try {
-            String email = request.getEmail().toLowerCase().trim();
-            String otpCode = request.getOtpCode().trim();
-            String newPassword = request.getNewPassword();
-            String confirmPassword = request.getConfirmPassword();
-            
-            // Kiểm tra mật khẩu mới có khớp không
-            if (!newPassword.equals(confirmPassword)) {
-                throw new RuntimeException("Mật khẩu mới không khớp");
-            }
-            
-            // Kiểm tra email có tồn tại không
-            User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Email không tồn tại"));
-            
-            // Validate OTP
-            boolean isValidOtp = otpService.validateOtpByEmail(email, otpCode, "PasswordReset");
-            if (!isValidOtp) {
-                throw new RuntimeException("OTP không hợp lệ hoặc đã hết hạn");
-            }
-            
-            log.info("OTP verified for password reset: {}", email);
-            
-            // Cập nhật mật khẩu mới
             String hashedPassword = passwordEncoder.encode(newPassword);
             user.setPasswordHash(hashedPassword);
             userRepository.save(user);
-            
             log.info("Password updated successfully for user: {}", user.getUserId());
-            
-            // Xóa OTP đã dùng
-            otpService.deleteOtpByEmail(email, "PasswordReset");
-            
-            // TODO: Gửi email thông báo đặt lại mật khẩu thành công (optional)
-            log.info("Password reset completed for user: {}", user.getUserId());
-            
-            VerifyPasswordResetOtpResponseDTO response = new VerifyPasswordResetOtpResponseDTO();
-            response.setMessage("Mật khẩu đã được đặt lại thành công");
-            response.setEmail(email);
-            response.setUserId(user.getUserId());
-            response.setTimestamp(System.currentTimeMillis());
-            
-            return response;
-            
-        } catch (RuntimeException e) {
-            log.warn("Password reset verification failed: {}", e.getMessage());
-            throw e;
         } catch (Exception e) {
-            log.error("Error in verifyPasswordResetOtp: {}", e.getMessage(), e);
-            throw new RuntimeException("Lỗi khi xác thực OTP: " + e.getMessage(), e);
+            log.error("Error updating password: {}", e.getMessage(), e);
+            throw new RuntimeException("Lỗi khi cập nhật mật khẩu: " + e.getMessage(), e);
         }
     }
     

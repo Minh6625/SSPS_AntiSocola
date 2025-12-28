@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -26,7 +27,10 @@ public interface EmailOtpCodeRepository extends JpaRepository<EmailOtpCode, Inte
         LocalDateTime now
     );
     
-    java.util.List<EmailOtpCode> findByUserIdAndPurpose(String userId, String purpose);
+    List<EmailOtpCode> findByUserIdAndPurpose(String userId, String purpose);
+    
+    // Tìm tất cả OTP theo email và purpose (để check attempts)
+    List<EmailOtpCode> findByEmailAndPurpose(String email, String purpose);
     
     @Modifying
     void deleteByUserIdAndPurpose(String userId, String purpose);

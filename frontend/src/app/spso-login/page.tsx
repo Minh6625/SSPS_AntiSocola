@@ -42,6 +42,8 @@ export default function SPSOLoginPage() {
       });
 
       if (result.status === 202) {
+        // Lưu password tạm để có thể resend OTP
+        sessionStorage.setItem('tempLoginPassword', formData.password);
         setOtpEmail(formData.email);
         setOtpCode(result.data?.otpCode);
         setShowOtpModal(true);
@@ -50,6 +52,8 @@ export default function SPSOLoginPage() {
       }
 
       if (result.status === 200) {
+        // Xóa password tạm
+        sessionStorage.removeItem('tempLoginPassword');
         const userRole = result.data?.role?.toUpperCase();
         if (userRole !== 'SPSO') {
           authService.logout();
@@ -67,6 +71,8 @@ export default function SPSOLoginPage() {
   };
 
   const handleOtpSuccess = () => {
+    // Xóa password tạm
+    sessionStorage.removeItem('tempLoginPassword');
     // Check role before redirecting
     const userRole = localStorage.getItem('userRole')?.toUpperCase();
     if (userRole !== 'SPSO') {

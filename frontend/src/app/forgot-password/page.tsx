@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { forgotPasswordService, passwordValidation } from '@/services/forgotPasswordService';
 
 type Step = 'email' | 'reset';
+
+// Constants
+const OTP_EXPIRATION_SECONDS = 5 * 60; // 5 phút
+const RESEND_COOLDOWN_SECONDS = 60; // 60 giây cooldown gửi lại
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -20,10 +24,38 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+  
+  // OTP countdown states
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [otpSentAt, setOtpSentAt] = useState<number | null>(null);
+
+  // OTP countdown timer
+  useEffect(() => {
+    if (otpCountdown > 0) {
+      const timer = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpCountdown]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  // Format time helper
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Gửi OTP
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError('');
 
     if (!email) {
@@ -42,7 +74,32 @@ export default function ForgotPasswordPage() {
       const response = await forgotPasswordService.sendOtp(email);
       setMaskedEmail(response.email);
       setStep('reset');
-      setSuccess(`OTP đã được gửi đến ${response.email}. Có hiệu lực trong ${response.otpExpirationMinutes} phút.`);
+      setOtpSentAt(Date.now());
+      setOtpCountdown(OTP_EXPIRATION_SECONDS);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setSuccess(`✅ OTP đã được gửi đến ${response.email}. Có hiệu lực trong ${response.otpExpirationMinutes || 5} phút.`);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Gửi lại OTP
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
+
+    try {
+      const response = await forgotPasswordService.sendOtp(email);
+      setOtpSentAt(Date.now());
+      setOtpCountdown(OTP_EXPIRATION_SECONDS);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setOtpCode(''); // Clear old OTP
+      setSuccess(`✅ OTP mới đã được gửi đến ${response.email}. Có hiệu lực trong ${response.otpExpirationMinutes || 5} phút.`);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -64,18 +121,24 @@ export default function ForgotPasswordPage() {
     setSuccess('');
 
     if (!otpCode || otpCode.length !== 6) {
-      setError('Vui lòng nhập mã OTP 6 chữ số');
+      setError('❌ Vui lòng nhập mã OTP 6 chữ số');
+      return;
+    }
+
+    // Check OTP expired on client side
+    if (otpCountdown <= 0) {
+      setError('⏰ Mã OTP đã hết hạn. Vui lòng gửi lại OTP mới.');
       return;
     }
 
     const validation = passwordValidation.validate(newPassword);
     if (!validation.isValid) {
-      setError('Mật khẩu không đáp ứng yêu cầu');
+      setError('❌ Mật khẩu không đáp ứng yêu cầu');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
+      setError('❌ Mật khẩu xác nhận không khớp');
       return;
     }
 
@@ -88,13 +151,26 @@ export default function ForgotPasswordPage() {
         newPassword,
         confirmPassword,
       });
-      setSuccess('Mật khẩu đã được đặt lại thành công!');
+      setSuccess('✅ Mật khẩu đã được đặt lại thành công! Đang chuyển hướng...');
       setTimeout(() => router.push('/login'), 2000);
     } catch (err) {
-      setError((err as Error).message);
+      const errorMessage = (err as Error).message;
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Reset về step 1
+  const handleBackToStep1 = () => {
+    setStep('email');
+    setOtpCode('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setError('');
+    setSuccess('');
+    setOtpCountdown(0);
+    setResendCooldown(0);
   };
 
   return (
@@ -193,6 +269,21 @@ export default function ForgotPasswordPage() {
           {/* Step 2: OTP + New Password */}
           {step === 'reset' && (
             <form onSubmit={handleResetPassword} className="space-y-4">
+              {/* OTP Countdown */}
+              {otpCountdown > 0 ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                  <p className="text-sm text-blue-700">
+                    ⏱️ OTP còn hiệu lực: <span className="font-bold text-blue-800">{formatTime(otpCountdown)}</span>
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-center">
+                  <p className="text-sm text-orange-700">
+                    ⏰ OTP đã hết hạn. Vui lòng gửi lại OTP mới.
+                  </p>
+                </div>
+              )}
+
               {/* OTP Input */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">
@@ -314,7 +405,7 @@ export default function ForgotPasswordPage() {
 
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || otpCountdown <= 0}
                 className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 {isLoading ? (
@@ -336,20 +427,27 @@ export default function ForgotPasswordPage() {
               </button>
 
               {/* Resend OTP */}
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('email');
-                  setOtpCode('');
-                  setNewPassword('');
-                  setConfirmPassword('');
-                  setError('');
-                  setSuccess('');
-                }}
-                className="w-full text-sm text-blue-500 hover:text-blue-600 font-medium"
-              >
-                ← Gửi lại mã OTP
-              </button>
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={handleBackToStep1}
+                  className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+                >
+                  ← Quay lại
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCooldown > 0 || isLoading}
+                  className="text-sm text-blue-500 hover:text-blue-600 font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  {resendCooldown > 0 ? (
+                    `Gửi lại sau ${resendCooldown}s`
+                  ) : (
+                    '🔄 Gửi lại OTP'
+                  )}
+                </button>
+              </div>
             </form>
           )}
 

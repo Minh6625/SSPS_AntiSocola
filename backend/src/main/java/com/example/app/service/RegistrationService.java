@@ -2,6 +2,7 @@ package com.example.app.service;
 
 import com.example.app.dto.InitiateRegistrationRequestDTO;
 import com.example.app.dto.InitiateRegistrationResponseDTO;
+import com.example.app.dto.OtpValidationResultDTO;
 import com.example.app.dto.VerifyRegistrationOtpRequestDTO;
 import com.example.app.dto.VerifyRegistrationOtpResponseDTO;
 import com.example.app.entity.User;
@@ -135,12 +136,13 @@ public class RegistrationService {
      * 5. Mark OTP as consumed
      * 
      * Output: User entity + Account created
+     * 
+     * Note: Tách validate OTP ra khỏi transaction để commit attemptCount khi OTP sai
      */
-    @Transactional
     public VerifyRegistrationOtpResponseDTO verifyRegistrationOtp(VerifyRegistrationOtpRequestDTO request) {
         log.info("Verifying registration OTP for email: {}", request.getEmail());
         
-        // Step 1: Validate registration token
+        // Step 1: Validate registration token (không cần transaction)
         if (!jwtUtil.isTokenValid(request.getRegistrationToken())) {
             throw new BusinessException("Registration token không hợp lệ hoặc đã hết hạn");
         }
@@ -156,18 +158,31 @@ public class RegistrationService {
             throw new BusinessException("Email không khớp với registration token");
         }
         
-        // Step 2: Validate OTP (dùng email vì user chưa tồn tại)
-        if (!otpService.validateOtpByEmail(request.getEmail(), request.getOtpCode(), "Register2FA")) {
-            throw new BusinessException("OTP không hợp lệ hoặc đã hết hạn");
+        // Step 2: Validate OTP (KHÔNG trong transaction để commit attemptCount)
+        OtpValidationResultDTO validationResult = otpService.validateOtpByEmailWithDetails(
+            request.getEmail(), request.getOtpCode(), "Register2FA");
+        
+        if (!validationResult.isValid()) {
+            // Trả về message chi tiết từ validation (message đã có emoji từ OtpService)
+            throw new BusinessException(validationResult.getMessage());
         }
         
-        // Step 3: Auto-generate studentId (format: STU + timestamp + random)
+        // Step 3-5: Tạo user trong transaction riêng
+        return createUserInternal(request.getEmail(), password, fullName, phone);
+    }
+    
+    /**
+     * Internal method để tạo user trong transaction riêng
+     */
+    @Transactional
+    protected VerifyRegistrationOtpResponseDTO createUserInternal(String email, String password, String fullName, String phone) {
+        // Auto-generate studentId (format: STU + timestamp + random)
         String studentId = generateStudentId();
         
-        // Step 4: Create User entity
+        // Create User entity
         User user = new User();
         user.setUserId(studentId);
-        user.setEmail(request.getEmail());
+        user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setFullName(fullName);
         user.setPhoneNumber(phone);
@@ -202,9 +217,9 @@ public class RegistrationService {
         log.info("PageBalance created for new student: {} (A4: {} from SystemConfig)", 
             studentId, pagesToAllocate);
         
-        // Step 6: Mark OTP as consumed (dùng email vì user chưa tồn tại)
-        otpService.deleteOtpByEmail(request.getEmail(), "Register2FA");
-        log.info("OTP consumed for registration: {}", request.getEmail());
+        // Step 6: Mark OTP as consumed
+        otpService.deleteOtpByEmail(email, "Register2FA");
+        log.info("OTP consumed for registration: {}", email);
         
         return new VerifyRegistrationOtpResponseDTO(
             "Đăng ký thành công! Vui lòng đăng nhập.",

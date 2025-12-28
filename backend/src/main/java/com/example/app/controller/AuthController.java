@@ -212,17 +212,24 @@ public class AuthController {
         @ApiResponse(responseCode = "200", description = "OTP đã được gửi"),
         @ApiResponse(responseCode = "400", description = "Validation error hoặc email/phone đã tồn tại")
     })
-    public ResponseEntity<InitiateRegistrationResponseDTO> initiateRegistration(
+    public ResponseEntity<?> initiateRegistration(
             @Valid @RequestBody InitiateRegistrationRequestDTO request) {
-        
-        log.info("Initiate registration for email: {} - Phone: {}", 
-            request.getEmail(), request.getPhone());
-        
-        InitiateRegistrationResponseDTO response = registrationService.initiateRegistration(request);
-        
-        log.info("Registration initiated successfully: {}", request.getEmail());
-        
-        return ResponseEntity.ok(response);
+        try {
+            log.info("Initiate registration for email: {} - Phone: {}", 
+                request.getEmail(), request.getPhone());
+            
+            InitiateRegistrationResponseDTO response = registrationService.initiateRegistration(request);
+            
+            log.info("Registration initiated successfully: {}", request.getEmail());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Registration initiation failed: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("timestamp", String.valueOf(System.currentTimeMillis()));
+            return ResponseEntity.badRequest().body(error);
+        }
     }
     
     /**
@@ -246,16 +253,23 @@ public class AuthController {
         @ApiResponse(responseCode = "201", description = "Tài khoản đã được tạo"),
         @ApiResponse(responseCode = "400", description = "OTP không hợp lệ hoặc đã hết hạn")
     })
-    public ResponseEntity<VerifyRegistrationOtpResponseDTO> verifyRegistrationOtp(
+    public ResponseEntity<?> verifyRegistrationOtp(
             @Valid @RequestBody VerifyRegistrationOtpRequestDTO request) {
-        
-        log.info("Verify registration OTP for email: {}", request.getEmail());
-        
-        VerifyRegistrationOtpResponseDTO response = registrationService.verifyRegistrationOtp(request);
-        
-        log.info("Registration completed successfully: {}", request.getEmail());
-        
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        try {
+            log.info("Verify registration OTP for email: {}", request.getEmail());
+            
+            VerifyRegistrationOtpResponseDTO response = registrationService.verifyRegistrationOtp(request);
+            
+            log.info("Registration completed successfully: {}", request.getEmail());
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception e) {
+            log.error("Registration OTP verification failed: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("timestamp", String.valueOf(System.currentTimeMillis()));
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 
     /**
@@ -274,16 +288,23 @@ public class AuthController {
         @ApiResponse(responseCode = "200", description = "OTP đã được gửi"),
         @ApiResponse(responseCode = "400", description = "Email không tồn tại")
     })
-    public ResponseEntity<ForgotPasswordResponseDTO> forgotPassword(
+    public ResponseEntity<?> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequestDTO request) {
-        
-        log.info("Forgot password request for email: {}", request.getEmail());
-        
-        ForgotPasswordResponseDTO response = passwordResetService.initiatePasswordReset(request);
-        
-        log.info("Password reset initiated successfully: {}", request.getEmail());
-        
-        return ResponseEntity.ok(response);
+        try {
+            log.info("Forgot password request for email: {}", request.getEmail());
+            
+            ForgotPasswordResponseDTO response = passwordResetService.initiatePasswordReset(request);
+            
+            log.info("Password reset initiated successfully: {}", request.getEmail());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Forgot password failed: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("timestamp", String.valueOf(System.currentTimeMillis()));
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 
     /**
@@ -302,16 +323,23 @@ public class AuthController {
         @ApiResponse(responseCode = "200", description = "Mật khẩu đã được đặt lại"),
         @ApiResponse(responseCode = "400", description = "OTP không hợp lệ hoặc mật khẩu không khớp")
     })
-    public ResponseEntity<VerifyPasswordResetOtpResponseDTO> verifyPasswordResetOtp(
+    public ResponseEntity<?> verifyPasswordResetOtp(
             @Valid @RequestBody VerifyPasswordResetOtpRequestDTO request) {
-        
-        log.info("Verify password reset OTP for email: {}", request.getEmail());
-        
-        VerifyPasswordResetOtpResponseDTO response = passwordResetService.verifyPasswordResetOtp(request);
-        
-        log.info("Password reset completed successfully: {}", request.getEmail());
-        
-        return ResponseEntity.ok(response);
+        try {
+            log.info("Verify password reset OTP for email: {}", request.getEmail());
+            
+            VerifyPasswordResetOtpResponseDTO response = passwordResetService.verifyPasswordResetOtp(request);
+            
+            log.info("Password reset completed successfully: {}", request.getEmail());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Password reset OTP verification failed: {}", e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            error.put("timestamp", String.valueOf(System.currentTimeMillis()));
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 
     /**
