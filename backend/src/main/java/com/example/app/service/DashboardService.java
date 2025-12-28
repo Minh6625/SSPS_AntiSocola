@@ -26,8 +26,9 @@ public class DashboardService {
     private final PrintLogRepository printLogRepository;
     private final PageTransactionRepository pageTransactionRepository;
     
-    public DashboardStatsDTO getDashboardStats() {
+    public DashboardStatsDTO getDashboardStats(Integer year) {
         DashboardStatsDTO stats = new DashboardStatsDTO();
+        int targetYear = year != null ? year : LocalDate.now().getYear();
         
         try {
             // Thống kê print logs
@@ -52,8 +53,8 @@ public class DashboardService {
             BigDecimal monthRevenue = calculateRevenueInRange(startOfMonth, LocalDateTime.now());
             stats.setMonthRevenue(monthRevenue);
             
-            // Thống kê theo tháng (6 tháng gần nhất)
-            stats.setMonthlyStats(calculateMonthlyStats());
+            // Thống kê theo tháng (12 tháng của năm được chọn)
+            stats.setMonthlyStats(calculateMonthlyStats(targetYear));
             
             // Thống kê theo tuần (7 ngày gần nhất)
             stats.setWeeklyStats(calculateWeeklyStats());
@@ -110,18 +111,15 @@ public class DashboardService {
         }
     }
 
-    private List<MonthlyStatDTO> calculateMonthlyStats() {
+    private List<MonthlyStatDTO> calculateMonthlyStats(int year) {
         List<MonthlyStatDTO> monthlyStats = new ArrayList<>();
         String[] monthNames = {"T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12"};
         
-        LocalDate now = LocalDate.now();
-        
-        for (int i = 5; i >= 0; i--) {
-            LocalDate monthDate = now.minusMonths(i);
-            int month = monthDate.getMonthValue();
-            int year = monthDate.getYear();
+        // Lặp qua 12 tháng của năm được chọn
+        for (int month = 1; month <= 12; month++) {
+            LocalDate monthDate = LocalDate.of(year, month, 1);
             
-            LocalDateTime startOfMonth = monthDate.withDayOfMonth(1).atStartOfDay();
+            LocalDateTime startOfMonth = monthDate.atStartOfDay();
             LocalDateTime endOfMonth = monthDate.withDayOfMonth(monthDate.lengthOfMonth())
                                                 .atTime(23, 59, 59);
             

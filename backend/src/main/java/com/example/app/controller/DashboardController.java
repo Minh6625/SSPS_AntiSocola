@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -34,9 +35,10 @@ public class DashboardController {
     })
     @GetMapping("/stats")
     @PreAuthorize("hasRole('SPSO') or hasRole('ADMIN')")
-    public ResponseEntity<DashboardStatsDTO> getDashboardStats() {
-        log.info("Getting dashboard stats");
-        DashboardStatsDTO stats = dashboardService.getDashboardStats();
+    public ResponseEntity<DashboardStatsDTO> getDashboardStats(
+            @RequestParam(required = false) Integer year) {
+        log.info("Getting dashboard stats for year: {}", year);
+        DashboardStatsDTO stats = dashboardService.getDashboardStats(year);
         return ResponseEntity.ok(stats);
     }
 }

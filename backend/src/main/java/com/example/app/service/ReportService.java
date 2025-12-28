@@ -64,6 +64,9 @@ public class ReportService {
         report.setFailedJobs((int) jobs.stream()
             .filter(j -> "Failed".equals(j.getJobStatus()))
             .count());
+        report.setCancelledJobs((int) jobs.stream()
+            .filter(j -> "Cancelled".equals(j.getJobStatus()))
+            .count());
         
         int totalPages = jobs.stream()
             .filter(j -> "Completed".equals(j.getJobStatus()))
@@ -244,6 +247,9 @@ public class ReportService {
             .count());
         report.setFailedJobs((int) jobs.stream()
             .filter(j -> "Failed".equals(j.getJobStatus()))
+            .count());
+        report.setCancelledJobs((int) jobs.stream()
+            .filter(j -> "Cancelled".equals(j.getJobStatus()))
             .count());
         
         int totalPages = jobs.stream()

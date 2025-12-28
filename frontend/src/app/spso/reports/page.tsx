@@ -306,9 +306,10 @@ export default function ReportsPage() {
               <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg p-4 border border-indigo-200">
                 <p className="text-sm text-indigo-600 font-medium">Tổng lệnh in</p>
                 <p className="text-3xl font-bold text-indigo-900 mt-1">{monthlyReport.totalPrintJobs}</p>
-                <div className="flex items-center gap-2 mt-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2 mt-2 text-xs">
                   <span className="text-green-600">✓ {monthlyReport.successfulJobs} thành công</span>
                   <span className="text-red-600">✗ {monthlyReport.failedJobs} thất bại</span>
+                  <span className="text-gray-500">⊘ {monthlyReport.cancelledJobs || 0} đã hủy</span>
                 </div>
               </div>
               <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
@@ -503,28 +504,58 @@ export default function ReportsPage() {
               Thống kê theo ngày
             </h2>
             <div className="overflow-x-auto print:overflow-visible">
-              <div className="flex items-end justify-between gap-1 h-48 min-w-[600px] print:min-w-0">
-                {monthlyReport.dailyStats.map((stat) => {
-                  const maxJobs = Math.max(...monthlyReport.dailyStats.map(s => s.jobs), 1);
-                  const height = stat.jobs > 0 ? Math.max((stat.jobs / maxJobs) * 100, 5) : 0;
-                  return (
-                    <div key={stat.day} className="flex-1 flex flex-col items-center group relative">
-                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-lg print:hidden">
-                        <div className="font-semibold mb-1">Ngày {stat.day}</div>
-                        <div>Lệnh in: {stat.jobs}</div>
-                        <div>Trang: {stat.pages}</div>
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+              <div className="flex min-w-[700px] print:min-w-0">
+                {/* Y-Axis */}
+                <div className="flex flex-col justify-between pr-2 text-right border-r border-gray-200" style={{ height: '200px' }}>
+                  {(() => {
+                    const maxJobs = Math.max(...monthlyReport.dailyStats.map(s => s.jobs), 1);
+                    const yMax = Math.ceil(maxJobs / 4) * 4 || 4;
+                    return [yMax, Math.round(yMax * 0.75), Math.round(yMax * 0.5), Math.round(yMax * 0.25), 0].map((val, i) => (
+                      <span key={i} className="text-xs text-gray-500 leading-none min-w-[30px]">{val}</span>
+                    ));
+                  })()}
+                </div>
+                {/* Chart Area */}
+                <div className="flex-1 relative pl-2">
+                  {/* Grid Lines */}
+                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ height: '200px' }}>
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <div key={i} className="border-t border-gray-100 w-full"></div>
+                    ))}
+                  </div>
+                  {/* Bars */}
+                  <div className="flex items-end gap-0.5 relative z-10" style={{ height: '200px' }}>
+                    {monthlyReport.dailyStats.map((stat) => {
+                      const maxJobs = Math.max(...monthlyReport.dailyStats.map(s => s.jobs), 1);
+                      const yMax = Math.ceil(maxJobs / 4) * 4 || 4;
+                      const heightPercent = stat.jobs > 0 ? Math.max((stat.jobs / yMax) * 100, 3) : 0;
+                      return (
+                        <div key={stat.day} className="flex-1 flex flex-col items-center group relative h-full">
+                          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-lg print:hidden">
+                            <div className="font-semibold mb-1">Ngày {stat.day}</div>
+                            <div>Lệnh in: {stat.jobs}</div>
+                            <div>Trang: {stat.pages}</div>
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                          </div>
+                          <div className="flex-1 w-full flex items-end justify-center">
+                            <div 
+                              className="w-3/4 bg-purple-500 rounded-t transition-all hover:bg-purple-600 cursor-pointer print:bg-purple-400" 
+                              style={{ height: `${heightPercent}%`, minHeight: stat.jobs > 0 ? '4px' : '0' }}
+                            ></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* X-Axis Labels */}
+                  <div className="flex justify-between mt-2 border-t border-gray-200 pt-2">
+                    {monthlyReport.dailyStats.map((stat) => (
+                      <div key={stat.day} className="flex-1 text-center">
+                        <span className="text-xs text-gray-500">{stat.day}</span>
                       </div>
-                      <div className="flex-1 w-full flex items-end justify-center">
-                        <div 
-                          className="w-full bg-purple-500 rounded-t transition-all hover:bg-purple-600 cursor-pointer print:bg-purple-400" 
-                          style={{ height: `${height}%` }}
-                        ></div>
-                      </div>
-                      <div className="mt-2 text-xs text-gray-500">{stat.day}</div>
-                    </div>
-                  );
-                })}
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -547,7 +578,11 @@ export default function ReportsPage() {
             <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-indigo-500">
               <p className="text-sm text-gray-500">Tổng lệnh in</p>
               <p className="text-3xl font-bold text-gray-800 mt-1">{yearlyReport.totalPrintJobs}</p>
-              <p className="text-xs text-green-600 mt-1">✓ {yearlyReport.successfulJobs} thành công</p>
+              <div className="flex flex-wrap items-center gap-2 mt-1 text-xs">
+                <span className="text-green-600">✓ {yearlyReport.successfulJobs} thành công</span>
+                <span className="text-red-600">✗ {yearlyReport.failedJobs} thất bại</span>
+                <span className="text-gray-500">⊘ {yearlyReport.cancelledJobs || 0} đã hủy</span>
+              </div>
             </div>
             <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-purple-500">
               <p className="text-sm text-gray-500">Tổng trang in</p>
@@ -645,28 +680,58 @@ export default function ReportsPage() {
               </svg>
               Thống kê theo tháng
             </h2>
-            <div className="flex items-end justify-between gap-2 h-48">
-              {yearlyReport.monthlyStats.map((stat) => {
-                const maxJobs = Math.max(...yearlyReport.monthlyStats.map(s => s.jobs), 1);
-                const height = stat.jobs > 0 ? Math.max((stat.jobs / maxJobs) * 100, 5) : 0;
-                return (
-                  <div key={stat.month} className="flex-1 flex flex-col items-center group relative">
-                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-lg">
-                      <div className="font-semibold mb-1">{stat.monthName}</div>
-                      <div>Lệnh in: {stat.jobs}</div>
-                      <div>Trang: {stat.pages}</div>
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+            <div className="flex">
+              {/* Y-Axis */}
+              <div className="flex flex-col justify-between pr-2 text-right border-r border-gray-200" style={{ height: '200px' }}>
+                {(() => {
+                  const maxJobs = Math.max(...yearlyReport.monthlyStats.map(s => s.jobs), 1);
+                  const yMax = Math.ceil(maxJobs / 4) * 4 || 4;
+                  return [yMax, Math.round(yMax * 0.75), Math.round(yMax * 0.5), Math.round(yMax * 0.25), 0].map((val, i) => (
+                    <span key={i} className="text-xs text-gray-500 leading-none min-w-[30px]">{val}</span>
+                  ));
+                })()}
+              </div>
+              {/* Chart Area */}
+              <div className="flex-1 relative pl-2">
+                {/* Grid Lines */}
+                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ height: '200px' }}>
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <div key={i} className="border-t border-gray-100 w-full"></div>
+                  ))}
+                </div>
+                {/* Bars */}
+                <div className="flex items-end gap-1 relative z-10" style={{ height: '200px' }}>
+                  {yearlyReport.monthlyStats.map((stat) => {
+                    const maxJobs = Math.max(...yearlyReport.monthlyStats.map(s => s.jobs), 1);
+                    const yMax = Math.ceil(maxJobs / 4) * 4 || 4;
+                    const heightPercent = stat.jobs > 0 ? Math.max((stat.jobs / yMax) * 100, 3) : 0;
+                    return (
+                      <div key={stat.month} className="flex-1 flex flex-col items-center group relative h-full">
+                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-lg">
+                          <div className="font-semibold mb-1">{stat.monthName}</div>
+                          <div>Lệnh in: {stat.jobs}</div>
+                          <div>Trang: {stat.pages}</div>
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                        </div>
+                        <div className="flex-1 w-full flex items-end justify-center">
+                          <div 
+                            className="w-3/4 bg-purple-500 rounded-t transition-all hover:bg-purple-600 cursor-pointer" 
+                            style={{ height: `${heightPercent}%`, minHeight: stat.jobs > 0 ? '4px' : '0' }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* X-Axis Labels */}
+                <div className="flex justify-between mt-2 border-t border-gray-200 pt-2">
+                  {yearlyReport.monthlyStats.map((stat) => (
+                    <div key={stat.month} className="flex-1 text-center">
+                      <span className="text-xs text-gray-500 font-medium">T{stat.month}</span>
                     </div>
-                    <div className="flex-1 w-full flex items-end justify-center">
-                      <div 
-                        className="w-full bg-purple-500 rounded-t transition-all hover:bg-purple-600 cursor-pointer" 
-                        style={{ height: `${height}%` }}
-                      ></div>
-                    </div>
-                    <div className="mt-2 text-xs text-gray-500">T{stat.month}</div>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 

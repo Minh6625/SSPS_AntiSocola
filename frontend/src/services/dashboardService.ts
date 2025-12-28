@@ -28,8 +28,9 @@ export interface WeeklyStatDTO {
 }
 
 class DashboardService {
-  async getDashboardStats(): Promise<DashboardStatsDTO> {
-    const response = await apiClient.get<DashboardStatsDTO>('/dashboard/stats');
+  async getDashboardStats(year?: number): Promise<DashboardStatsDTO> {
+    const params = year ? { year } : {};
+    const response = await apiClient.get<DashboardStatsDTO>('/dashboard/stats', { params });
     return response.data;
   }
 }

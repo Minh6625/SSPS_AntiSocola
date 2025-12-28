@@ -29,45 +29,41 @@ export default function SPSODashboard() {
   const [monthRevenue, setMonthRevenue] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [monthlyStats, setMonthlyStats] = useState<MonthlyStatDTO[]>([]);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStat[]>([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [pricing, setPricing] = useState<PagePricing[]>([]);
 
   // Generate available years (current year and 5 years back)
   const availableYears = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
 
   useEffect(() => {
-    loadDashboardData();
+    loadDashboardData(selectedYear);
   }, []);
 
   useEffect(() => {
-    if (allLogs.length > 0 && pricing.length > 0) {
-      calculateChartData(allLogs, pricing, selectedYear, null);
-    }
-  }, [allLogs]);
+    // Khi thay đổi năm, gọi lại API để lấy dữ liệu mới
+    loadDashboardData(selectedYear);
+  }, [selectedYear]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (year: number) => {
     setIsLoading(true);
     setError('');
     try {
-      const [statsData, logsData, allLogsData, pricingData, dashboardData] = await Promise.all([
+      const [statsData, recentLogsData, allLogsData, pricingData, dashboardData] = await Promise.all([
         printLogService.getPrintLogStats({}),
         printLogService.getPrintLogs({ page: 0, size: 5, sortBy: 'printTime', sortDirection: 'DESC' }),
         printLogService.getPrintLogs({ page: 0, size: 1000, sortBy: 'printTime', sortDirection: 'DESC' }),
         pagePricingService.getAllPricing(),
-        dashboardService.getDashboardStats(),
+        dashboardService.getDashboardStats(year),
       ]);
       setStats(statsData);
       setDashboardStats(dashboardData);
-      setRecentLogs(logsData.content);
+      setRecentLogs(recentLogsData.content);
       setAllLogs(allLogsData.content);
       setPricing(pricingData);
       
-      // Lấy doanh thu từ API backend (tính từ Purchase transactions)
-      setTotalRevenue(dashboardData.totalRevenue || 0);
-      setMonthRevenue(dashboardData.monthRevenue || 0);
-      
-      calculateChartData(allLogsData.content, pricingData, selectedYear, dashboardData);
+      calculateChartData(allLogsData.content, pricingData, year, dashboardData);
     } catch (err) {
       setError('Không thể tải dữ liệu. Vui lòng thử lại.');
       console.error(err);
