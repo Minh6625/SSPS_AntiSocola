@@ -16,3 +16,54 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   position: absolute;
   right: 0;
 }
+
+/* Print Styles for Reports */
+@media print {
+  @page {
+    size: A4;
+    margin: 1.5cm;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* Hide navigation and non-essential elements */
+  aside, header, nav, .print\:hidden {
+    display: none !important;
+  }
+
+  /* Show print-only elements */
+  .print\:block {
+    display: block !important;
+  }
+
+  /* Remove shadows and adjust spacing for print */
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  .print\:space-y-4 > * + * {
+    margin-top: 1rem !important;
+  }
+
+  /* Prevent page breaks inside elements */
+  .print\:break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Adjust colors for print */
+  .print\:bg-purple-400 {
+    background-color: rgb(192 132 252) !important;
+  }
+
+  .print\:overflow-visible {
+    overflow: visible !important;
+  }
+
+  .print\:min-w-0 {
+    min-width: 0 !important;
+  }
+}

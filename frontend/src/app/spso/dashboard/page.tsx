@@ -2,15 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { printLogService, PrintLogDTO, PrintLogStatsDTO } from '@/services/printLogService';
-import { pagePricingService } from '@/services/pagePricingService';
-import { PagePricing } from '@/types/pagePricing';
-
-interface MonthlyStat {
-  month: string;
-  monthIndex: number;
-  jobs: number;
-  revenue: number;
-}
+import { dashboardService, DashboardStatsDTO, MonthlyStatDTO } from '@/services/dashboardService';
 
 interface WeeklyStat {
   day: string;
@@ -20,15 +12,13 @@ interface WeeklyStat {
 
 export default function SPSODashboard() {
   const [stats, setStats] = useState<PrintLogStatsDTO | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStatsDTO | null>(null);
   const [recentLogs, setRecentLogs] = useState<PrintLogDTO[]>([]);
   const [allLogs, setAllLogs] = useState<PrintLogDTO[]>([]);
-  const [pricing, setPricing] = useState<PagePricing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStatDTO[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStat[]>([]);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [monthRevenue, setMonthRevenue] = useState(0);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   // Generate available years (current year and 5 years back)
@@ -39,26 +29,27 @@ export default function SPSODashboard() {
   }, []);
 
   useEffect(() => {
-    if (allLogs.length > 0 && pricing.length > 0) {
-      calculateChartData(allLogs, pricing, selectedYear);
+    if (allLogs.length > 0) {
+      calculateWeeklyStats(allLogs);
     }
-  }, [selectedYear, allLogs, pricing]);
+  }, [allLogs]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
     setError('');
     try {
-      const [statsData, logsData, allLogsData, pricingData] = await Promise.all([
+      const [statsData, dashStats, logsData, allLogsData] = await Promise.all([
         printLogService.getPrintLogStats({}),
+        dashboardService.getDashboardStats(),
         printLogService.getPrintLogs({ page: 0, size: 5, sortBy: 'printTime', sortDirection: 'DESC' }),
         printLogService.getPrintLogs({ page: 0, size: 1000, sortBy: 'printTime', sortDirection: 'DESC' }),
-        pagePricingService.getAllPricing(),
       ]);
       setStats(statsData);
+      setDashboardStats(dashStats);
       setRecentLogs(logsData.content);
       setAllLogs(allLogsData.content);
-      setPricing(pricingData);
-      calculateChartData(allLogsData.content, pricingData, selectedYear);
+      setMonthlyStats(dashStats.monthlyStats);
+      calculateWeeklyStats(allLogsData.content);
     } catch (err) {
       setError('Không thể tải dữ liệu. Vui lòng thử lại.');
       console.error(err);
@@ -67,47 +58,7 @@ export default function SPSODashboard() {
     }
   };
 
-  const calculateChartData = (logs: PrintLogDTO[], pricingData: PagePricing[], year: number) => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    // Calculate revenue per log
-    const getLogRevenue = (log: PrintLogDTO) => {
-      const price = pricingData.find(p => p.paperSize === log.paperSize);
-      return (price?.pricePerPage || 500) * log.pagesPrinted;
-    };
-
-    // Total revenue (all completed logs)
-    const completedLogs = logs.filter(l => l.status === 'Success' || l.status === 'Completed');
-    const total = completedLogs.reduce((sum, log) => sum + getLogRevenue(log), 0);
-    setTotalRevenue(total);
-
-    // This month revenue
-    const thisMonthLogs = completedLogs.filter(log => {
-      const logDate = new Date(log.printTime);
-      return logDate.getMonth() === currentMonth && logDate.getFullYear() === currentYear;
-    });
-    const monthTotal = thisMonthLogs.reduce((sum, log) => sum + getLogRevenue(log), 0);
-    setMonthRevenue(monthTotal);
-
-    // Monthly stats (all 12 months of selected year)
-    const months = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
-    const monthlyData: MonthlyStat[] = [];
-    for (let m = 0; m < 12; m++) {
-      const monthLogs = completedLogs.filter(log => {
-        const logDate = new Date(log.printTime);
-        return logDate.getMonth() === m && logDate.getFullYear() === year;
-      });
-      monthlyData.push({
-        month: months[m],
-        monthIndex: m,
-        jobs: monthLogs.length,
-        revenue: monthLogs.reduce((sum, log) => sum + getLogRevenue(log), 0),
-      });
-    }
-    setMonthlyStats(monthlyData);
-
+  const calculateWeeklyStats = (logs: PrintLogDTO[]) => {
     // Weekly stats (last 7 days)
     const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     const weekData: WeeklyStat[] = [];
@@ -266,7 +217,7 @@ export default function SPSODashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">Doanh thu tháng</p>
-              <p className="text-2xl font-bold text-gray-800 mt-1">{formatCurrency(monthRevenue)}</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">{formatCurrency(dashboardStats?.monthRevenue || 0)}</p>
             </div>
             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -330,7 +281,7 @@ export default function SPSODashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Tổng doanh thu</p>
-              <p className="text-xl font-bold text-gray-800">{formatCurrency(totalRevenue)}</p>
+              <p className="text-xl font-bold text-gray-800">{formatCurrency(dashboardStats?.totalRevenue || 0)}</p>
             </div>
           </div>
         </div>
