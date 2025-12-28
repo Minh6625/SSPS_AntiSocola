@@ -189,7 +189,12 @@ public class PrintJobServiceImpl implements IPrintJobService {
         transaction.setTransactionType("Use");
         transaction.setA4Pages(-a4EquivalentPages);
         transaction.setBalanceAfterA4(newBalance);
-        transaction.setNotes("JobID: " + savedJob.getJobId());
+        // Ghi chú chi tiết: tên file, số trang, khổ giấy
+        String detailedNotes = String.format("In \"%s\" - %d trang %s", 
+            document.getOriginalFileName(),
+            a4EquivalentPages,
+            request.getPaperSize());
+        transaction.setNotes(detailedNotes);
         transaction.setCreatedAt(LocalDateTime.now());
         pageTransactionRepository.save(transaction);
         
@@ -310,7 +315,10 @@ public class PrintJobServiceImpl implements IPrintJobService {
         transaction.setTransactionType("Allocate");
         transaction.setA4Pages(job.getA4EquivalentPages());
         transaction.setBalanceAfterA4(newBalance);
-        transaction.setNotes("Refund - Cancelled JobID: " + jobId);
+        // Ghi chú chi tiết khi hoàn trả
+        Document doc = documentRepository.findById(job.getDocumentId()).orElse(null);
+        String docName = doc != null ? doc.getOriginalFileName() : "Tài liệu";
+        transaction.setNotes(String.format("Hoàn trả - Hủy in \"%s\"", docName));
         transaction.setCreatedAt(LocalDateTime.now());
         pageTransactionRepository.save(transaction);
     }

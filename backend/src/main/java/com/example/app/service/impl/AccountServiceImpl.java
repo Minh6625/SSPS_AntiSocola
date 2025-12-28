@@ -1,13 +1,17 @@
 package com.example.app.service.impl;
 
 import com.example.app.dto.*;
+import com.example.app.entity.Notification;
 import com.example.app.entity.PageBalance;
+import com.example.app.entity.PageTransaction;
 import com.example.app.entity.PrintLog;
 import com.example.app.entity.User;
 import com.example.app.exception.BusinessException;
 import com.example.app.exception.ResourceNotFoundException;
 import com.example.app.repository.AccountRepository;
+import com.example.app.repository.NotificationRepository;
 import com.example.app.repository.PageBalanceRepository;
+import com.example.app.repository.PageTransactionRepository;
 import com.example.app.repository.PrintLogRepository;
 import com.example.app.service.interfaces.IAccountService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,7 +41,10 @@ public class AccountServiceImpl implements IAccountService {
     private final AccountRepository accountRepository;
     private final PageBalanceRepository pageBalanceRepository;
     private final PrintLogRepository printLogRepository;
+    private final NotificationRepository notificationRepository;
+    private final PageTransactionRepository pageTransactionRepository;
     private final ModelMapper modelMapper;
+    private final PasswordEncoder passwordEncoder;
     
     /**
      * Lấy danh sách tài khoản với filter
@@ -128,6 +136,60 @@ public class AccountServiceImpl implements IAccountService {
         
         log.info("Account detail fetched: {}", userId);
         return dto;
+    }
+    
+    /**
+     * Tạo tài khoản mới
+     */
+    @Override
+    @Transactional
+    public CreateAccountResponseDTO createAccount(CreateAccountRequestDTO request) {
+        log.info("Creating new account: userId={}, userType={}", request.getUserId(), request.getUserType());
+        
+        // Validate userType
+        if (!isValidRole(request.getUserType())) {
+            throw new IllegalArgumentException("Loại tài khoản không hợp lệ: " + request.getUserType());
+        }
+        
+        // Check if userId already exists
+        if (accountRepository.findByUserId(request.getUserId()).isPresent()) {
+            throw new BusinessException("ID tài khoản đã tồn tại: " + request.getUserId());
+        }
+        
+        // Check if email already exists
+        if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new BusinessException("Email đã được sử dụng: " + request.getEmail());
+        }
+        
+        // Create new user
+        User user = new User();
+        user.setUserId(request.getUserId());
+        user.setEmail(request.getEmail());
+        user.setFullName(request.getFullName());
+        user.setPhoneNumber(request.getPhoneNumber());
+        user.setUserType(request.getUserType());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setStatus("Active");
+        user.setCreatedAt(LocalDateTime.now());
+        
+        accountRepository.save(user);
+        
+        // If Student, create PageBalance
+        if ("Student".equals(request.getUserType())) {
+            PageBalance pageBalance = new PageBalance(user.getUserId(), 0, LocalDateTime.now(), user);
+            pageBalanceRepository.save(pageBalance);
+        }
+        
+        log.info("Account created successfully: {}", request.getUserId());
+        
+        return new CreateAccountResponseDTO(
+            user.getUserId(),
+            user.getEmail(),
+            user.getFullName(),
+            user.getUserType(),
+            user.getStatus(),
+            String.format("Đã tạo tài khoản %s (%s) thành công", user.getFullName(), user.getUserType())
+        );
     }
     
     /**
@@ -229,12 +291,39 @@ public class AccountServiceImpl implements IAccountService {
         
         // Convert A3 to A4 equivalent and add to A4 balance
         int totalA4ToAdd = request.getA4Pages() + (request.getA3Pages() * 2);
-        pageBalance.setA4Balance(pageBalance.getA4Balance() + totalA4ToAdd);
+        int oldBalance = pageBalance.getA4Balance();
+        pageBalance.setA4Balance(oldBalance + totalA4ToAdd);
         pageBalance.setLastUpdated(LocalDateTime.now());
         
         pageBalanceRepository.save(pageBalance);
         
-        log.info("Pages allocated to: {}", request.getStudentId());
+        // Tạo lịch sử giao dịch
+        PageTransaction transaction = new PageTransaction();
+        transaction.setStudentId(request.getStudentId());
+        transaction.setTransactionType("Allocate");
+        transaction.setA4Pages(totalA4ToAdd);
+        transaction.setBalanceAfterA4(pageBalance.getA4Balance());
+        transaction.setTransactionStatus("Completed");
+        transaction.setNotes(request.getReason() != null ? request.getReason() : "SPSO cấp trang miễn phí");
+        transaction.setCreatedAt(LocalDateTime.now());
+        pageTransactionRepository.save(transaction);
+        
+        // Tạo thông báo cho sinh viên
+        Notification notification = new Notification();
+        notification.setRecipientId(request.getStudentId());
+        notification.setTitle("Bạn đã được cấp trang in miễn phí");
+        notification.setMessage(String.format(
+            "Bạn đã được cấp %d trang A4. Số dư hiện tại: %d trang A4.%s",
+            totalA4ToAdd,
+            pageBalance.getA4Balance(),
+            request.getReason() != null ? " Lý do: " + request.getReason() : ""
+        ));
+        notification.setNotificationType("Success");
+        notification.setIsRead(false);
+        notification.setCreatedAt(LocalDateTime.now());
+        notificationRepository.save(notification);
+        
+        log.info("Pages allocated to: {}, transaction created, notification sent", request.getStudentId());
         
         return new AllocatePageResponseDTO(
             user.getUserId(),
@@ -244,8 +333,7 @@ public class AccountServiceImpl implements IAccountService {
             pageBalance.getA4Balance(),
             0, // No separate A3 balance
             pageBalance.getA4Balance(), // Total = A4 balance
-            String.format("Đã cấp %d trang A4 và %d trang A3 cho %s (tổng %d A4)", 
-                         request.getA4Pages(), request.getA3Pages(), user.getFullName(), totalA4ToAdd)
+            String.format("Đã cấp %d trang A4 cho %s", totalA4ToAdd, user.getFullName())
         );
     }
     
@@ -336,11 +424,11 @@ public class AccountServiceImpl implements IAccountService {
     
     private boolean isValidStatus(String status) {
         return status != null && 
-               (status.equals("Active") || status.equals("Inactive") || status.equals("Suspended"));
+               (status.equals("Active") || status.equals("Inactive"));
     }
     
     private boolean isValidRole(String role) {
         return role != null && 
-               (role.equals("Student") || role.equals("SPSO") || role.equals("Admin"));
+               (role.equals("Student") || role.equals("SPSO"));
     }
 }

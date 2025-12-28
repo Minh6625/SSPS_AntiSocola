@@ -48,7 +48,7 @@ export interface AccountFilterDTO {
 
 export interface UpdateStatusRequest {
   userId: string;
-  status: 'Active' | 'Inactive' | 'Suspended';
+  status: 'Active' | 'Inactive';
   reason?: string;
 }
 
@@ -62,7 +62,7 @@ export interface UpdateStatusResponse {
 
 export interface UpdateRoleRequest {
   userId: string;
-  newRole: 'Student' | 'SPSO' | 'Admin';
+  newRole: 'Student' | 'SPSO';
   reason?: string;
 }
 
@@ -89,6 +89,24 @@ export interface AllocatePageResponse {
   newA4Balance: number;
   newA3Balance: number;
   totalA4Equivalent: number;
+  message: string;
+}
+
+export interface CreateAccountRequest {
+  userId: string;
+  email: string;
+  fullName: string;
+  phoneNumber?: string;
+  userType: 'Student' | 'SPSO' | 'Admin';
+  password: string;
+}
+
+export interface CreateAccountResponse {
+  userId: string;
+  email: string;
+  fullName: string;
+  userType: string;
+  status: string;
   message: string;
 }
 
@@ -200,5 +218,16 @@ export const accountManagementService = {
    */
   async deleteAccount(userId: string): Promise<void> {
     await apiClient.delete(`/spso/accounts/${userId}`);
+  },
+
+  /**
+   * POST /api/spso/accounts - Tạo tài khoản mới
+   */
+  async createAccount(request: CreateAccountRequest): Promise<CreateAccountResponse> {
+    const response = await apiClient.post<CreateAccountResponse>(
+      '/spso/accounts',
+      request
+    );
+    return response.data;
   },
 };

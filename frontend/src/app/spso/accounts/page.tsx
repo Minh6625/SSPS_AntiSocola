@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   accountManagementService, 
   AccountListDTO, 
@@ -11,6 +11,7 @@ import AccountDetailModal from './AccountDetailModal';
 import AllocatePageModal from './AllocatePageModal';
 import UpdateStatusModal from './UpdateStatusModal';
 import UpdateRoleModal from './UpdateRoleModal';
+import CreateAccountModal from './CreateAccountModal';
 
 // Icons
 const SearchIcon = () => (
@@ -25,16 +26,22 @@ const RefreshIcon = () => (
   </svg>
 );
 
+const PlusIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+  </svg>
+);
+
+const MoreVerticalIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+  </svg>
+);
+
 const EyeIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-  </svg>
-);
-
-const PlusIcon = () => (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
   </svg>
 );
 
@@ -47,6 +54,12 @@ const EditIcon = () => (
 const UserIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+);
+
+const PageIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
   </svg>
 );
 
@@ -74,6 +87,32 @@ export default function AccountManagementPage() {
   const [showAllocateModal, setShowAllocateModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  
+  // Dropdown menu
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleRefresh = () => {
+    // Reset all filters
+    setKeyword('');
+    setUserTypeFilter('');
+    setStatusFilter('');
+    setSortBy('userId');
+    setSortDirection('ASC');
+    setCurrentPage(1);
+  };
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true);
@@ -114,28 +153,35 @@ export default function AccountManagementPage() {
   const handleViewDetail = (account: AccountListDTO) => {
     setSelectedAccount(account);
     setShowDetailModal(true);
+    setOpenMenuId(null);
   };
 
   const handleAllocatePages = (account: AccountListDTO) => {
     setSelectedAccount(account);
     setShowAllocateModal(true);
+    setOpenMenuId(null);
   };
 
   const handleUpdateStatus = (account: AccountListDTO) => {
     setSelectedAccount(account);
     setShowStatusModal(true);
+    setOpenMenuId(null);
   };
 
   const handleUpdateRole = (account: AccountListDTO) => {
     setSelectedAccount(account);
     setShowRoleModal(true);
+    setOpenMenuId(null);
+  };
+
+  const toggleMenu = (userId: string) => {
+    setOpenMenuId(openMenuId === userId ? null : userId);
   };
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       Active: 'bg-green-100 text-green-800',
       Inactive: 'bg-gray-100 text-gray-800',
-      Suspended: 'bg-red-100 text-red-800',
     };
     return styles[status] || 'bg-gray-100 text-gray-800';
   };
@@ -162,7 +208,6 @@ export default function AccountManagementPage() {
     const labels: Record<string, string> = {
       Active: 'Hoạt động',
       Inactive: 'Không hoạt động',
-      Suspended: 'Bị khóa',
     };
     return labels[status] || status;
   };
@@ -177,13 +222,22 @@ export default function AccountManagementPage() {
             Quản lý tất cả tài khoản trong hệ thống (Student, SPSO, Admin)
           </p>
         </div>
-        <button
-          onClick={fetchAccounts}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-        >
-          <RefreshIcon />
-          Làm mới
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+          >
+            <PlusIcon />
+            Thêm tài khoản
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+          >
+            <RefreshIcon />
+            Làm mới
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -226,7 +280,6 @@ export default function AccountManagementPage() {
             <option value="">Tất cả trạng thái</option>
             <option value="Active">Hoạt động</option>
             <option value="Inactive">Không hoạt động</option>
-            <option value="Suspended">Bị khóa</option>
           </select>
 
           {/* Sort */}
@@ -351,37 +404,49 @@ export default function AccountManagementPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="relative inline-block" ref={openMenuId === account.userId ? menuRef : null}>
                         <button
-                          onClick={() => handleViewDetail(account)}
-                          className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                          title="Xem chi tiết"
+                          onClick={() => toggleMenu(account.userId)}
+                          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                          title="Thao tác"
                         >
-                          <EyeIcon />
+                          <MoreVerticalIcon />
                         </button>
-                        {account.userType === 'Student' && (
-                          <button
-                            onClick={() => handleAllocatePages(account)}
-                            className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition"
-                            title="Cấp trang"
-                          >
-                            <PlusIcon />
-                          </button>
+                        
+                        {openMenuId === account.userId && (
+                          <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                            <button
+                              onClick={() => handleViewDetail(account)}
+                              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                            >
+                              <EyeIcon />
+                              Xem chi tiết
+                            </button>
+                            {account.userType === 'Student' && (
+                              <button
+                                onClick={() => handleAllocatePages(account)}
+                                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <PageIcon />
+                                Cấp trang
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleUpdateStatus(account)}
+                              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                            >
+                              <EditIcon />
+                              Cập nhật trạng thái
+                            </button>
+                            <button
+                              onClick={() => handleUpdateRole(account)}
+                              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                            >
+                              <UserIcon />
+                              Đổi role
+                            </button>
+                          </div>
                         )}
-                        <button
-                          onClick={() => handleUpdateStatus(account)}
-                          className="p-2 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
-                          title="Cập nhật trạng thái"
-                        >
-                          <EditIcon />
-                        </button>
-                        <button
-                          onClick={() => handleUpdateRole(account)}
-                          className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
-                          title="Đổi role"
-                        >
-                          <UserIcon />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -456,6 +521,16 @@ export default function AccountManagementPage() {
           onClose={() => setShowRoleModal(false)}
           onSuccess={() => {
             setShowRoleModal(false);
+            fetchAccounts();
+          }}
+        />
+      )}
+
+      {showCreateModal && (
+        <CreateAccountModal
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={() => {
+            setShowCreateModal(false);
             fetchAccounts();
           }}
         />

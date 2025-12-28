@@ -25,6 +25,13 @@ public interface IAccountService {
     AccountDetailDTO getAccountDetail(String userId);
     
     /**
+     * Tạo tài khoản mới
+     * @param request Thông tin tài khoản
+     * @return Thông tin tài khoản đã tạo
+     */
+    CreateAccountResponseDTO createAccount(CreateAccountRequestDTO request);
+    
+    /**
      * Cập nhật trạng thái tài khoản (Active/Inactive/Suspended)
      * @param request Thông tin cập nhật
      * @return Thông tin sau khi cập nhật

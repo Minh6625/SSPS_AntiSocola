@@ -18,7 +18,7 @@ public class UpdateAccountStatusRequestDTO {
     private String userId;
     
     @NotBlank(message = "Trạng thái không được để trống")
-    @Pattern(regexp = "^(Active|Inactive|Suspended)$", message = "Trạng thái phải là Active, Inactive hoặc Suspended")
+    @Pattern(regexp = "^(Active|Inactive)$", message = "Trạng thái phải là Active hoặc Inactive")
     private String status;
     
     private String reason;  // Lý do thay đổi (optional)
