@@ -90,7 +90,7 @@ export default function StudentDashboard() {
     setFavoritePrinter(topPrinter ? topPrinter[0] : '--');
   };
 
-  const maxBarValue = Math.max(...weeklyStats.map((s) => s.success + s.failed), 1);
+  const maxBarValue = Math.max(...weeklyStats.map((s) => Math.max(s.success, s.failed)), 1);
   const totalJobs = successRate.success + successRate.failed || 1;
   const successPercent = Math.round((successRate.success / totalJobs) * 100);
 
@@ -204,43 +204,81 @@ export default function StudentDashboard() {
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
               <h2 className="text-lg font-bold text-gray-800">Thống kê lệnh in theo tuần</h2>
             </div>
-            <div className="h-64 flex items-end justify-between gap-4 px-4">
-              {weeklyStats.length > 0 ? weeklyStats.map((stat, index) => (
-                <div key={index} className="flex-1 flex flex-col items-center gap-2 group relative">
-                  {/* Tooltip on hover */}
-                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap shadow-lg">
-                    <div className="font-semibold mb-1">{stat.day}</div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 bg-green-400 rounded-sm"></span>
-                      <span>Thành công: {stat.success}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 bg-red-400 rounded-sm"></span>
-                      <span>Thất bại: {stat.failed}</span>
-                    </div>
-                    <div className="border-t border-gray-600 mt-1 pt-1">
-                      Tổng: {stat.success + stat.failed}
-                    </div>
-                    {/* Arrow */}
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                  </div>
-                  
-                  {/* Number label on top of bar */}
-                  {(stat.success + stat.failed) > 0 && (
-                    <span className="text-xs font-semibold text-gray-700 mb-1">{stat.success + stat.failed}</span>
-                  )}
-                  
-                  <div className="w-full flex flex-col items-center gap-1" style={{ height: '180px' }}>
-                    <div className="w-full flex flex-col justify-end h-full gap-0.5 cursor-pointer">
-                      <div className="w-full bg-green-500 rounded-t-sm transition-all hover:bg-green-600" style={{ height: `${(stat.success / maxBarValue) * 100}%`, minHeight: stat.success > 0 ? '4px' : '0' }}></div>
-                      <div className="w-full bg-red-400 rounded-b-sm transition-all hover:bg-red-500" style={{ height: `${(stat.failed / maxBarValue) * 100}%`, minHeight: stat.failed > 0 ? '4px' : '0' }}></div>
-                    </div>
-                  </div>
-                  <span className="text-xs text-gray-500 font-medium">{stat.day}</span>
+            <div className="flex">
+              {/* Y-Axis Labels */}
+              <div className="flex flex-col justify-between h-52 pr-2 text-right border-r border-gray-200">
+                {(() => {
+                  const yAxisMax = Math.ceil(maxBarValue / 3) * 3 || 3;
+                  const step = yAxisMax / 3;
+                  return [yAxisMax, Math.round(step * 2), Math.round(step), 0].map((val, i) => (
+                    <span key={i} className="text-xs text-gray-500 leading-none -translate-y-1">{val}</span>
+                  ));
+                })()}
+              </div>
+              
+              {/* Chart Area */}
+              <div className="flex-1 relative">
+                {/* Grid Lines */}
+                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ height: '208px' }}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="border-t border-gray-100 w-full"></div>
+                  ))}
                 </div>
-              )) : (
-                <div className="flex-1 flex items-center justify-center text-gray-400">Chưa có dữ liệu</div>
-              )}
+                
+                {/* Bars */}
+                <div className="h-52 flex items-end justify-around gap-2 relative z-10 pl-2">
+                  {weeklyStats.length > 0 ? weeklyStats.map((stat, index) => {
+                    const yAxisMax = Math.ceil(maxBarValue / 3) * 3 || 3;
+                    const successHeight = stat.success > 0 ? Math.max((stat.success / yAxisMax) * 100, 10) : 0;
+                    const failedHeight = stat.failed > 0 ? Math.max((stat.failed / yAxisMax) * 100, 10) : 0;
+                    return (
+                      <div key={index} className="flex-1 flex flex-col items-center group relative h-full">
+                        {/* Tooltip on hover */}
+                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-lg">
+                          <div className="font-semibold mb-1">{stat.day}</div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 bg-green-400 rounded-sm"></span>
+                            <span>Thành công: {stat.success}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 bg-red-400 rounded-sm"></span>
+                            <span>Thất bại: {stat.failed}</span>
+                          </div>
+                          <div className="border-t border-gray-600 mt-1 pt-1">
+                            Tổng: {stat.success + stat.failed}
+                          </div>
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                        </div>
+                        
+                        {/* Bars container */}
+                        <div className="flex-1 w-full flex justify-center items-end gap-1 cursor-pointer">
+                          {/* Success Bar */}
+                          <div 
+                            className="w-5 bg-green-500 rounded-t transition-all hover:bg-green-600" 
+                            style={{ height: `${successHeight}%` }}
+                          ></div>
+                          {/* Failed Bar */}
+                          <div 
+                            className="w-5 bg-red-400 rounded-t transition-all hover:bg-red-500" 
+                            style={{ height: `${failedHeight}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    );
+                  }) : (
+                    <div className="flex-1 flex items-center justify-center text-gray-400">Chưa có dữ liệu</div>
+                  )}
+                </div>
+                
+                {/* X-Axis Labels */}
+                <div className="flex justify-between mt-2">
+                  {weeklyStats.map((stat, index) => (
+                    <div key={index} className="flex-1 text-center">
+                      <span className="text-xs text-gray-500 font-medium">{stat.day}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-gray-100">
               <div className="flex items-center gap-2"><div className="w-3 h-3 bg-green-500 rounded-sm"></div><span className="text-sm text-gray-600">Thành công</span></div>

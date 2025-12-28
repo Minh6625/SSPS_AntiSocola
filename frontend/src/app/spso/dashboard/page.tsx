@@ -7,6 +7,7 @@ import { PagePricing } from '@/types/pagePricing';
 
 interface MonthlyStat {
   month: string;
+  monthIndex: number;
   jobs: number;
   revenue: number;
 }
@@ -28,10 +29,20 @@ export default function SPSODashboard() {
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStat[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [monthRevenue, setMonthRevenue] = useState(0);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // Generate available years (current year and 5 years back)
+  const availableYears = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (allLogs.length > 0 && pricing.length > 0) {
+      calculateChartData(allLogs, pricing, selectedYear);
+    }
+  }, [selectedYear, allLogs, pricing]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -47,7 +58,7 @@ export default function SPSODashboard() {
       setRecentLogs(logsData.content);
       setAllLogs(allLogsData.content);
       setPricing(pricingData);
-      calculateChartData(allLogsData.content, pricingData);
+      calculateChartData(allLogsData.content, pricingData, selectedYear);
     } catch (err) {
       setError('Không thể tải dữ liệu. Vui lòng thử lại.');
       console.error(err);
@@ -56,7 +67,7 @@ export default function SPSODashboard() {
     }
   };
 
-  const calculateChartData = (logs: PrintLogDTO[], pricingData: PagePricing[]) => {
+  const calculateChartData = (logs: PrintLogDTO[], pricingData: PagePricing[], year: number) => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
@@ -80,19 +91,17 @@ export default function SPSODashboard() {
     const monthTotal = thisMonthLogs.reduce((sum, log) => sum + getLogRevenue(log), 0);
     setMonthRevenue(monthTotal);
 
-    // Monthly stats (last 6 months)
+    // Monthly stats (all 12 months of selected year)
     const months = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
     const monthlyData: MonthlyStat[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(currentYear, currentMonth - i, 1);
-      const m = date.getMonth();
-      const y = date.getFullYear();
+    for (let m = 0; m < 12; m++) {
       const monthLogs = completedLogs.filter(log => {
         const logDate = new Date(log.printTime);
-        return logDate.getMonth() === m && logDate.getFullYear() === y;
+        return logDate.getMonth() === m && logDate.getFullYear() === year;
       });
       monthlyData.push({
         month: months[m],
+        monthIndex: m,
         jobs: monthLogs.length,
         revenue: monthLogs.reduce((sum, log) => sum + getLogRevenue(log), 0),
       });
@@ -331,61 +340,147 @@ export default function SPSODashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Jobs Chart */}
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <h2 className="text-lg font-bold text-gray-800">Lệnh in theo tháng</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <h2 className="text-lg font-bold text-gray-800">Lệnh in theo tháng</h2>
+            </div>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              {availableYears.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
           </div>
-          <div className="h-64 flex items-end justify-between gap-3 px-2">
-            {monthlyStats.map((stat, index) => (
-              <div key={index} className="flex-1 flex flex-col items-center gap-2 group relative">
-                {/* Tooltip */}
-                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap shadow-lg">
-                  <div className="font-semibold mb-1">{stat.month}</div>
-                  <div>Lệnh in: {stat.jobs}</div>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                </div>
-                {stat.jobs > 0 && <span className="text-xs font-semibold text-gray-700">{stat.jobs}</span>}
-                <div className="w-full flex flex-col justify-end" style={{ height: '180px' }}>
-                  <div 
-                    className="w-full bg-indigo-500 rounded-t-sm transition-all hover:bg-indigo-600 cursor-pointer" 
-                    style={{ height: `${(stat.jobs / maxMonthlyJobs) * 100}%`, minHeight: stat.jobs > 0 ? '4px' : '0' }}
-                  ></div>
-                </div>
-                <span className="text-xs text-gray-500 font-medium">{stat.month}</span>
+          <div className="flex">
+            {/* Y-Axis */}
+            <div className="flex flex-col justify-between h-48 pr-2 text-right border-r border-gray-200">
+              {(() => {
+                const yMax = Math.ceil(maxMonthlyJobs / 4) * 4 || 4;
+                return [yMax, Math.round(yMax * 0.75), Math.round(yMax * 0.5), Math.round(yMax * 0.25), 0].map((val, i) => (
+                  <span key={i} className="text-xs text-gray-500 leading-none">{val}</span>
+                ));
+              })()}
+            </div>
+            {/* Chart Area */}
+            <div className="flex-1 relative pl-2">
+              {/* Grid Lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ height: '192px' }}>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div key={i} className="border-t border-gray-100 w-full"></div>
+                ))}
               </div>
-            ))}
+              {/* Bars */}
+              <div className="h-48 flex items-end justify-between gap-1 relative z-10">
+                {monthlyStats.map((stat, index) => {
+                  const yMax = Math.ceil(maxMonthlyJobs / 4) * 4 || 4;
+                  const barHeight = stat.jobs > 0 ? Math.max((stat.jobs / yMax) * 100, 5) : 0;
+                  return (
+                    <div key={index} className="flex-1 flex flex-col items-center group relative h-full">
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-lg">
+                        <div className="font-semibold mb-1">{stat.month}/{selectedYear}</div>
+                        <div>Lệnh in: {stat.jobs}</div>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                      </div>
+                      {/* Bar */}
+                      <div className="flex-1 w-full flex items-end justify-center">
+                        <div 
+                          className="w-4 bg-indigo-500 rounded-t transition-all hover:bg-indigo-600 cursor-pointer" 
+                          style={{ height: `${barHeight}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* X-Axis Labels */}
+              <div className="flex justify-between mt-2 border-t border-gray-200 pt-2">
+                {monthlyStats.map((stat, index) => (
+                  <div key={index} className="flex-1 text-center">
+                    <span className="text-xs text-gray-500 font-medium">{stat.month}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Monthly Revenue Chart */}
         <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-6">
-            <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h2 className="text-lg font-bold text-gray-800">Doanh thu theo tháng</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h2 className="text-lg font-bold text-gray-800">Doanh thu theo tháng</h2>
+            </div>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            >
+              {availableYears.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
           </div>
-          <div className="h-64 flex items-end justify-between gap-3 px-2">
-            {monthlyStats.map((stat, index) => (
-              <div key={index} className="flex-1 flex flex-col items-center gap-2 group relative">
-                {/* Tooltip */}
-                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap shadow-lg">
-                  <div className="font-semibold mb-1">{stat.month}</div>
-                  <div>{formatCurrency(stat.revenue)}</div>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                </div>
-                {stat.revenue > 0 && <span className="text-xs font-semibold text-gray-700">{(stat.revenue / 1000).toFixed(0)}k</span>}
-                <div className="w-full flex flex-col justify-end" style={{ height: '180px' }}>
-                  <div 
-                    className="w-full bg-emerald-500 rounded-t-sm transition-all hover:bg-emerald-600 cursor-pointer" 
-                    style={{ height: `${(stat.revenue / maxMonthlyRevenue) * 100}%`, minHeight: stat.revenue > 0 ? '4px' : '0' }}
-                  ></div>
-                </div>
-                <span className="text-xs text-gray-500 font-medium">{stat.month}</span>
+          <div className="flex">
+            {/* Y-Axis */}
+            <div className="flex flex-col justify-between h-48 pr-2 text-right border-r border-gray-200 min-w-[45px]">
+              {(() => {
+                const yMax = Math.ceil(maxMonthlyRevenue / 4000) * 4000 || 4000;
+                return [yMax, Math.round(yMax * 0.75), Math.round(yMax * 0.5), Math.round(yMax * 0.25), 0].map((val, i) => (
+                  <span key={i} className="text-xs text-gray-500 leading-none">{val >= 1000 ? `${(val/1000).toFixed(0)}k` : val}</span>
+                ));
+              })()}
+            </div>
+            {/* Chart Area */}
+            <div className="flex-1 relative pl-2">
+              {/* Grid Lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ height: '192px' }}>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div key={i} className="border-t border-gray-100 w-full"></div>
+                ))}
               </div>
-            ))}
+              {/* Bars */}
+              <div className="h-48 flex items-end justify-between gap-1 relative z-10">
+                {monthlyStats.map((stat, index) => {
+                  const yMax = Math.ceil(maxMonthlyRevenue / 4000) * 4000 || 4000;
+                  const barHeight = stat.revenue > 0 ? Math.max((stat.revenue / yMax) * 100, 5) : 0;
+                  return (
+                    <div key={index} className="flex-1 flex flex-col items-center group relative h-full">
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-lg">
+                        <div className="font-semibold mb-1">{stat.month}/{selectedYear}</div>
+                        <div>{formatCurrency(stat.revenue)}</div>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                      </div>
+                      {/* Bar */}
+                      <div className="flex-1 w-full flex items-end justify-center">
+                        <div 
+                          className="w-4 bg-emerald-500 rounded-t transition-all hover:bg-emerald-600 cursor-pointer" 
+                          style={{ height: `${barHeight}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* X-Axis Labels */}
+              <div className="flex justify-between mt-2 border-t border-gray-200 pt-2">
+                {monthlyStats.map((stat, index) => (
+                  <div key={index} className="flex-1 text-center">
+                    <span className="text-xs text-gray-500 font-medium">{stat.month}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -400,37 +495,72 @@ export default function SPSODashboard() {
             </svg>
             <h2 className="text-lg font-bold text-gray-800">Thống kê lệnh in theo tuần</h2>
           </div>
-          <div className="h-64 flex items-end justify-between gap-4 px-4">
-            {weeklyStats.length > 0 ? weeklyStats.map((stat, index) => (
-              <div key={index} className="flex-1 flex flex-col items-center gap-2 group relative">
-                {/* Tooltip */}
-                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 whitespace-nowrap shadow-lg">
-                  <div className="font-semibold mb-1">{stat.day}</div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 bg-green-400 rounded-sm"></span>
-                    <span>Thành công: {stat.success}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 bg-red-400 rounded-sm"></span>
-                    <span>Thất bại: {stat.failed}</span>
-                  </div>
-                  <div className="border-t border-gray-600 mt-1 pt-1">Tổng: {stat.success + stat.failed}</div>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                </div>
-                {(stat.success + stat.failed) > 0 && (
-                  <span className="text-xs font-semibold text-gray-700">{stat.success + stat.failed}</span>
-                )}
-                <div className="w-full flex flex-col items-center gap-1" style={{ height: '180px' }}>
-                  <div className="w-full flex flex-col justify-end h-full gap-0.5 cursor-pointer">
-                    <div className="w-full bg-green-500 rounded-t-sm transition-all hover:bg-green-600" style={{ height: `${(stat.success / maxWeeklyValue) * 100}%`, minHeight: stat.success > 0 ? '4px' : '0' }}></div>
-                    <div className="w-full bg-red-400 rounded-b-sm transition-all hover:bg-red-500" style={{ height: `${(stat.failed / maxWeeklyValue) * 100}%`, minHeight: stat.failed > 0 ? '4px' : '0' }}></div>
-                  </div>
-                </div>
-                <span className="text-xs text-gray-500 font-medium">{stat.day}</span>
+          <div className="flex">
+            {/* Y-Axis */}
+            <div className="flex flex-col justify-between h-48 pr-2 text-right border-r border-gray-200">
+              {(() => {
+                const yMax = Math.ceil(maxWeeklyValue / 4) * 4 || 4;
+                return [yMax, Math.round(yMax * 0.75), Math.round(yMax * 0.5), Math.round(yMax * 0.25), 0].map((val, i) => (
+                  <span key={i} className="text-xs text-gray-500 leading-none">{val}</span>
+                ));
+              })()}
+            </div>
+            {/* Chart Area */}
+            <div className="flex-1 relative pl-2">
+              {/* Grid Lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ height: '192px' }}>
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div key={i} className="border-t border-gray-100 w-full"></div>
+                ))}
               </div>
-            )) : (
-              <div className="flex-1 flex items-center justify-center text-gray-400">Chưa có dữ liệu</div>
-            )}
+              {/* Bars */}
+              <div className="h-48 flex items-end justify-between gap-2 relative z-10">
+                {weeklyStats.length > 0 ? weeklyStats.map((stat, index) => {
+                  const yMax = Math.ceil(maxWeeklyValue / 4) * 4 || 4;
+                  const successHeight = stat.success > 0 ? Math.max((stat.success / yMax) * 100, 5) : 0;
+                  const failedHeight = stat.failed > 0 ? Math.max((stat.failed / yMax) * 100, 5) : 0;
+                  return (
+                    <div key={index} className="flex-1 flex flex-col items-center group relative h-full">
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-lg">
+                        <div className="font-semibold mb-1">{stat.day}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 bg-green-400 rounded-sm"></span>
+                          <span>Thành công: {stat.success}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 bg-red-400 rounded-sm"></span>
+                          <span>Thất bại: {stat.failed}</span>
+                        </div>
+                        <div className="border-t border-gray-600 mt-1 pt-1">Tổng: {stat.success + stat.failed}</div>
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                      </div>
+                      {/* Bars */}
+                      <div className="flex-1 w-full flex justify-center items-end gap-1 cursor-pointer">
+                        <div 
+                          className="w-4 bg-green-500 rounded-t transition-all hover:bg-green-600" 
+                          style={{ height: `${successHeight}%` }}
+                        ></div>
+                        <div 
+                          className="w-4 bg-red-400 rounded-t transition-all hover:bg-red-500" 
+                          style={{ height: `${failedHeight}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                }) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-400">Chưa có dữ liệu</div>
+                )}
+              </div>
+              {/* X-Axis Labels */}
+              <div className="flex justify-between mt-2 border-t border-gray-200 pt-2">
+                {weeklyStats.map((stat, index) => (
+                  <div key={index} className="flex-1 text-center">
+                    <span className="text-xs text-gray-500 font-medium">{stat.day}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
           <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-gray-100">
             <div className="flex items-center gap-2"><div className="w-3 h-3 bg-green-500 rounded-sm"></div><span className="text-sm text-gray-600">Thành công</span></div>
