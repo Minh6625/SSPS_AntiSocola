@@ -72,6 +72,25 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
     
+    // Xử lý Application Exception (custom business logic errors)
+    @ExceptionHandler(ApplicationException.class)
+    public ResponseEntity<ErrorResponse> handleApplicationException(
+            ApplicationException ex) {
+        
+        log.warn("ApplicationException: {} (status: {})", ex.getMessage(), ex.getStatusCode());
+        
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode());
+        
+        ErrorResponse response = new ErrorResponse(
+            LocalDateTime.now(),
+            ex.getStatusCode(),
+            ex.getMessage(),
+            null
+        );
+        
+        return new ResponseEntity<>(response, status);
+    }
+    
     // Xử lý IllegalStateException (ví dụ: không thể refill khi có jobs active)
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ErrorResponse> handleIllegalStateException(
