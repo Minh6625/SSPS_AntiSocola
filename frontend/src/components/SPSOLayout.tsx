@@ -74,6 +74,12 @@ const ReportIcon = () => (
   </svg>
 );
 
+const TransactionIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+  </svg>
+);
+
 const SettingsIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
     <circle cx="12" cy="12" r="3" />
@@ -122,6 +128,7 @@ export default function SPSOLayout({ children }: LayoutProps) {
     { name: 'Quản lý máy in', icon: <PrinterIcon />, href: '/spso/printers' },
     { name: 'Vị trí máy in', icon: <LocationIcon />, href: '/spso/locations' },
     { name: 'Quản lý tài khoản', icon: <UsersIcon />, href: '/spso/accounts' },
+    { name: 'Quản lý giao dịch', icon: <TransactionIcon />, href: '/spso/transactions' },
     { name: 'Báo cáo', icon: <ReportIcon />, href: '/spso/reports' },
     { name: 'Cài đặt hệ thống', icon: <SettingsIcon />, href: '/spso/settings' },
   ];

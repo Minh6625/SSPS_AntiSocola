@@ -96,6 +96,10 @@ export default function LoginPage() {
       localStorage.setItem('userEmail', result.data.email);
       localStorage.setItem('userRole', result.data.role);
       localStorage.setItem('userFullName', result.data.fullName || '');
+      
+      // Set cookies for middleware
+      document.cookie = `accessToken=${result.data.accessToken};path=/;max-age=${7 * 24 * 60 * 60}`;
+      document.cookie = `userRole=${result.data.role};path=/;max-age=${7 * 24 * 60 * 60}`;
 
       // Check role - only allow Student
       const userRole = result.data.role?.toUpperCase();
@@ -106,7 +110,8 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/student/dashboard');
+      // Use window.location for reliable redirect
+      window.location.href = '/student/dashboard';
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.error ||
