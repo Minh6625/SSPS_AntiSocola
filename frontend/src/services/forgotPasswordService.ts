@@ -46,13 +46,12 @@ const authClient = axios.create({
   },
 });
 
-// Password validation
+// Password validation - Yêu cầu: ít nhất 8 ký tự, 1 chữ thường, 1 chữ hoa, 1 số
 export const passwordValidation = {
   minLength: 8,
   hasUppercase: /[A-Z]/,
   hasLowercase: /[a-z]/,
   hasNumber: /[0-9]/,
-  hasSpecialChar: /[@$!%*?&]/,
 
   validate(password: string): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
@@ -60,17 +59,14 @@ export const passwordValidation = {
     if (password.length < this.minLength) {
       errors.push(`Ít nhất ${this.minLength} ký tự`);
     }
-    if (!this.hasUppercase.test(password)) {
-      errors.push('Chữ hoa (A-Z)');
-    }
     if (!this.hasLowercase.test(password)) {
-      errors.push('Chữ thường (a-z)');
+      errors.push('Ít nhất 1 chữ thường (a-z)');
+    }
+    if (!this.hasUppercase.test(password)) {
+      errors.push('Ít nhất 1 chữ hoa (A-Z)');
     }
     if (!this.hasNumber.test(password)) {
-      errors.push('Số (0-9)');
-    }
-    if (!this.hasSpecialChar.test(password)) {
-      errors.push('Ký tự đặc biệt (@$!%*?&)');
+      errors.push('Ít nhất 1 chữ số (0-9)');
     }
 
     return {

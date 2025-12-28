@@ -61,6 +61,24 @@ public class ProfileService {
     }
 
     /**
+     * Validate password: ít nhất 8 ký tự, 1 chữ thường, 1 chữ hoa, 1 số
+     */
+    private void validatePassword(String password) {
+        if (password == null || password.length() < 8) {
+            throw new BusinessException("Mật khẩu phải có ít nhất 8 ký tự");
+        }
+        if (!password.matches(".*[a-z].*")) {
+            throw new BusinessException("Mật khẩu phải có ít nhất 1 chữ thường");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new BusinessException("Mật khẩu phải có ít nhất 1 chữ hoa");
+        }
+        if (!password.matches(".*[0-9].*")) {
+            throw new BusinessException("Mật khẩu phải có ít nhất 1 chữ số");
+        }
+    }
+
+    /**
      * Đổi mật khẩu
      */
     @Transactional
@@ -71,6 +89,9 @@ public class ProfileService {
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new BusinessException("Mật khẩu xác nhận không khớp");
         }
+        
+        // Validate new password strength
+        validatePassword(request.getNewPassword());
         
         // Validate new password != current password
         if (request.getCurrentPassword().equals(request.getNewPassword())) {

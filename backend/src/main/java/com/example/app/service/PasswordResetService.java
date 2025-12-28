@@ -92,6 +92,24 @@ public class PasswordResetService {
     }
     
     /**
+     * Validate password: ít nhất 8 ký tự, 1 chữ thường, 1 chữ hoa, 1 số
+     */
+    private void validatePassword(String password) {
+        if (password == null || password.length() < 8) {
+            throw new RuntimeException("Mật khẩu phải có ít nhất 8 ký tự");
+        }
+        if (!password.matches(".*[a-z].*")) {
+            throw new RuntimeException("Mật khẩu phải có ít nhất 1 chữ thường");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new RuntimeException("Mật khẩu phải có ít nhất 1 chữ hoa");
+        }
+        if (!password.matches(".*[0-9].*")) {
+            throw new RuntimeException("Mật khẩu phải có ít nhất 1 chữ số");
+        }
+    }
+    
+    /**
      * Bước 2: Xác thực OTP và đặt lại mật khẩu
      * 
      * - Kiểm tra OTP có hợp lệ không
@@ -110,6 +128,9 @@ public class PasswordResetService {
         if (!newPassword.equals(confirmPassword)) {
             throw new RuntimeException("Mật khẩu mới không khớp");
         }
+        
+        // Validate password strength
+        validatePassword(newPassword);
         
         // Kiểm tra email có tồn tại không (không cần transaction)
         User user = userRepository.findByEmail(email)
