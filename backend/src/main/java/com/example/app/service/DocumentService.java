@@ -3,9 +3,11 @@ package com.example.app.service;
 import com.example.app.dto.DocumentResponseDTO;
 import com.example.app.entity.AllowedFileType;
 import com.example.app.entity.Document;
+import com.example.app.entity.PrintJob;
 import com.example.app.exception.ApplicationException;
 import com.example.app.repository.AllowedFileTypeRepository;
 import com.example.app.repository.DocumentRepository;
+import com.example.app.repository.PrintJobRepository;
 import com.example.app.repository.SystemConfigRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -29,6 +31,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -56,6 +59,7 @@ public class DocumentService {
     private final SystemConfigRepository systemConfigRepository;
     private final SupabaseStorageService supabaseStorageService;
     private final ConvertApiService convertApiService;
+    private final PrintJobRepository printJobRepository;
     private final ModelMapper modelMapper;
     
     /**
@@ -174,7 +178,15 @@ public class DocumentService {
         // STEP 8: Tạo Document entity
         Document document = new Document();
         document.setStudentId(studentId);
-        document.setOriginalFileName(file.getOriginalFilename());
+        
+        // Đảm bảo originalFileName luôn có extension
+        String originalFileName = file.getOriginalFilename();
+        if (originalFileName != null && !originalFileName.toLowerCase().endsWith("." + fileExtension.toLowerCase())) {
+            // Nếu tên file không có extension, thêm vào
+            originalFileName = originalFileName + "." + fileExtension.toLowerCase();
+        }
+        document.setOriginalFileName(originalFileName);
+        
         document.setStoredFileName(storedFileName);
         document.setFilePath(fileUrl); // Lưu URL Supabase thay vì đường dẫn local
         document.setFileExtension(fileExtension.toLowerCase());
@@ -369,6 +381,19 @@ public class DocumentService {
         // Kiểm tra quyền: chỉ student sở hữu document mới được xóa
         if (!document.getStudentId().equals(studentId)) {
             throw new ApplicationException("Bạn không có quyền xóa tài liệu này", 403);
+        }
+        
+        // Kiểm tra xem tài liệu có đang được in không (Pending hoặc Printing)
+        List<PrintJob> activePrintJobs = printJobRepository.findByDocumentIdAndJobStatusIn(
+            documentId, 
+            java.util.Arrays.asList("Pending", "Printing")
+        );
+        
+        if (!activePrintJobs.isEmpty()) {
+            throw new ApplicationException(
+                "Không thể xóa tài liệu đang trong trạng thái in. Vui lòng hủy lệnh in trước.", 
+                400
+            );
         }
         
         // Xóa file trên Supabase Storage

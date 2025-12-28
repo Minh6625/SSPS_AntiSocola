@@ -344,10 +344,17 @@ export default function PrintDocumentPage() {
                         Từ ngày
                       </label>
                       <input
-                        type="text"
+                        type="date"
                         value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
-                        placeholder="mm/dd/yyyy"
+                        onChange={(e) => {
+                          const newDateFrom = e.target.value;
+                          setDateFrom(newDateFrom);
+                          // Nếu ngày kết thúc đã được chọn và nhỏ hơn ngày bắt đầu mới, reset ngày kết thúc
+                          if (dateTo && newDateFrom && dateTo < newDateFrom) {
+                            setDateTo('');
+                          }
+                        }}
+                        max={dateTo || undefined}
                         className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 bg-white"
                       />
                     </div>
@@ -363,10 +370,18 @@ export default function PrintDocumentPage() {
                         Đến ngày
                       </label>
                       <input
-                        type="text"
+                        type="date"
                         value={dateTo}
-                        onChange={(e) => setDateTo(e.target.value)}
-                        placeholder="mm/dd/yyyy"
+                        onChange={(e) => {
+                          const newDateTo = e.target.value;
+                          // Kiểm tra nếu ngày kết thúc nhỏ hơn ngày bắt đầu
+                          if (dateFrom && newDateTo && newDateTo < dateFrom) {
+                            alert('Ngày kết thúc không được trước ngày bắt đầu');
+                            return;
+                          }
+                          setDateTo(newDateTo);
+                        }}
+                        min={dateFrom || undefined}
                         className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 bg-white"
                       />
                     </div>
@@ -434,24 +449,36 @@ export default function PrintDocumentPage() {
                         In {selectedDocuments.length > 0 && `${selectedDocuments.length} `}tài liệu
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (selectedDocuments.length === 0) {
                             alert('Vui lòng chọn ít nhất 1 tài liệu');
                             return;
                           }
                           if (!confirm(`Bạn có chắc chắn muốn xóa ${selectedDocuments.length} tài liệu?`)) return;
                           
-                          Promise.all(selectedDocuments.map(id => 
-                            documentService.deleteDocument(id)
-                          ))
-                          .then(() => {
+                          // Xóa từng tài liệu và thu thập kết quả
+                          const results = await Promise.allSettled(
+                            selectedDocuments.map(id => documentService.deleteDocument(id))
+                          );
+                          
+                          const successCount = results.filter(r => r.status === 'fulfilled').length;
+                          const failedResults = results.filter(r => r.status === 'rejected') as PromiseRejectedResult[];
+                          const failedCount = failedResults.length;
+                          
+                          if (failedCount === 0) {
                             alert('Xóa tài liệu thành công');
-                            setSelectedDocuments([]);
-                            loadDocuments(currentPage);
-                          })
-                          .catch(error => {
-                            alert(`Lỗi xóa tài liệu: ${error instanceof Error ? error.message : 'Lỗi không xác định'}`);
-                          });
+                          } else if (successCount === 0) {
+                            // Tất cả đều thất bại - lấy lỗi đầu tiên để hiển thị
+                            const errorMsg = failedResults[0]?.reason?.message || 'Lỗi không xác định';
+                            alert(`Không thể xóa tài liệu: ${errorMsg}`);
+                          } else {
+                            // Một số thành công, một số thất bại
+                            const errorMsg = failedResults[0]?.reason?.message || 'Một số tài liệu đang được in';
+                            alert(`Xóa thành công ${successCount}/${selectedDocuments.length} tài liệu.\n\n${failedCount} tài liệu không thể xóa:\n${errorMsg}`);
+                          }
+                          
+                          setSelectedDocuments([]);
+                          loadDocuments(currentPage);
                         }}
                         disabled={selectedDocuments.length === 0}
                         className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"

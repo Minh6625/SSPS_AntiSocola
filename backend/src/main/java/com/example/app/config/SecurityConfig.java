@@ -43,6 +43,13 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
         
+        // Expose headers để frontend có thể đọc
+        configuration.setExposedHeaders(Arrays.asList(
+            "Content-Disposition", 
+            "Content-Type",
+            "Authorization"
+        ));
+        
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

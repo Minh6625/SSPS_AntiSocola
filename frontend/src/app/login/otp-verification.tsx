@@ -78,6 +78,12 @@ export default function OtpVerification({
       return;
     }
 
+    // Check OTP expired on client side
+    if (otpCountdown <= 0) {
+      setError('Mã OTP đã hết hạn. Vui lòng gửi lại OTP mới.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
