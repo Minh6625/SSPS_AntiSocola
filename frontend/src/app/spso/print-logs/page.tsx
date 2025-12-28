@@ -211,7 +211,7 @@ export default function PrintLogsPage() {
 
         {/* Stats Summary */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-indigo-500">
               <p className="text-xs text-gray-500">Tổng</p>
               <p className="text-xl font-bold text-gray-800">{stats.totalLogs}</p>
@@ -221,8 +221,12 @@ export default function PrintLogsPage() {
               <p className="text-xl font-bold text-green-600">{stats.completedLogs}</p>
             </div>
             <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-red-500">
+              <p className="text-xs text-gray-500">Thất bại</p>
+              <p className="text-xl font-bold text-red-600">{stats.failedLogs || 0}</p>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-gray-400">
               <p className="text-xs text-gray-500">Đã hủy</p>
-              <p className="text-xl font-bold text-red-600">{stats.cancelledLogs}</p>
+              <p className="text-xl font-bold text-gray-600">{stats.cancelledLogs}</p>
             </div>
             <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-yellow-500">
               <p className="text-xs text-gray-500">Đang chờ</p>
