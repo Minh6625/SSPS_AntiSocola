@@ -344,10 +344,17 @@ export default function PrintDocumentPage() {
                         Từ ngày
                       </label>
                       <input
-                        type="text"
+                        type="date"
                         value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
-                        placeholder="mm/dd/yyyy"
+                        onChange={(e) => {
+                          const newDateFrom = e.target.value;
+                          setDateFrom(newDateFrom);
+                          // Nếu ngày kết thúc đã được chọn và nhỏ hơn ngày bắt đầu mới, reset ngày kết thúc
+                          if (dateTo && newDateFrom && dateTo < newDateFrom) {
+                            setDateTo('');
+                          }
+                        }}
+                        max={dateTo || undefined}
                         className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 bg-white"
                       />
                     </div>
@@ -363,10 +370,18 @@ export default function PrintDocumentPage() {
                         Đến ngày
                       </label>
                       <input
-                        type="text"
+                        type="date"
                         value={dateTo}
-                        onChange={(e) => setDateTo(e.target.value)}
-                        placeholder="mm/dd/yyyy"
+                        onChange={(e) => {
+                          const newDateTo = e.target.value;
+                          // Kiểm tra nếu ngày kết thúc nhỏ hơn ngày bắt đầu
+                          if (dateFrom && newDateTo && newDateTo < dateFrom) {
+                            alert('Ngày kết thúc không được trước ngày bắt đầu');
+                            return;
+                          }
+                          setDateTo(newDateTo);
+                        }}
+                        min={dateFrom || undefined}
                         className="w-full border border-gray-200 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 bg-white"
                       />
                     </div>
