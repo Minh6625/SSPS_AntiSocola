@@ -21,15 +21,13 @@ interface WeeklyStat {
 
 export default function SPSODashboard() {
   const [stats, setStats] = useState<PrintLogStatsDTO | null>(null);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStatsDTO | null>(null);
   const [recentLogs, setRecentLogs] = useState<PrintLogDTO[]>([]);
   const [allLogs, setAllLogs] = useState<PrintLogDTO[]>([]);
-  const [pricing, setPricing] = useState<PagePricing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStatDTO[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStat[]>([]);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [monthRevenue, setMonthRevenue] = useState(0);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   // Generate available years (current year and 5 years back)
@@ -43,7 +41,7 @@ export default function SPSODashboard() {
     if (allLogs.length > 0 && pricing.length > 0) {
       calculateChartData(allLogs, pricing, selectedYear, null);
     }
-  }, [selectedYear, allLogs, pricing]);
+  }, [allLogs]);
 
   const loadDashboardData = async () => {
     setIsLoading(true);
@@ -51,12 +49,14 @@ export default function SPSODashboard() {
     try {
       const [statsData, logsData, allLogsData, pricingData, dashboardData] = await Promise.all([
         printLogService.getPrintLogStats({}),
+        dashboardService.getDashboardStats(),
         printLogService.getPrintLogs({ page: 0, size: 5, sortBy: 'printTime', sortDirection: 'DESC' }),
         printLogService.getPrintLogs({ page: 0, size: 1000, sortBy: 'printTime', sortDirection: 'DESC' }),
         pagePricingService.getAllPricing(),
         dashboardService.getDashboardStats(),
       ]);
       setStats(statsData);
+      setDashboardStats(dashStats);
       setRecentLogs(logsData.content);
       setAllLogs(allLogsData.content);
       setPricing(pricingData);
@@ -276,7 +276,7 @@ export default function SPSODashboard() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-500 text-sm">Doanh thu tháng</p>
-              <p className="text-2xl font-bold text-gray-800 mt-1">{formatCurrency(monthRevenue)}</p>
+              <p className="text-2xl font-bold text-gray-800 mt-1">{formatCurrency(dashboardStats?.monthRevenue || 0)}</p>
             </div>
             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
               <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -340,7 +340,7 @@ export default function SPSODashboard() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Tổng doanh thu</p>
-              <p className="text-xl font-bold text-gray-800">{formatCurrency(totalRevenue)}</p>
+              <p className="text-xl font-bold text-gray-800">{formatCurrency(dashboardStats?.totalRevenue || 0)}</p>
             </div>
           </div>
         </div>
