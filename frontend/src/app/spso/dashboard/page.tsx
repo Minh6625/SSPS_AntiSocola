@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { printLogService, PrintLogDTO, PrintLogStatsDTO } from '@/services/printLogService';
 import { pagePricingService } from '@/services/pagePricingService';
 import { PagePricing } from '@/types/pagePricing';
-import { dashboardService } from '@/services/dashboardService';
+import { dashboardService, DashboardStatsDTO, MonthlyStatDTO } from '@/services/dashboardService';
 
 interface MonthlyStat {
   month: string;
@@ -24,6 +24,9 @@ export default function SPSODashboard() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStatsDTO | null>(null);
   const [recentLogs, setRecentLogs] = useState<PrintLogDTO[]>([]);
   const [allLogs, setAllLogs] = useState<PrintLogDTO[]>([]);
+  const [pricing, setPricing] = useState<PagePricing[]>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [monthRevenue, setMonthRevenue] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStatDTO[]>([]);
@@ -49,14 +52,13 @@ export default function SPSODashboard() {
     try {
       const [statsData, logsData, allLogsData, pricingData, dashboardData] = await Promise.all([
         printLogService.getPrintLogStats({}),
-        dashboardService.getDashboardStats(),
         printLogService.getPrintLogs({ page: 0, size: 5, sortBy: 'printTime', sortDirection: 'DESC' }),
         printLogService.getPrintLogs({ page: 0, size: 1000, sortBy: 'printTime', sortDirection: 'DESC' }),
         pagePricingService.getAllPricing(),
         dashboardService.getDashboardStats(),
       ]);
       setStats(statsData);
-      setDashboardStats(dashStats);
+      setDashboardStats(dashboardData);
       setRecentLogs(logsData.content);
       setAllLogs(allLogsData.content);
       setPricing(pricingData);
