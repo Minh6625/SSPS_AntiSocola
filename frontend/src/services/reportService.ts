@@ -47,6 +47,7 @@ export interface MonthlyReportDTO {
   totalPrintJobs: number;
   successfulJobs: number;
   failedJobs: number;
+  cancelledJobs: number;
   totalPagesPrinted: number;
   totalA4Equivalent: number;
   totalPagesPurchased: number;
@@ -84,6 +85,7 @@ export interface YearlyReportDTO {
   totalPrintJobs: number;
   successfulJobs: number;
   failedJobs: number;
+  cancelledJobs: number;
   totalPagesPrinted: number;
   totalA4Equivalent: number;
   totalPagesPurchased: number;

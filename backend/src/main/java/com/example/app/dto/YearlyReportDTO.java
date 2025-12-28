@@ -19,6 +19,7 @@ public class YearlyReportDTO {
     private Integer totalPrintJobs;
     private Integer successfulJobs;
     private Integer failedJobs;
+    private Integer cancelledJobs;
     private Integer totalPagesPrinted;
     private Integer totalA4Equivalent;
     private Integer totalPagesPurchased;
