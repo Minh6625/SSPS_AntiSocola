@@ -39,6 +39,19 @@ export default function LoginPage() {
   const [otpCode, setOtpCode] = useState<string>();
   const [googleScriptLoaded, setGoogleScriptLoaded] = useState(false);
 
+  const handleOtpSuccess = () => {
+    // Check role before redirecting
+    const userRole = localStorage.getItem('userRole')?.toUpperCase();
+    if (userRole !== 'STUDENT') {
+      authService.logout();
+      setError('Trang này chỉ dành cho sinh viên. Vui lòng sử dụng trang đăng nhập phù hợp.');
+      setShowOtpModal(false);
+      return;
+    }
+    setShowOtpModal(false);
+    router.push('/student/dashboard');
+  };
+
   // Initialize Google Sign-In
   useEffect(() => {
     if (googleScriptLoaded && window.google && GOOGLE_CLIENT_ID) {
@@ -89,6 +102,7 @@ export default function LoginPage() {
       if (userRole !== 'STUDENT') {
         authService.logout();
         setError('Trang này chỉ dành cho sinh viên. Vui lòng sử dụng trang đăng nhập phù hợp.');
+        setGoogleLoading(false);
         return;
       }
 
@@ -139,6 +153,7 @@ export default function LoginPage() {
         if (userRole !== 'STUDENT') {
           authService.logout();
           setError('Trang này chỉ dành cho sinh viên. Vui lòng sử dụng trang đăng nhập phù hợp.');
+          setIsLoading(false);
           return;
         }
         router.push('/student/dashboard');
@@ -166,10 +181,7 @@ export default function LoginPage() {
             email={otpEmail}
             otpCode={otpCode}
             rememberDevice={formData.rememberMe}
-            onSuccess={() => {
-              setShowOtpModal(false);
-              router.push('/student/dashboard');
-            }}
+            onSuccess={handleOtpSuccess}
             onCancel={() => {
               setShowOtpModal(false);
               setOtpEmail('');
