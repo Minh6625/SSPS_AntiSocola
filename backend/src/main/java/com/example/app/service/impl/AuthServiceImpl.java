@@ -2,6 +2,7 @@ package com.example.app.service.impl;
 
 import com.example.app.dto.LoginRequestDTO;
 import com.example.app.dto.LoginResponseDTO;
+import com.example.app.dto.OtpValidationResultDTO;
 import com.example.app.dto.RegisterRequestDTO;
 import com.example.app.dto.VerifyOtpRequestDTO;
 import com.example.app.entity.TrustedDevice;
@@ -107,20 +108,27 @@ public class AuthServiceImpl implements IAuthService {
     
     /**
      * Verify OTP và generate tokens
+     * 
+     * Note: Không dùng @Transactional ở đây vì:
+     * 1. validateOtpByEmailWithDetails cần commit attemptCount ngay cả khi OTP sai
+     * 2. Nếu dùng @Transactional, khi throw exception sẽ rollback attemptCount
      */
-    @Transactional
     public LoginResponseDTO verifyOtp(VerifyOtpRequestDTO verifyRequest) {
         // Tìm user
         User user = userRepository.findByEmail(verifyRequest.getEmail())
                 .orElseThrow(() -> new ResourceNotFoundException("User không tồn tại"));
         
-        // Validate OTP
-        if (!otpService.validateOtp(user.getUserId(), verifyRequest.getOtpCode(), "Login2FA")) {
-            throw new RuntimeException("OTP không hợp lệ hoặc đã hết hạn");
+        // Validate OTP với thông tin chi tiết
+        OtpValidationResultDTO validationResult = otpService.validateOtpByEmailWithDetails(
+            user.getEmail(), verifyRequest.getOtpCode(), "Login2FA");
+        
+        if (!validationResult.isValid()) {
+            // Trả về message chi tiết từ validation (message đã có emoji từ OtpService)
+            throw new RuntimeException(validationResult.getMessage());
         }
         
         // Delete OTP sau khi dùng
-        otpService.deleteOtp(user.getUserId(), "Login2FA");
+        otpService.deleteOtpByEmail(user.getEmail(), "Login2FA");
         
         String deviceId = verifyRequest.getDeviceId() != null ? 
             verifyRequest.getDeviceId() : UUID.randomUUID().toString();

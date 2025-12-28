@@ -9,6 +9,10 @@ interface FieldErrors {
   general?: string;
 }
 
+// Constants
+const OTP_EXPIRATION_SECONDS = 5 * 60; // 5 phút
+const RESEND_COOLDOWN_SECONDS = 60; // 60 giây cooldown gửi lại
+
 export default function RegisterStep2Page() {
   const router = useRouter();
   const [otpCode, setOtpCode] = useState('');
@@ -18,12 +22,16 @@ export default function RegisterStep2Page() {
   const [email, setEmail] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState('');
-  const [resendCountdown, setResendCountdown] = useState(0);
+  
+  // OTP countdown states
+  const [otpCountdown, setOtpCountdown] = useState(0);
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   useEffect(() => {
     // Get registration token and email from localStorage
     const token = localStorage.getItem('registrationToken');
     const storedEmail = localStorage.getItem('registrationEmail');
+    const otpSentAt = localStorage.getItem('otpSentAt');
 
     if (!token || !storedEmail) {
       router.push('/register/step1');
@@ -33,15 +41,41 @@ export default function RegisterStep2Page() {
     // Trim whitespace and newlines
     setRegistrationToken(token.trim());
     setEmail(storedEmail.trim());
+    
+    // Calculate remaining OTP time
+    if (otpSentAt) {
+      const elapsed = Math.floor((Date.now() - parseInt(otpSentAt)) / 1000);
+      const remaining = Math.max(0, OTP_EXPIRATION_SECONDS - elapsed);
+      setOtpCountdown(remaining);
+    } else {
+      // If no timestamp, assume OTP was just sent
+      setOtpCountdown(OTP_EXPIRATION_SECONDS);
+      localStorage.setItem('otpSentAt', Date.now().toString());
+    }
   }, [router]);
 
-  // Countdown timer for resend button
+  // OTP countdown timer
   useEffect(() => {
-    if (resendCountdown > 0) {
-      const timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000);
+    if (otpCountdown > 0) {
+      const timer = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000);
       return () => clearTimeout(timer);
     }
-  }, [resendCountdown]);
+  }, [otpCountdown]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  // Format time helper
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   const validateForm = (): boolean => {
     const errors: FieldErrors = {};
@@ -71,6 +105,14 @@ export default function RegisterStep2Page() {
       return;
     }
 
+    // Check OTP expired on client side
+    if (otpCountdown <= 0) {
+      setFieldErrors({
+        general: '⏰ Mã OTP đã hết hạn. Vui lòng gửi lại OTP mới.',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -86,9 +128,10 @@ export default function RegisterStep2Page() {
       // Success - Clear localStorage and redirect to login
       localStorage.removeItem('registrationToken');
       localStorage.removeItem('registrationEmail');
+      localStorage.removeItem('otpSentAt');
 
       // Show success and redirect
-      alert(response.data.message || 'Đăng ký thành công! Vui lòng đăng nhập.');
+      alert(response.data.message || '✅ Đăng ký thành công! Vui lòng đăng nhập.');
       router.push('/login');
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 
@@ -104,25 +147,44 @@ export default function RegisterStep2Page() {
   };
 
   const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    
     setResendLoading(true);
     setResendMessage('');
+    setFieldErrors({});
 
     try {
+      // Get stored registration data
+      const storedData = localStorage.getItem('registrationData');
+      if (!storedData) {
+        setResendMessage('❌ Không tìm thấy thông tin đăng ký. Vui lòng quay lại bước 1.');
+        return;
+      }
+
+      const registrationData = JSON.parse(storedData);
+
       // Call initiate-registration again to resend OTP
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/initiate-registration`,
-        {
-          email,
-          // Need to get other data from somewhere - for now just resend
-        }
+        registrationData
       );
 
-      setResendMessage('OTP mới đã được gửi đến email của bạn!');
-      setResendCountdown(60); // 60 seconds countdown
+      // Update token and reset countdown
+      if (response.data.registrationToken) {
+        localStorage.setItem('registrationToken', response.data.registrationToken);
+        setRegistrationToken(response.data.registrationToken);
+      }
+      
+      localStorage.setItem('otpSentAt', Date.now().toString());
+      setOtpCountdown(OTP_EXPIRATION_SECONDS);
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      setOtpCode(''); // Clear old OTP
+      setResendMessage('✅ OTP mới đã được gửi đến email của bạn!');
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 
+                          err.response?.data?.error ||
                           'Gửi lại OTP thất bại. Vui lòng thử lại.';
-      setResendMessage(errorMessage);
+      setResendMessage('❌ ' + errorMessage);
     } finally {
       setResendLoading(false);
     }
@@ -147,6 +209,21 @@ export default function RegisterStep2Page() {
           </p>
         </div>
 
+        {/* OTP Countdown */}
+        {otpCountdown > 0 ? (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center">
+            <p className="text-sm text-blue-700">
+              ⏱️ OTP còn hiệu lực: <span className="font-bold text-blue-800">{formatTime(otpCountdown)}</span>
+            </p>
+          </div>
+        ) : (
+          <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg text-center">
+            <p className="text-sm text-orange-700">
+              ⏰ OTP đã hết hạn. Vui lòng gửi lại OTP mới.
+            </p>
+          </div>
+        )}
+
         {/* General Error Message */}
         {fieldErrors.general && (
           <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -159,14 +236,17 @@ export default function RegisterStep2Page() {
           </div>
         )}
 
-        {/* Success Message */}
+        {/* Success/Info Message */}
         {resendMessage && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <div className={`mb-4 p-4 rounded-lg ${
+            resendMessage.startsWith('✅') 
+              ? 'bg-green-50 border border-green-200' 
+              : 'bg-red-50 border border-red-200'
+          }`}>
             <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <p className="text-sm text-green-700">{resendMessage}</p>
+              <p className={`text-sm ${
+                resendMessage.startsWith('✅') ? 'text-green-700' : 'text-red-700'
+              }`}>{resendMessage}</p>
             </div>
           </div>
         )}
@@ -201,7 +281,7 @@ export default function RegisterStep2Page() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading || otpCode.length !== 6}
+            disabled={loading || otpCode.length !== 6 || otpCountdown <= 0}
             className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 rounded-xl font-semibold hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {loading ? (
@@ -228,15 +308,15 @@ export default function RegisterStep2Page() {
             <button
               type="button"
               onClick={handleResendOtp}
-              disabled={resendLoading || resendCountdown > 0}
+              disabled={resendLoading || resendCooldown > 0}
               className="text-blue-600 font-semibold hover:underline disabled:text-gray-400 disabled:cursor-not-allowed"
             >
-              {resendCountdown > 0 ? (
-                `Gửi lại sau ${resendCountdown}s`
+              {resendCooldown > 0 ? (
+                `Gửi lại sau ${resendCooldown}s`
               ) : resendLoading ? (
                 'Đang gửi...'
               ) : (
-                'Gửi lại OTP'
+                '🔄 Gửi lại OTP'
               )}
             </button>
           </div>

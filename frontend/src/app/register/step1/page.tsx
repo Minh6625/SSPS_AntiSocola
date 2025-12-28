@@ -209,6 +209,15 @@ export default function RegisterStep1Page() {
 
       localStorage.setItem('registrationToken', response.data.registrationToken.trim());
       localStorage.setItem('registrationEmail', response.data.email.trim());
+      localStorage.setItem('otpSentAt', Date.now().toString());
+      // Lưu registration data để có thể resend OTP
+      localStorage.setItem('registrationData', JSON.stringify({
+        email: formData.email,
+        fullName: formData.fullName,
+        phone: formData.phone,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      }));
 
       router.push('/register/step2');
     } catch (err: any) {
