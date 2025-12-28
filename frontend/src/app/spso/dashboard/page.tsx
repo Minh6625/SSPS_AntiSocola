@@ -32,7 +32,6 @@ export default function SPSODashboard() {
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStat[]>([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [pricing, setPricing] = useState<PagePricing[]>([]);
 
   // Generate available years (current year and 5 years back)
   const availableYears = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i);
