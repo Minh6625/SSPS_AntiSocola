@@ -169,4 +169,9 @@ public interface PrintLogRepository extends JpaRepository<PrintLog, Integer> {
         @Param("endDate") LocalDateTime endDate,
         @Param("statuses") List<String> statuses
     );
+    
+    /**
+     * Tìm logs trong khoảng thời gian (không pagination)
+     */
+    List<PrintLog> findByPrintTimeBetween(LocalDateTime startDate, LocalDateTime endDate);
 }

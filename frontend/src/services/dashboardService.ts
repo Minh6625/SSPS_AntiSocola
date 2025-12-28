@@ -1,25 +1,7 @@
-/**
- * DASHBOARD SERVICE - API cho SPSO Dashboard
- */
-
 import apiClient from '@/config/axios';
 
-export interface MonthlyStatDTO {
-  month: string;
-  year: number;
-  jobs: number;
-  revenue: number;
-}
-
-export interface WeeklyStatDTO {
-  day: string;
-  date: string;
-  success: number;
-  failed: number;
-}
-
 export interface DashboardStatsDTO {
-  totalPrintJobs: number;
+  totalJobs: number;
   completedJobs: number;
   failedJobs: number;
   cancelledJobs: number;
@@ -32,12 +14,24 @@ export interface DashboardStatsDTO {
   weeklyStats: WeeklyStatDTO[];
 }
 
-export const dashboardService = {
-  /**
-   * GET /api/dashboard/stats - Lấy thống kê Dashboard
-   */
+export interface MonthlyStatDTO {
+  month: string;
+  year: number;
+  jobs: number;
+  revenue: number;
+}
+
+export interface WeeklyStatDTO {
+  day: string;
+  date: string;
+  jobs: number;
+}
+
+class DashboardService {
   async getDashboardStats(): Promise<DashboardStatsDTO> {
     const response = await apiClient.get<DashboardStatsDTO>('/dashboard/stats');
     return response.data;
-  },
-};
+  }
+}
+
+export const dashboardService = new DashboardService();

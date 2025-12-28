@@ -54,4 +54,13 @@ public interface PageTransactionRepository extends JpaRepository<PageTransaction
      * Dùng để kiểm tra đã cấp phát cho học kỳ này chưa (idempotent check)
      */
     long countBySemesterAndTransactionType(String semester, String transactionType);
+    
+    /**
+     * Lấy danh sách giao dịch trong khoảng thời gian (không pagination)
+     */
+    @Query("SELECT pt FROM PageTransaction pt WHERE pt.createdAt BETWEEN :startDate AND :endDate ORDER BY pt.createdAt DESC")
+    java.util.List<PageTransaction> findByCreatedAtBetween(
+        @Param("startDate") LocalDateTime startDate,
+        @Param("endDate") LocalDateTime endDate
+    );
 }
