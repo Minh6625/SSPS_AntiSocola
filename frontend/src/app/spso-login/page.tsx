@@ -54,6 +54,7 @@ export default function SPSOLoginPage() {
         if (userRole !== 'SPSO') {
           authService.logout();
           setError('Trang này chỉ dành cho quản trị viên SPSO.');
+          setIsLoading(false);
           return;
         }
         router.push('/spso/dashboard');
@@ -66,6 +67,14 @@ export default function SPSOLoginPage() {
   };
 
   const handleOtpSuccess = () => {
+    // Check role before redirecting
+    const userRole = localStorage.getItem('userRole')?.toUpperCase();
+    if (userRole !== 'SPSO') {
+      authService.logout();
+      setError('Trang này chỉ dành cho quản trị viên SPSO.');
+      setShowOtpModal(false);
+      return;
+    }
     setShowOtpModal(false);
     router.push('/spso/dashboard');
   };

@@ -24,6 +24,9 @@ export default function SPSODashboard() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStatsDTO | null>(null);
   const [recentLogs, setRecentLogs] = useState<PrintLogDTO[]>([]);
   const [allLogs, setAllLogs] = useState<PrintLogDTO[]>([]);
+  const [pricing, setPricing] = useState<PagePricing[]>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [monthRevenue, setMonthRevenue] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStat[]>([]);

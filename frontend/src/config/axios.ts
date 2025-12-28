@@ -26,6 +26,14 @@ const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue = [];
 };
 
+// Helper function to set cookie
+const setCookie = (name: string, value: string, days: number = 7) => {
+  if (typeof document === 'undefined') return;
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+};
+
 // Helper function to get cookie value
 const getCookie = (name: string): string | null => {
   if (typeof document === 'undefined') return null;
@@ -116,7 +124,10 @@ apiClient.interceptors.response.use(
 
         const newAccessToken = response.data.accessToken;
         console.log('[AXIOS] Token refresh successful!');
+        
+        // Lưu vào localStorage VÀ cookies
         localStorage.setItem('accessToken', newAccessToken);
+        setCookie('accessToken', newAccessToken, 7);
 
         // Update token cho các request đang đợi
         processQueue(null, newAccessToken);

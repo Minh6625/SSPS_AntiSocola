@@ -86,6 +86,18 @@ authClient.interceptors.request.use((config: any) => {
   return config;
 });
 
+// Helper function để set cookie
+const setCookie = (name: string, value: string, days: number = 7) => {
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Strict`;
+};
+
+// Helper function để xóa cookie
+const deleteCookie = (name: string) => {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+};
+
 export const authService = {
   /**
    * Generate device fingerprint (SHA-256 hash)
@@ -132,8 +144,9 @@ export const authService = {
         };
       }
 
-      // Thành công (200) - Lưu token
+      // Thành công (200) - Lưu token vào localStorage VÀ cookies
       if (response.data.accessToken) {
+        // Lưu vào localStorage (để dùng trong API calls)
         localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('refreshToken', response.data.refreshToken);
         localStorage.setItem('userId', response.data.userId);
@@ -141,6 +154,10 @@ export const authService = {
         localStorage.setItem('userRole', response.data.role);
         localStorage.setItem('userFullName', response.data.fullName || '');
         localStorage.setItem('deviceId', deviceId);
+        
+        // Lưu vào cookies (để middleware có thể đọc)
+        setCookie('accessToken', response.data.accessToken, 7);
+        setCookie('userRole', response.data.role, 7);
       }
 
       return {
@@ -169,14 +186,19 @@ export const authService = {
         rememberDevice: request.rememberDevice ?? false,
       });
 
-      // Lưu token
+      // Lưu token vào localStorage VÀ cookies
       if (response.data.accessToken) {
+        // Lưu vào localStorage
         localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('refreshToken', response.data.refreshToken);
         localStorage.setItem('userId', response.data.userId);
         localStorage.setItem('userEmail', response.data.email);
         localStorage.setItem('userRole', response.data.role);
         localStorage.setItem('userFullName', response.data.fullName || '');
+        
+        // Lưu vào cookies (để middleware có thể đọc)
+        setCookie('accessToken', response.data.accessToken, 7);
+        setCookie('userRole', response.data.role, 7);
       }
 
       return {
@@ -203,6 +225,8 @@ export const authService = {
 
       if (response.data.accessToken) {
         localStorage.setItem('accessToken', response.data.accessToken);
+        // Cập nhật cookie
+        setCookie('accessToken', response.data.accessToken, 7);
       }
 
       return response.data;
@@ -213,9 +237,10 @@ export const authService = {
   },
 
   /**
-   * Logout - Xóa tokens
+   * Logout - Xóa tokens từ localStorage VÀ cookies
    */
   logout() {
+    // Xóa localStorage
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
@@ -223,6 +248,10 @@ export const authService = {
     localStorage.removeItem('userRole');
     localStorage.removeItem('userFullName');
     localStorage.removeItem('deviceId');
+    
+    // Xóa cookies
+    deleteCookie('accessToken');
+    deleteCookie('userRole');
   },
 
   /**
