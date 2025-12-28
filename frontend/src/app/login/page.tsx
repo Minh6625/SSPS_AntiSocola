@@ -133,8 +133,7 @@ export default function LoginPage() {
 
       // Use window.location for reliable redirect
       window.location.href = '/student/dashboard';
-    } catch (err) {
-      const error = err as { response?: { data?: { error?: string; message?: string } } };
+    } catch (err: any) {
       const errorMessage =
         error.response?.data?.error ||
         error.response?.data?.message ||

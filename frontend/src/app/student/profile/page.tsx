@@ -49,11 +49,21 @@ export default function StudentProfile() {
     finally { setIsSaving(false); }
   };
 
+  // Validate password: ít nhất 8 ký tự, 1 chữ thường, 1 chữ hoa, 1 số
+  const validatePassword = (password: string): { isValid: boolean; error: string } => {
+    if (password.length < 8) return { isValid: false, error: 'Mật khẩu phải có ít nhất 8 ký tự' };
+    if (!/[a-z]/.test(password)) return { isValid: false, error: 'Mật khẩu phải có ít nhất 1 chữ thường' };
+    if (!/[A-Z]/.test(password)) return { isValid: false, error: 'Mật khẩu phải có ít nhất 1 chữ hoa' };
+    if (!/[0-9]/.test(password)) return { isValid: false, error: 'Mật khẩu phải có ít nhất 1 chữ số' };
+    return { isValid: true, error: '' };
+  };
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
     if (passwordData.newPassword !== passwordData.confirmPassword) { setPasswordError('Mật khẩu mới không khớp'); return; }
-    if (passwordData.newPassword.length < 8) { setPasswordError('Mật khẩu mới phải có ít nhất 8 ký tự'); return; }
+    const validation = validatePassword(passwordData.newPassword);
+    if (!validation.isValid) { setPasswordError(validation.error); return; }
     try {
       await profileService.changePassword(passwordData);
       setShowPasswordModal(false);
@@ -226,7 +236,7 @@ export default function StudentProfile() {
               <p className="text-gray-600 mb-4">Mật khẩu của bạn được bảo vệ bằng mã hóa. Hãy chọn mật khẩu mạnh và không chia sẻ với ai.</p>
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3 mb-4">
                 <svg className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                <p className="text-sm text-amber-800">Mẹo: Sử dụng mật khẩu có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.</p>
+                <p className="text-sm text-amber-800">Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số.</p>
               </div>
               <button onClick={() => setShowPasswordModal(true)} className="px-5 py-2 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors">Đổi mật khẩu</button>
             </div>
@@ -247,7 +257,7 @@ export default function StudentProfile() {
                 <p className="text-gray-600 text-sm mb-4">Mật khẩu của bạn được bảo vệ bằng mã hóa. Hãy chọn mật khẩu mạnh và không chia sẻ với ai.</p>
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2 mb-5">
                   <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                  <p className="text-xs text-amber-800">Mẹo: Sử dụng mật khẩu có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt.</p>
+                  <p className="text-xs text-amber-800">Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số.</p>
                 </div>
                 {passwordError && <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-sm mb-4">{passwordError}</div>}
                 <form onSubmit={handleChangePassword} className="space-y-4">

@@ -68,7 +68,13 @@ export default function OtpVerification({
     e.preventDefault();
 
     if (!otp || otp.length !== 6) {
-      setError('OTP phải là 6 chữ số');
+      setError('❌ OTP phải là 6 chữ số');
+      return;
+    }
+
+    // Check OTP expired on client side
+    if (otpCountdown <= 0) {
+      setError('⏰ Mã OTP đã hết hạn. Vui lòng gửi lại OTP mới.');
       return;
     }
 
@@ -92,10 +98,9 @@ export default function OtpVerification({
       if (result.status === 200) {
         onSuccess();
       }
-    } catch (err) {
+    } catch (err: any) {
       // Hiển thị error message chi tiết từ backend
-      const error = err as Error;
-      setError(error.message || 'Xác thực OTP thất bại');
+      setError(err.message || 'Xác thực OTP thất bại');
     } finally {
       setLoading(false);
     }
@@ -114,7 +119,7 @@ export default function OtpVerification({
       const savedPassword = sessionStorage.getItem('tempLoginPassword');
       
       if (!savedPassword) {
-        setError('Không thể gửi lại OTP. Vui lòng đăng nhập lại.');
+        setError('❌ Không thể gửi lại OTP. Vui lòng đăng nhập lại.');
         return;
       }
 
@@ -130,11 +135,10 @@ export default function OtpVerification({
         setOtpCountdown(OTP_EXPIRATION_SECONDS);
         setResendCooldown(RESEND_COOLDOWN_SECONDS);
         setOtp(''); // Clear old OTP
-        setSuccess('OTP mới đã được gửi đến email của bạn!');
+        setSuccess('✅ OTP mới đã được gửi đến email của bạn!');
       }
-    } catch (err) {
-      const error = err as Error;
-      setError(error.message || 'Gửi lại OTP thất bại');
+    } catch (err: any) {
+      setError(err.message || 'Gửi lại OTP thất bại');
     } finally {
       setResendLoading(false);
     }
@@ -150,28 +154,16 @@ export default function OtpVerification({
 
         {/* OTP Countdown */}
         {otpCountdown > 0 ? (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 6v6l4 2"/>
-              </svg>
-              <p className="text-sm text-blue-700">
-                OTP còn hiệu lực: <span className="font-bold text-blue-800">{formatTime(otpCountdown)}</span>
-              </p>
-            </div>
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
+            <p className="text-sm text-blue-700">
+              ⏱️ OTP còn hiệu lực: <span className="font-bold text-blue-800">{formatTime(otpCountdown)}</span>
+            </p>
           </div>
         ) : (
-          <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-            <div className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 text-orange-700" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 6v6l4 2"/>
-              </svg>
-              <p className="text-sm text-orange-700">
-                OTP đã hết hạn. Vui lòng gửi lại OTP mới.
-              </p>
-            </div>
+          <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg text-center">
+            <p className="text-sm text-orange-700">
+              ⏰ OTP đã hết hạn. Vui lòng gửi lại OTP mới.
+            </p>
           </div>
         )}
 
@@ -192,15 +184,9 @@ export default function OtpVerification({
         {/* Test Account OTP Display */}
         {currentOtpCode && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-yellow-700 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 16v-4M12 8h.01"/>
-              </svg>
-              <p className="text-sm text-yellow-700">
-                <span className="font-semibold">Test Account:</span> OTP = <span className="font-mono font-bold">{currentOtpCode}</span>
-              </p>
-            </div>
+            <p className="text-sm text-yellow-700">
+              💡 <span className="font-semibold">Test Account:</span> OTP = <span className="font-mono font-bold">{currentOtpCode}</span>
+            </p>
           </div>
         )}
 
@@ -255,19 +241,14 @@ export default function OtpVerification({
             type="button"
             onClick={handleResendOtp}
             disabled={resendLoading || resendCooldown > 0}
-            className="inline-flex items-center gap-1.5 text-blue-600 font-semibold hover:underline disabled:text-gray-400 disabled:cursor-not-allowed disabled:no-underline"
+            className="text-blue-600 font-semibold hover:underline disabled:text-gray-400 disabled:cursor-not-allowed disabled:no-underline"
           >
             {resendCooldown > 0 ? (
               `Gửi lại sau ${resendCooldown}s`
             ) : resendLoading ? (
               'Đang gửi...'
             ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
-                Gửi lại OTP
-              </>
+              '🔄 Gửi lại OTP'
             )}
           </button>
         </div>
