@@ -277,8 +277,12 @@ export const documentService = {
       const response = await apiClient.delete(`/documents/${documentId}`);
       return response.data;
     } catch (error) {
-      const axiosError = error as AxiosError<DocumentError>;
-      const errorMessage = axiosError.response?.data?.error || 'Xóa thất bại';
+      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      // Backend trả về error trong field "message" hoặc "error"
+      const errorMessage = 
+        axiosError.response?.data?.message || 
+        axiosError.response?.data?.error || 
+        'Xóa thất bại';
       throw new Error(errorMessage);
     }
   },

@@ -12,13 +12,32 @@ declare global {
     google?: {
       accounts: {
         id: {
-          initialize: (config: any) => void;
-          renderButton: (element: HTMLElement, config: any) => void;
+          initialize: (config: GoogleIdConfiguration) => void;
+          renderButton: (element: HTMLElement, config: GoogleButtonConfiguration) => void;
           prompt: () => void;
         };
       };
     };
   }
+}
+
+interface GoogleIdConfiguration {
+  client_id: string;
+  callback: (response: GoogleCallbackResponse) => void;
+  auto_select: boolean;
+}
+
+interface GoogleButtonConfiguration {
+  type: string;
+  theme: string;
+  size: string;
+  text: string;
+  shape: string;
+  logo_alignment: string;
+}
+
+interface GoogleCallbackResponse {
+  credential: string;
 }
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '81930604502-fodfnicss7sdn5c1usr2nvfqshmej1eb.apps.googleusercontent.com';
@@ -78,7 +97,7 @@ export default function LoginPage() {
   }, [googleScriptLoaded]);
 
   // Handle Google Sign-In callback
-  const handleGoogleCallback = async (response: any) => {
+  const handleGoogleCallback = async (response: GoogleCallbackResponse) => {
     setGoogleLoading(true);
     setError('');
 
@@ -114,10 +133,11 @@ export default function LoginPage() {
 
       // Use window.location for reliable redirect
       window.location.href = '/student/dashboard';
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as { response?: { data?: { error?: string; message?: string } } };
       const errorMessage =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
+        error.response?.data?.error ||
+        error.response?.data?.message ||
         'Đăng nhập với Google thất bại. Vui lòng thử lại.';
       setError(errorMessage);
     } finally {

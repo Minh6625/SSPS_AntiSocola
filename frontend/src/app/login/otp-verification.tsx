@@ -92,9 +92,10 @@ export default function OtpVerification({
       if (result.status === 200) {
         onSuccess();
       }
-    } catch (err: any) {
+    } catch (err) {
       // Hiển thị error message chi tiết từ backend
-      setError(err.message || 'Xác thực OTP thất bại');
+      const error = err as Error;
+      setError(error.message || 'Xác thực OTP thất bại');
     } finally {
       setLoading(false);
     }
@@ -131,8 +132,9 @@ export default function OtpVerification({
         setOtp(''); // Clear old OTP
         setSuccess('OTP mới đã được gửi đến email của bạn!');
       }
-    } catch (err: any) {
-      setError(err.message || 'Gửi lại OTP thất bại');
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Gửi lại OTP thất bại');
     } finally {
       setResendLoading(false);
     }
