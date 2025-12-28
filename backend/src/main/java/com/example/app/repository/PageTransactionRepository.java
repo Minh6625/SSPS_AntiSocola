@@ -63,4 +63,97 @@ public interface PageTransactionRepository extends JpaRepository<PageTransaction
         @Param("startDate") LocalDateTime startDate,
         @Param("endDate") LocalDateTime endDate
     );
+    
+    // ==================== ADMIN/SPSO QUERIES ====================
+    
+    /**
+     * Lấy tất cả giao dịch với pagination (cho SPSO)
+     */
+    Page<PageTransaction> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    
+    /**
+     * Tìm kiếm giao dịch theo mã giao dịch, mã sinh viên hoặc tên sinh viên
+     */
+    @Query("SELECT pt FROM PageTransaction pt WHERE " +
+           "LOWER(pt.transactionCode) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(pt.studentId) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "pt.studentId IN (SELECT u.userId FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY pt.createdAt DESC")
+    Page<PageTransaction> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
+    
+    /**
+     * Lọc giao dịch theo loại (cho SPSO)
+     */
+    @Query("SELECT pt FROM PageTransaction pt WHERE pt.transactionType = :type ORDER BY pt.createdAt DESC")
+    Page<PageTransaction> findByTransactionType(@Param("type") String type, Pageable pageable);
+    
+    /**
+     * Lọc giao dịch theo khoảng thời gian (cho SPSO)
+     */
+    @Query("SELECT pt FROM PageTransaction pt WHERE pt.createdAt BETWEEN :startDate AND :endDate ORDER BY pt.createdAt DESC")
+    Page<PageTransaction> findByDateRange(@Param("startDate") LocalDateTime startDate,
+                                          @Param("endDate") LocalDateTime endDate,
+                                          Pageable pageable);
+    
+    /**
+     * Lọc giao dịch theo loại và khoảng thời gian (cho SPSO)
+     */
+    @Query("SELECT pt FROM PageTransaction pt WHERE pt.transactionType = :type AND pt.createdAt BETWEEN :startDate AND :endDate ORDER BY pt.createdAt DESC")
+    Page<PageTransaction> findByTypeAndDateRange(@Param("type") String type,
+                                                  @Param("startDate") LocalDateTime startDate,
+                                                  @Param("endDate") LocalDateTime endDate,
+                                                  Pageable pageable);
+    
+    /**
+     * Tìm kiếm với filter loại giao dịch
+     */
+    @Query("SELECT pt FROM PageTransaction pt WHERE " +
+           "(LOWER(pt.transactionCode) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(pt.studentId) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "pt.studentId IN (SELECT u.userId FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')))) " +
+           "AND pt.transactionType = :type " +
+           "ORDER BY pt.createdAt DESC")
+    Page<PageTransaction> searchByKeywordAndType(@Param("keyword") String keyword, 
+                                                  @Param("type") String type, 
+                                                  Pageable pageable);
+    
+    /**
+     * Tìm kiếm với filter khoảng thời gian
+     */
+    @Query("SELECT pt FROM PageTransaction pt WHERE " +
+           "(LOWER(pt.transactionCode) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(pt.studentId) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "pt.studentId IN (SELECT u.userId FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')))) " +
+           "AND pt.createdAt BETWEEN :startDate AND :endDate " +
+           "ORDER BY pt.createdAt DESC")
+    Page<PageTransaction> searchByKeywordAndDateRange(@Param("keyword") String keyword,
+                                                       @Param("startDate") LocalDateTime startDate,
+                                                       @Param("endDate") LocalDateTime endDate,
+                                                       Pageable pageable);
+    
+    /**
+     * Tìm kiếm với filter loại và khoảng thời gian
+     */
+    @Query("SELECT pt FROM PageTransaction pt WHERE " +
+           "(LOWER(pt.transactionCode) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(pt.studentId) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "pt.studentId IN (SELECT u.userId FROM User u WHERE LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')))) " +
+           "AND pt.transactionType = :type " +
+           "AND pt.createdAt BETWEEN :startDate AND :endDate " +
+           "ORDER BY pt.createdAt DESC")
+    Page<PageTransaction> searchByKeywordTypeAndDateRange(@Param("keyword") String keyword,
+                                                           @Param("type") String type,
+                                                           @Param("startDate") LocalDateTime startDate,
+                                                           @Param("endDate") LocalDateTime endDate,
+                                                           Pageable pageable);
+    
+    /**
+     * Đếm số giao dịch theo loại
+     */
+    long countByTransactionType(String transactionType);
+    
+    /**
+     * Lấy giao dịch theo ID
+     */
+    java.util.Optional<PageTransaction> findByTransactionId(Integer transactionId);
 }
