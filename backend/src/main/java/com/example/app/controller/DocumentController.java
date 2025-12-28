@@ -186,8 +186,15 @@ public class DocumentController {
                     break;
             }
             
+            // Đảm bảo tên file có extension
+            String fileName = documentDTO.getOriginalFileName();
+            if (!fileName.toLowerCase().endsWith("." + extension)) {
+                // Nếu tên file không có extension, thêm vào
+                fileName = fileName + "." + extension;
+            }
+            
             // Encode filename để hỗ trợ UTF-8 và tên file đúng
-            String encodedFilename = URLEncoder.encode(documentDTO.getOriginalFileName(), StandardCharsets.UTF_8)
+            String encodedFilename = URLEncoder.encode(fileName, StandardCharsets.UTF_8)
                 .replaceAll("\\+", "%20");
             
             return ResponseEntity.ok()

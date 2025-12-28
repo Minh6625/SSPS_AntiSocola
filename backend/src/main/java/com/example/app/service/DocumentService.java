@@ -178,7 +178,15 @@ public class DocumentService {
         // STEP 8: Tạo Document entity
         Document document = new Document();
         document.setStudentId(studentId);
-        document.setOriginalFileName(file.getOriginalFilename());
+        
+        // Đảm bảo originalFileName luôn có extension
+        String originalFileName = file.getOriginalFilename();
+        if (originalFileName != null && !originalFileName.toLowerCase().endsWith("." + fileExtension.toLowerCase())) {
+            // Nếu tên file không có extension, thêm vào
+            originalFileName = originalFileName + "." + fileExtension.toLowerCase();
+        }
+        document.setOriginalFileName(originalFileName);
+        
         document.setStoredFileName(storedFileName);
         document.setFilePath(fileUrl); // Lưu URL Supabase thay vì đường dẫn local
         document.setFileExtension(fileExtension.toLowerCase());
