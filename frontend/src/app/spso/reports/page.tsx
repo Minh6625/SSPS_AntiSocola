@@ -496,64 +496,70 @@ export default function ReportsPage() {
           </div>
 
           {/* Daily Stats Chart */}
-          <div className="bg-white rounded-xl shadow-sm p-6 print:shadow-none print:break-inside-avoid">
+          <div className="bg-white rounded-xl shadow-sm p-6 print:shadow-none print:break-inside-avoid" style={{ overflow: 'visible' }}>
             <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
               <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
               Thống kê theo ngày
             </h2>
-            <div className="overflow-x-auto print:overflow-visible">
-              <div className="flex min-w-[700px] print:min-w-0">
-                {/* Y-Axis */}
-                <div className="flex flex-col justify-between pr-2 text-right border-r border-gray-200" style={{ height: '200px' }}>
-                  {(() => {
-                    const maxJobs = Math.max(...monthlyReport.dailyStats.map(s => s.jobs), 1);
-                    const yMax = Math.ceil(maxJobs / 4) * 4 || 4;
-                    return [yMax, Math.round(yMax * 0.75), Math.round(yMax * 0.5), Math.round(yMax * 0.25), 0].map((val, i) => (
-                      <span key={i} className="text-xs text-gray-500 leading-none min-w-[30px]">{val}</span>
-                    ));
-                  })()}
-                </div>
-                {/* Chart Area */}
-                <div className="flex-1 relative pl-2">
-                  {/* Grid Lines */}
-                  <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ height: '200px' }}>
-                    {[0, 1, 2, 3, 4].map((i) => (
-                      <div key={i} className="border-t border-gray-100 w-full"></div>
-                    ))}
-                  </div>
-                  {/* Bars */}
-                  <div className="flex items-end gap-0.5 relative z-10" style={{ height: '200px' }}>
-                    {monthlyReport.dailyStats.map((stat) => {
+            <div style={{ overflow: 'visible' }}>
+              <div className="overflow-x-auto" style={{ paddingTop: '70px', marginTop: '-70px', overflow: 'visible auto' }}>
+                <div className="flex min-w-[700px] print:min-w-0">
+                  {/* Y-Axis */}
+                  <div className="flex flex-col justify-between pr-2 text-right border-r border-gray-200" style={{ height: '200px' }}>
+                    {(() => {
                       const maxJobs = Math.max(...monthlyReport.dailyStats.map(s => s.jobs), 1);
                       const yMax = Math.ceil(maxJobs / 4) * 4 || 4;
-                      const heightPercent = stat.jobs > 0 ? Math.max((stat.jobs / yMax) * 100, 3) : 0;
-                      return (
-                        <div key={stat.day} className="flex-1 flex flex-col items-center group relative h-full">
-                          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap shadow-lg print:hidden">
-                            <div className="font-semibold mb-1">Ngày {stat.day}</div>
-                            <div>Lệnh in: {stat.jobs}</div>
-                            <div>Trang: {stat.pages}</div>
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
-                          </div>
-                          <div className="flex-1 w-full flex items-end justify-center">
-                            <div 
-                              className="w-3/4 bg-purple-500 rounded-t transition-all hover:bg-purple-600 cursor-pointer print:bg-purple-400" 
-                              style={{ height: `${heightPercent}%`, minHeight: stat.jobs > 0 ? '4px' : '0' }}
-                            ></div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                      return [yMax, Math.round(yMax * 0.75), Math.round(yMax * 0.5), Math.round(yMax * 0.25), 0].map((val, i) => (
+                        <span key={i} className="text-xs text-gray-500 leading-none min-w-[30px]">{val}</span>
+                      ));
+                    })()}
                   </div>
-                  {/* X-Axis Labels */}
-                  <div className="flex justify-between mt-2 border-t border-gray-200 pt-2">
-                    {monthlyReport.dailyStats.map((stat) => (
-                      <div key={stat.day} className="flex-1 text-center">
-                        <span className="text-xs text-gray-500">{stat.day}</span>
-                      </div>
-                    ))}
+                  {/* Chart Area */}
+                  <div className="flex-1 relative pl-2">
+                    {/* Grid Lines */}
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ height: '200px' }}>
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <div key={i} className="border-t border-gray-100 w-full"></div>
+                      ))}
+                    </div>
+                    {/* Bars */}
+                    <div className="flex items-end gap-0.5 relative z-10" style={{ height: '200px' }}>
+                      {monthlyReport.dailyStats.map((stat) => {
+                        const maxJobs = Math.max(...monthlyReport.dailyStats.map(s => s.jobs), 1);
+                        const yMax = Math.ceil(maxJobs / 4) * 4 || 4;
+                        const heightPercent = stat.jobs > 0 ? Math.max((stat.jobs / yMax) * 100, 3) : 0;
+                        return (
+                          <div 
+                            key={stat.day} 
+                            className="flex-1 flex flex-col items-center group relative h-full cursor-pointer"
+                          >
+                            {/* Tooltip - hiển thị khi hover */}
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs rounded-lg py-2 px-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 whitespace-nowrap shadow-lg print:hidden" style={{ zIndex: 9999 }}>
+                              <div className="font-semibold mb-1">Ngày {stat.day}/{selectedMonth}/{selectedYear}</div>
+                              <div>Lệnh in: {stat.jobs}</div>
+                              <div>Trang: {stat.pages}</div>
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                            </div>
+                            <div className="flex-1 w-full flex items-end justify-center">
+                              <div 
+                                className="w-3/4 bg-purple-500 rounded-t transition-all hover:bg-purple-600 print:bg-purple-400" 
+                                style={{ height: `${heightPercent}%`, minHeight: stat.jobs > 0 ? '4px' : '0' }}
+                              ></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* X-Axis Labels */}
+                    <div className="flex justify-between mt-2 border-t border-gray-200 pt-2">
+                      {monthlyReport.dailyStats.map((stat) => (
+                        <div key={stat.day} className="flex-1 text-center">
+                          <span className="text-xs text-gray-500">{stat.day}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
