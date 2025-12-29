@@ -189,11 +189,20 @@ public class PrintJobServiceImpl implements IPrintJobService {
         transaction.setTransactionType("Use");
         transaction.setA4Pages(-a4EquivalentPages);
         transaction.setBalanceAfterA4(newBalance);
-        // Ghi chú chi tiết: tên file, số trang, khổ giấy
-        String detailedNotes = String.format("In \"%s\" - %d trang %s", 
-            document.getOriginalFileName(),
-            a4EquivalentPages,
-            request.getPaperSize());
+        // Ghi chú chi tiết: tên file, số tờ giấy, khổ giấy, số trang A4 quy đổi
+        String detailedNotes;
+        if ("A3".equalsIgnoreCase(request.getPaperSize())) {
+            // A3: ghi số tờ A3 và số trang A4 quy đổi
+            detailedNotes = String.format("In \"%s\" - %d tờ A3 (%d trang A4)", 
+                document.getOriginalFileName(),
+                totalSheetsUsed * request.getCopies(),
+                a4EquivalentPages);
+        } else {
+            // A4: ghi số trang A4
+            detailedNotes = String.format("In \"%s\" - %d trang A4", 
+                document.getOriginalFileName(),
+                a4EquivalentPages);
+        }
         transaction.setNotes(detailedNotes);
         transaction.setCreatedAt(LocalDateTime.now());
         pageTransactionRepository.save(transaction);
