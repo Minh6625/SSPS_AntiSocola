@@ -5,11 +5,13 @@ import com.example.app.dto.SepayWebhookDTO;
 import com.example.app.entity.PageBalance;
 import com.example.app.entity.PageTransaction;
 import com.example.app.entity.PendingPayment;
+import com.example.app.entity.SystemConfig;
 import com.example.app.exception.BusinessException;
 import com.example.app.exception.ResourceNotFoundException;
 import com.example.app.repository.PageBalanceRepository;
 import com.example.app.repository.PageTransactionRepository;
 import com.example.app.repository.PendingPaymentRepository;
+import com.example.app.repository.SystemConfigRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,14 +50,17 @@ public class PaymentService {
     @Lazy
     private NotificationService notificationService;
 
+    @Autowired
+    private SystemConfigRepository systemConfigRepository;
+
     @Value("${sepay.api-key:}")
     private String sepayApiKey;
 
     @Value("${sepay.bank-account:0937833154}")
     private String bankAccount;
 
-    private static final int PRICE_A4 = 500;
-    private static final int PRICE_A3 = 1000;
+    private static final String CONFIG_A4_PRICE = "a4_price_per_page";
+    private static final int DEFAULT_PRICE_A4 = 500;
 
     /**
      * Create a pending payment and return payment code for QR
@@ -75,8 +80,12 @@ public class PaymentService {
             throw new BusinessException("Vui lòng nhập ít nhất 1 trang");
         }
 
+        // Get price from SystemConfig
+        int priceA4 = getA4PriceFromConfig();
+        int priceA3 = priceA4 * 2; // A3 = 2x A4
+
         // Calculate amount
-        long amount = (long) a4Pages * PRICE_A4 + (long) a3Pages * PRICE_A3;
+        long amount = (long) a4Pages * priceA4 + (long) a3Pages * priceA3;
 
         // Generate unique payment code (format: SPSS + studentId last 4 chars + random 4 digits)
         String studentSuffix = studentId.length() > 4 ? studentId.substring(studentId.length() - 4) : studentId;
@@ -354,5 +363,19 @@ public class PaymentService {
         
         payment.setStatus("CANCELLED");
         pendingPaymentRepository.save(payment);
+    }
+
+    /**
+     * Lấy giá A4 từ SystemConfig
+     */
+    private int getA4PriceFromConfig() {
+        try {
+            return systemConfigRepository.findByConfigKey(CONFIG_A4_PRICE)
+                    .map(config -> Integer.parseInt(config.getConfigValue()))
+                    .orElse(DEFAULT_PRICE_A4);
+        } catch (Exception e) {
+            log.warn("Error reading A4 price from config, using default: {}", e.getMessage());
+            return DEFAULT_PRICE_A4;
+        }
     }
 }
