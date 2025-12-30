@@ -19,6 +19,7 @@ export default function StudentDashboard() {
   const [printJobs, setPrintJobs] = useState<PrintJob[]>([]);
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStat[]>([]);
   const [successRate, setSuccessRate] = useState({ success: 0, failed: 0 });
+  const [jobStatusCounts, setJobStatusCounts] = useState({ completed: 0, failed: 0, printing: 0, pending: 0, cancelled: 0 });
   const [monthlyStats, setMonthlyStats] = useState({ jobs: 0, pages: 0 });
   const [favoritePrinter, setFavoritePrinter] = useState('--');
 
@@ -57,10 +58,14 @@ export default function StudentDashboard() {
     const monthPages = monthJobs.reduce((sum, job) => sum + (job.a4EquivalentPages || job.totalPagesToPrint || 0), 0);
     setMonthlyStats({ jobs: monthJobs.length, pages: monthPages });
 
-    // Success rate
+    // Job status counts
     const completed = jobs.filter((j) => j.jobStatus === 'Completed').length;
     const failed = jobs.filter((j) => j.jobStatus === 'Failed').length;
+    const printing = jobs.filter((j) => j.jobStatus === 'Printing').length;
+    const pending = jobs.filter((j) => j.jobStatus === 'Pending').length;
+    const cancelled = jobs.filter((j) => j.jobStatus === 'Cancelled').length;
     setSuccessRate({ success: completed, failed });
+    setJobStatusCounts({ completed, failed, printing, pending, cancelled });
 
     // Weekly stats (last 7 days)
     const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
@@ -120,59 +125,132 @@ export default function StudentDashboard() {
           <p className="text-sm text-gray-500">Chào mừng bạn trở lại, sinh viên!</p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-5">
+        {/* Stats Cards - Row 1: Tổng quan */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Số dư trang A4</p>
-                <p className="text-3xl font-bold text-gray-800 mt-1">{pageBalance?.totalA4Equivalent || 0}</p>
+                <p className="text-gray-500 text-xs">Số dư trang A4</p>
+                <p className="text-2xl font-bold text-gray-800 mt-1">{pageBalance?.totalA4Equivalent || 0}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-green-100 p-5">
+          <div className="bg-white rounded-2xl shadow-sm border border-indigo-100 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Lệnh in tháng này</p>
-                <p className="text-3xl font-bold text-gray-800 mt-1">{monthlyStats.jobs}</p>
+                <p className="text-gray-500 text-xs">Lệnh in tháng này</p>
+                <p className="text-2xl font-bold text-indigo-600 mt-1">{monthlyStats.jobs}</p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-5">
+          <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Trang in tháng này</p>
-                <p className="text-3xl font-bold text-gray-800 mt-1">{monthlyStats.pages}</p>
+                <p className="text-gray-500 text-xs">Trang in tháng này</p>
+                <p className="text-2xl font-bold text-orange-600 mt-1">{monthlyStats.pages}</p>
               </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-5">
+          <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 min-w-0">
+                <p className="text-gray-500 text-xs">Máy in yêu thích</p>
+                <p className="text-xl font-bold text-purple-600 mt-1">{favoritePrinter}</p>
+              </div>
+              <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0 ml-2">
+                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards - Row 2: Trạng thái lệnh in */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-green-100 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-500 text-sm">Máy in yêu thích</p>
-                <p className="text-3xl font-bold text-gray-800 mt-1">{favoritePrinter}</p>
+                <p className="text-gray-500 text-xs">Thành công</p>
+                <p className="text-2xl font-bold text-green-600 mt-1">{jobStatusCounts.completed}</p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-xs">Thất bại</p>
+                <p className="text-2xl font-bold text-red-600 mt-1">{jobStatusCounts.failed}</p>
+              </div>
+              <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-xs">Đang in</p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">{jobStatusCounts.printing}</p>
+              </div>
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-yellow-100 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-xs">Đang chờ</p>
+                <p className="text-2xl font-bold text-yellow-600 mt-1">{jobStatusCounts.pending}</p>
+              </div>
+              <div className="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-xs">Đã hủy</p>
+                <p className="text-2xl font-bold text-gray-600 mt-1">{jobStatusCounts.cancelled}</p>
+              </div>
+              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                 </svg>
               </div>
             </div>
@@ -380,7 +458,11 @@ export default function StudentDashboard() {
                 <tbody>
                   {recentJobs.map((job, index) => (
                     <tr key={index} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-4 text-sm text-gray-800">{job.documentName || `Job #${job.jobId}`}</td>
+                      <td className="py-3 px-4 text-sm text-gray-800 max-w-[200px]">
+                        <span className="block truncate" title={job.documentName || `Job #${job.jobId}`}>
+                          {job.documentName || `Job #${job.jobId}`}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 text-sm text-gray-600">{job.printerName || job.printerId}</td>
                       <td className="py-3 px-4 text-sm text-gray-600">{new Date(job.submittedAt).toLocaleDateString('vi-VN')}</td>
                       <td className="py-3 px-4 text-right">
