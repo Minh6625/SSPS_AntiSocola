@@ -542,7 +542,7 @@ export default function PrintLogsPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Tài liệu</p>
-                    <p className="font-medium text-gray-800">{selectedLog.documentName}</p>
+                    <p className="font-medium text-gray-800 truncate max-w-[200px]" title={selectedLog.documentName}>{selectedLog.documentName}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Loại file</p>
